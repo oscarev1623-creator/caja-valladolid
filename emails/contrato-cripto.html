@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contrato de Crédito Cripto - Caja Valladolid</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #7b3fe4 0%, #9f7aea 100%);
+      padding: 30px;
+      text-align: center;
+      color: white;
+    }
+    .header img {
+      width: 120px;
+      height: auto;
+      margin-bottom: 10px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .header p {
+      opacity: 0.9;
+      margin: 5px 0 0;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    .section h2 {
+      color: #7b3fe4;
+      font-size: 20px;
+      margin: 0 0 15px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .section h3 {
+      color: #333;
+      font-size: 16px;
+      margin: 20px 0 10px;
+    }
+    .data-table {
+      width: 100%;
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 15px 0;
+    }
+    .data-table td {
+      padding: 8px 0;
+      color: #555;
+    }
+    .data-table td:last-child {
+      font-weight: bold;
+      color: #7b3fe4;
+      text-align: right;
+    }
+    .highlight {
+      background: #f3e8ff;
+      border-left: 4px solid #7b3fe4;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .signature {
+      margin-top: 40px;
+      text-align: center;
+    }
+    .signature-line {
+      width: 300px;
+      margin: 40px auto 10px;
+      border-top: 1px solid #999;
+    }
+    .footer {
+      background: #f9fafb;
+      padding: 20px 30px;
+      text-align: center;
+      color: #999;
+      font-size: 13px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .button {
+      background: #7b3fe4;
+      color: white;
+      padding: 12px 30px;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: bold;
+      display: inline-block;
+      margin: 20px 0;
+    }
+    .cripto-badge {
+      background: #2d3748;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: inline-block;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .container { box-shadow: none; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <img src="https://cajavalladolid.com/logotipo.png" alt="Caja Valladolid">
+      <h1>CONTRATO DE CRÉDITO CRIPTO</h1>
+      <p>Con Garantía en Criptomonedas · División Digital</p>
+    </div>
+
+    <!-- Contenido -->
+    <div class="content">
+      <p style="font-size:16px; font-style:italic; color:#666; text-align:center; margin-bottom:30px;">
+        "El futuro del dinero es digital, pero la confianza sigue siendo humana."
+      </p>
+
+      <p style="font-size:18px; color:#333; margin-bottom:30px;">
+        En la ciudad de Valladolid, Yucatán, siendo las 10:00 horas del día 
+        <strong>{{fecha}}</strong>, se reúnen las partes:
+      </p>
+
+      <!-- Datos de las partes -->
+      <div class="section">
+        <h2>PARTES CONTRATANTES</h2>
+        
+        <h3>LA INSTITUCIÓN (DIVISIÓN CRIPTO):</h3>
+        <p><strong>Caja Popular San Bernardino de Siena Valladolid</strong><br>
+        División de Activos Digitales<br>
+        Registro: 29198 · CONDUSEF ID: 4930</p>
+
+        <h3>EL ACREDITADO:</h3>
+        <p><strong>{{nombre_cliente}}</strong><br>
+        Email: {{email_cliente}}<br>
+        Teléfono: {{telefono_cliente}}<br>
+        Wallet: {{wallet_cliente}}</p>
+      </div>
+
+      <!-- Detalles del crédito cripto -->
+      <div class="section">
+        <h2>DETALLES DEL CRÉDITO CRIPTO</h2>
+        
+        <table class="data-table">
+          <tr>
+            <td>Monto en MXN:</td>
+            <td>${{monto}}</td>
+          </tr>
+          <tr>
+            <td>Equivalente en {{cripto}}:</td>
+            <td>{{monto_cripto}} {{cripto}}</td>
+          </tr>
+          <tr>
+            <td>Tipo de cambio:</td>
+            <td>1 {{cripto}} = ${{tipo_cambio}}</td>
+          </tr>
+          <tr>
+            <td>Plazo:</td>
+            <td>{{plazo}} meses</td>
+          </tr>
+          <tr>
+            <td>Tasa preferencial:</td>
+            <td>{{tasa}}% anual</td>
+          </tr>
+          <tr>
+            <td>Pago mensual:</td>
+            <td>${{pago_mensual}}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Garantía cripto -->
+      <div class="highlight">
+        <h3 style="color:#553c9a; margin:0 0 15px;">🔐 GARANTÍA CRIPTO</h3>
+        <p style="margin:0 0 15px; color:#553c9a;">
+          El ACREDITADO depositará una garantía de <strong>{{garantia_cripto}} {{cripto}}</strong> 
+          (equivalente al {{porcentaje_garantia}}% del monto total).
+        </p>
+        <table style="width:100%;">
+          <tr>
+            <td style="padding:5px 0; color:#553c9a; width:30px;">🔐</td>
+            <td style="padding:5px 0; color:#553c9a;">Wallet institucional: {{wallet_institucion}}</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0; color:#553c9a;">📈</td>
+            <td style="padding:5px 0; color:#553c9a;">La garantía genera rendimientos mientras pagas tu crédito</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0; color:#553c9a;">↩️</td>
+            <td style="padding:5px 0; color:#553c9a;">Se devuelve al finalizar el pago, más los rendimientos generados</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Anticipo cripto -->
+      <div class="highlight" style="background:#e6f7f0; border-left-color:#059669;">
+        <h3 style="color:#065f46; margin:0 0 15px;">💰 ANTICIPO (EN CRIPTO O FIAT)</h3>
+        <p style="margin:0 0 15px; color:#065f46;">
+          Anticipo requerido: <strong>${{anticipo}} MXN / {{anticipo_cripto}} {{cripto}}</strong>
+        </p>
+        <table style="width:100%;">
+          <tr>
+            <td style="padding:5px 0; color:#065f46; width:30px;">🔒</td>
+            <td style="padding:5px 0; color:#065f46;">70% se descuenta del capital</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0; color:#065f46;">💰</td>
+            <td style="padding:5px 0; color:#065f46;">30% gastos administrativos</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Cláusulas específicas cripto -->
+      <div class="section">
+        <h2>CLÁUSULAS ESPECIALES CRIPTO</h2>
+
+        <h3>CLÁUSULA PRIMERA. - OBJETO CRIPTO</h3>
+        <p>LA INSTITUCIÓN, a través de su División Cripto, otorga al ACREDITADO un crédito con garantía en criptomonedas, bajo las condiciones especiales del presente contrato.</p>
+
+        <h3>CLÁUSULA SEGUNDA. - GARANTÍA CRIPTO</h3>
+        <p>El ACREDITADO deberá depositar en la wallet institucional una garantía equivalente al {{porcentaje_garantia}}% del monto total del crédito en {{cripto}}. Dicha garantía será devuelta al cumplir con la totalidad de los pagos, más los rendimientos generados durante el periodo.</p>
+
+        <h3>CLÁUSULA TERCERA. - VOLATILIDAD</h3>
+        <p>En caso de que el valor de las criptomonedas depositadas como garantía disminuya más del 30% respecto al valor inicial, LA INSTITUCIÓN podrá requerir un depósito adicional de garantía para mantener la cobertura del crédito. El ACREDITADO dispondrá de 72 horas para realizar el depósito adicional.</p>
+
+        <h3>CLÁUSULA CUARTA. - PAGOS EN CRIPTO</h3>
+        <p>El ACREDITADO podrá realizar sus pagos mensuales en {{cripto}} o en pesos mexicanos, según su preferencia. En caso de optar por criptomonedas, se aplicará el tipo de cambio publicado por la institución al momento del pago.</p>
+
+        <h3>CLÁUSULA QUINTA. - TARJETA CRIPTO</h3>
+        <p>Una vez confirmada la garantía y cubierto el anticipo, se entregará al ACREDITADO una tarjeta de débito internacional asociada al crédito, que permitirá disposiciones en cualquier cajero del mundo y compras en línea. La tarjeta estará vinculada a una cuenta en pesos, pero podrá cargarse con criptomonedas a través de la plataforma.</p>
+
+        <h3>CLÁUSULA SEXTA. - RENDIMIENTOS</h3>
+        <p>Los criptoactivos depositados como garantía generarán rendimientos durante la vigencia del crédito, los cuales serán liquidados al ACREDITADO al momento de la devolución de la garantía. La tasa de rendimiento será variable según el mercado.</p>
+      </div>
+
+      <!-- Firma digital -->
+      <div class="signature">
+        <p style="margin-bottom:40px;">Las partes firman electrónicamente el presente contrato, aceptando todas sus cláusulas.</p>
+        
+        <div style="display:inline-block; width:45%; margin-right:5%; text-align:center;">
+          <div class="signature-line"></div>
+          <p><strong>POR DIVISIÓN CRIPTO</strong><br>
+          {{nombre_asesor}}<br>
+          Especialista en Activos Digitales</p>
+        </div>
+        
+        <div style="display:inline-block; width:45%; text-align:center;">
+          <div class="signature-line"></div>
+          <p><strong>EL ACREDITADO</strong><br>
+          {{nombre_cliente}}<br>
+          <span class="cripto-badge">Holder {{cripto}}</span></p>
+        </div>
+      </div>
+
+      <!-- Botón para firmar -->
+      <div style="text-align:center; margin:30px 0;" class="no-print">
+        <a href="{{link_firma_cripto}}" class="button">🔐 FIRMAR CONTRATO CRIPTO</a>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Caja Valladolid · División Cripto · Registro: 29198 · CONDUSEF ID: 4930</p>
+      <p>www.cajavalladolid.com/cripto · cripto@cajavalladolid.com</p>
+    </div>
+  </div>
+</body>
+</html>

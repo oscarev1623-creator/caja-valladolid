@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    .crypto-icon {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 30px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background-color:#f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:20px auto; background:white; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+    <!-- Header -->
+    <tr>
+      <td style="padding:30px 30px 20px; text-align:center; background:linear-gradient(135deg, #7b2cbf 0%, #9d4edd 100%); border-radius:16px 16px 0 0;">
+        <img src="https://cajavalladolid.com/logotipo.png" alt="Caja Valladolid" style="width:120px; height:auto; margin-bottom:10px;">
+        <h1 style="color:white; margin:0; font-size:28px;">₿ Crédito Cripto Aprobado</h1>
+        <p style="color:white; opacity:0.9; margin:5px 0 0;">Tu crédito en {{cripto}} ha sido aprobado</p>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding:40px 30px;">
+        <p style="font-size:18px; color:#333; margin-bottom:20px;">Hola <strong style="color:#7b2cbf;">{{nombre_cliente}}</strong>,</p>
+        
+        <p style="color:#555; line-height:1.6; margin-bottom:25px;">
+          Nos complace informarte que tu solicitud de <strong>CRÉDITO EN {{cripto}}</strong> ha sido <strong style="color:#7b2cbf;">APROBADA</strong>.
+        </p>
+
+        <!-- Badge de criptomoneda -->
+        <div style="text-align:center; margin-bottom:25px;">
+          <span style="display:inline-block; padding:10px 25px; background:#7b2cbf; color:white; border-radius:50px; font-weight:bold;">
+            <img src="cid:cripto_logo" alt="{{cripto}}" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;">
+            {{cripto}} · 1 {{cripto}} = ${{precio_usd}} USD
+          </span>
+        </div>
+
+        <!-- Tabla de detalles -->
+        <table style="width:100%; background:#f9fafb; border-radius:12px; padding:20px; margin:25px 0;">
+          <tr>
+            <td style="padding:10px 0; color:#666; border-bottom:1px solid #e5e7eb;">Monto en {{cripto}}:</td>
+            <td style="padding:10px 0; font-weight:bold; color:#7b2cbf; text-align:right; border-bottom:1px solid #e5e7eb;">{{monto_cripto}} {{cripto}}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0; color:#666; border-bottom:1px solid #e5e7eb;">Equivalente en MXN:</td>
+            <td style="padding:10px 0; font-weight:bold; text-align:right; border-bottom:1px solid #e5e7eb;">${{monto_mxn}} MXN</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0; color:#666; border-bottom:1px solid #e5e7eb;">Monto base en USDT:</td>
+            <td style="padding:10px 0; font-weight:bold; text-align:right; border-bottom:1px solid #e5e7eb;">${{monto_usdt}} USDT</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0; color:#666; border-bottom:1px solid #e5e7eb;">Plazo:</td>
+            <td style="padding:10px 0; font-weight:bold; text-align:right; border-bottom:1px solid #e5e7eb;">{{plazo}} meses</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0; color:#666;">Tasa preferencial:</td>
+            <td style="padding:10px 0; font-weight:bold; text-align:right;">{{tasa}}% anual</td>
+          </tr>
+        </table>
+
+        <!-- SECCIÓN DE ANTICIPO (CORREGIDA Y COMPLETA) -->
+        <div style="background:#f3e8ff; border:2px solid #7b2cbf; border-radius:12px; padding:25px; margin:30px 0;">
+          <h3 style="color:#5a189a; margin:0 0 20px; font-size:20px; text-align:center;">
+            🔐 PAGO DE ANTICIPO - 10%
+          </h3>
+          
+          <p style="color:#5a189a; margin:0 0 20px; font-size:14px; text-align:center; background:white; padding:10px; border-radius:8px;">
+            Para formalizar tu crédito y reservar los fondos exclusivamente para ti
+          </p>
+
+          <table style="width:100%; background:white; border-radius:8px; padding:15px; margin-bottom:15px;">
+            <tr>
+              <td style="padding:10px; width:40px; vertical-align:middle;">
+                <img src="cid:cripto_logo" alt="{{cripto}}" style="width:32px; height:32px;">
+              </td>
+              <td style="padding:10px;">
+                <span style="color:#5a189a; font-size:13px;">Monto del anticipo</span><br>
+                <span style="font-size:20px; font-weight:bold; color:#7b2cbf;">{{anticipo_cripto}} {{cripto}}</span>
+              </td>
+              <td style="padding:10px; text-align:right;">
+                <span style="color:#5a189a; font-size:13px;">Equivalente</span><br>
+                <span style="font-size:18px; font-weight:bold;">${{anticipo_mxn}} MXN</span>
+              </td>
+            </tr>
+          </table>
+
+<table style="width:100%; margin:15px 0;">
+  <tr>
+    <td style="padding:8px; background:rgba(123,44,191,0.1); border-radius:8px;">
+      <span style="color:#5a189a; font-weight:bold;">🔒 70% a capital</span><br>
+      <span style="font-size:15px; font-weight:bold;">${{anticipo_usdt_70}} USDT</span>
+      <span style="display:block; font-size:12px; color:#666;">Se descuenta de tu crédito</span>
+    </td>
+    <td style="padding:8px; background:rgba(123,44,191,0.1); border-radius:8px; text-align:right;">
+      <span style="color:#5a189a; font-weight:bold;">💰 30% gastos admin</span><br>
+      <span style="font-size:15px; font-weight:bold;">${{anticipo_usdt_30}} USDT</span>
+      <span style="display:block; font-size:12px; color:#666;">Trámites y gestión</span>
+    </td>
+  </tr>
+</table>
+
+          <div style="background:#e6f7f0; border-left:4px solid #10b981; padding:15px; border-radius:8px; margin-top:20px;">
+            <p style="margin:0; color:#065f46; font-size:14px;">
+              <strong>💡 Importante:</strong> El anticipo NO es una comisión adicional. Es parte de tu crédito que pagas por adelantado. Una vez confirmado, tu crédito quedará activado y recibirás instrucciones para acceder a tus fondos.
+            </p>
+          </div>
+        </div>
+
+        <!-- Pago mensual -->
+        <div style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding:25px; border-radius:12px; margin:30px 0; color:white;">
+          <h3 style="margin:0 0 20px; font-size:18px; text-align:center;">📊 PAGO MENSUAL ESTIMADO</h3>
+          
+          <table style="width:100%; color:white;">
+            <tr>
+              <td style="padding:8px; text-align:center; background:rgba(255,255,255,0.1); border-radius:8px;">
+                <span style="font-size:13px; opacity:0.9;">En {{cripto}}</span><br>
+                <span style="font-size:22px; font-weight:bold;">{{pago_mensual_cripto}} {{cripto}}</span>
+              </td>
+              <td style="padding:8px; text-align:center;">
+                <span style="font-size:24px;">→</span>
+              </td>
+              <td style="padding:8px; text-align:center; background:rgba(255,255,255,0.1); border-radius:8px;">
+                <span style="font-size:13px; opacity:0.9;">En MXN</span><br>
+                <span style="font-size:22px; font-weight:bold;">${{pago_mensual_mxn}} MXN</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Próximos pasos -->
+        <h3 style="color:#333; margin:30px 0 15px;">📋 PRÓXIMOS PASOS:</h3>
+        
+        <div style="background:#f9fafb; border-radius:12px; padding:20px;">
+          <div style="display:flex; align-items:center; gap:15px; padding:10px 0; border-bottom:1px solid #e5e7eb;">
+            <span style="width:30px; height:30px; background:#7b2cbf; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;">1</span>
+            <span style="color:#555;">Un asesor especializado te contactará en <strong>12-24 horas</strong></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:15px; padding:10px 0; border-bottom:1px solid #e5e7eb;">
+            <span style="width:30px; height:30px; background:#7b2cbf; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;">2</span>
+            <span style="color:#555;">Recibirás un contrato digital con términos específicos</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:15px; padding:10px 0; border-bottom:1px solid #e5e7eb;">
+            <span style="width:30px; height:30px; background:#7b2cbf; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;">3</span>
+            <span style="color:#555;">Realiza el pago de anticipo para activar tu crédito</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:15px; padding:10px 0;">
+            <span style="width:30px; height:30px; background:#7b2cbf; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold;">4</span>
+            <span style="color:#555;">Recibe tus {{cripto}} en la opción que elijas</span>
+          </div>
+        </div>
+
+        <!-- Botón -->
+        <table width="100%" style="margin:30px 0;">
+          <tr>
+            <td align="center">
+              <a href="{{link_contrato}}" style="background:#7b2cbf; color:white; padding:14px 32px; text-decoration:none; border-radius:50px; font-weight:bold; font-size:16px; display:inline-block; box-shadow:0 4px 12px rgba(123,44,191,0.3);">
+                ✍️ REVISAR Y FIRMAR CONTRATO
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Contacto -->
+        <div style="border-top:1px solid #e5e7eb; margin-top:30px; padding-top:20px; text-align:center;">
+          <p style="color:#666; font-size:14px;">
+            ¿Tienes dudas? Escríbenos a 
+            <a href="mailto:contacto@cajavalladolid.com">contacto@cajavalladolid.com</a>
+          </p>
+        </div>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background:#f9fafb; padding:20px 30px; border-radius:0 0 16px 16px; text-align:center; color:#999; font-size:12px;">
+        <p style="margin:0 0 5px;">Caja Popular San Bernardino de Siena Valladolid · División Cripto</p>
+        <p style="margin:0;">Registro: 29198 · CONDUSEF ID: 4930</p>
+        <p style="margin:10px 0 0;">© 2026 Todos los derechos reservados</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

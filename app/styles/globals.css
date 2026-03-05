@@ -1,0 +1,55 @@
+"use client"
+
+import Link from "next/link"
+
+export function Navbar() {
+  return (
+    <nav className="bg-[var(--primary)] text-[var(--primary-foreground)] px-6 py-4 flex items-center justify-between shadow-md">
+      {/* Logo */}
+      <div className="flex items-center space-x-2">
+        <img src="/apple-icon.png" alt="Caja Valladolid" className="h-8 w-8" />
+        <span className="font-bold text-lg">Caja Valladolid</span>
+      </div>
+
+      {/* Links */}
+      <div className="hidden md:flex space-x-6">
+        <Link href="/" className="hover:text-[var(--accent)] transition-colors">
+          Inicio
+        </Link>
+        <Link href="#calculadora" className="hover:text-[var(--accent)] transition-colors">
+          Calculadora
+        </Link>
+        <Link href="#cripto" className="hover:text-[var(--accent)] transition-colors">
+          Cripto
+        </Link>
+        <Link href="#pagos" className="hover:text-[var(--accent)] transition-colors">
+          Pagos
+        </Link>
+        <Link href="#testimonios" className="hover:text-[var(--accent)] transition-colors">
+          Testimonios
+        </Link>
+        <Link href="#about" className="hover:text-[var(--accent)] transition-colors">
+          Quiénes Somos
+        </Link>
+        <Link href="#faq" className="hover:text-[var(--accent)] transition-colors">
+          FAQ
+        </Link>
+        <Link href="#contacto" className="hover:text-[var(--accent)] transition-colors">
+          Contacto
+        </Link>
+      </div>
+
+      {/* Botón Condusef */}
+      <div>
+        <a
+          href="https://www.condusef.gob.mx/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-[var(--secondary)] text-[var(--secondary-foreground)] px-4 py-2 rounded-lg hover:bg-[var(--accent)] transition-colors"
+        >
+          CONDUSEF
+        </a>
+      </div>
+    </nav>
+  )
+}

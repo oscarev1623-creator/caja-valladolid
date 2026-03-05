@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contrato de Crédito - Caja Valladolid</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      padding: 30px;
+      text-align: center;
+      color: white;
+    }
+    .header img {
+      width: 120px;
+      height: auto;
+      margin-bottom: 10px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .header p {
+      opacity: 0.9;
+      margin: 5px 0 0;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    .section h2 {
+      color: #059669;
+      font-size: 20px;
+      margin: 0 0 15px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .section h3 {
+      color: #333;
+      font-size: 16px;
+      margin: 20px 0 10px;
+    }
+    .data-table {
+      width: 100%;
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 15px 0;
+    }
+    .data-table td {
+      padding: 8px 0;
+      color: #555;
+    }
+    .data-table td:last-child {
+      font-weight: bold;
+      color: #059669;
+      text-align: right;
+    }
+    .highlight {
+      background: #e6f7f0;
+      border-left: 4px solid #059669;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .signature {
+      margin-top: 40px;
+      text-align: center;
+    }
+    .signature-line {
+      width: 300px;
+      margin: 40px auto 10px;
+      border-top: 1px solid #999;
+    }
+    .footer {
+      background: #f9fafb;
+      padding: 20px 30px;
+      text-align: center;
+      color: #999;
+      font-size: 13px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .button {
+      background: #059669;
+      color: white;
+      padding: 12px 30px;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: bold;
+      display: inline-block;
+      margin: 20px 0;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .container { box-shadow: none; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <img src="https://cajavalladolid.com/logotipo.png" alt="Caja Valladolid">
+      <h1>CONTRATO DE APERTURA DE CRÉDITO</h1>
+      <p>Crédito Simple con Garantía Personal</p>
+    </div>
+
+    <!-- Contenido -->
+    <div class="content">
+      <p style="font-size:18px; color:#333; margin-bottom:30px;">
+        En la ciudad de Valladolid, Yucatán, siendo las 10:00 horas del día 
+        <strong>{{fecha}}</strong>, se reúnen las partes para celebrar el presente contrato:
+      </p>
+
+      <!-- Datos de las partes -->
+      <div class="section">
+        <h2>PARTES CONTRATANTES</h2>
+        
+        <h3>LA INSTITUCIÓN:</h3>
+        <p><strong>Caja Popular San Bernardino de Siena Valladolid</strong><br>
+        S.C. de A.P. de R.L. de C.V.<br>
+        Registro: 29198 · CONDUSEF ID: 4930<br>
+        Domicilio: Calle 40 #204B x 41 y 43, Col. Centro, Valladolid, Yucatán, C.P. 97780</p>
+
+        <h3>EL ACREDITADO:</h3>
+        <p><strong>{{nombre_cliente}}</strong><br>
+        Domicilio: {{domicilio_cliente}}<br>
+        Teléfono: {{telefono_cliente}}<br>
+        Email: {{email_cliente}}</p>
+      </div>
+
+      <!-- Detalles del crédito -->
+      <div class="section">
+        <h2>DETALLES DEL CRÉDITO</h2>
+        
+        <table class="data-table">
+          <tr>
+            <td>Monto del crédito:</td>
+            <td>${{monto}}</td>
+          </tr>
+          <tr>
+            <td>Plazo:</td>
+            <td>{{plazo}} meses</td>
+          </tr>
+          <tr>
+            <td>Tasa de interés ordinaria:</td>
+            <td>{{tasa}}% anual</td>
+          </tr>
+          <tr>
+            <td>Tasa de interés moratoria:</td>
+            <td>5% adicional</td>
+          </tr>
+          <tr>
+            <td>Pago mensual aproximado:</td>
+            <td>${{pago_mensual}}</td>
+          </tr>
+          <tr>
+            <td>Fecha de primer pago:</td>
+            <td>{{primer_pago}}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Anticipo -->
+      <div class="highlight">
+        <h3 style="color:#065f46; margin:0 0 15px;">🔒 PAGO DE ANTICIPO</h3>
+        <p style="margin:0 0 15px; color:#065f46;">
+          El ACREDITADO deberá cubrir un anticipo de <strong>${{anticipo}}</strong>, 
+          equivalente al {{porcentaje_anticipo}}% del monto total del crédito.
+        </p>
+        <table style="width:100%;">
+          <tr>
+            <td style="padding:5px 0; color:#065f46; width:30px;">🔒</td>
+            <td style="padding:5px 0; color:#065f46;">70% se descuenta del capital (${{descuento_capital}})</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 0; color:#065f46;">💰</td>
+            <td style="padding:5px 0; color:#065f46;">30% cubre gastos administrativos (${{gastos_admin}})</td>
+          </tr>
+        </table>
+        <p style="margin:10px 0 0; color:#065f46; font-size:14px;">
+          <strong>Importante:</strong> Este anticipo NO es una comisión adicional. Es parte del crédito que se paga por adelantado.
+        </p>
+      </div>
+
+      <!-- Cláusulas -->
+      <div class="section">
+        <h2>CLÁUSULAS DEL CONTRATO</h2>
+
+        <h3>CLÁUSULA PRIMERA. - OBJETO</h3>
+        <p>LA INSTITUCIÓN otorga al ACREDITADO un crédito simple por la cantidad señalada, misma que el ACREDITADO se obliga a pagar en los plazos y condiciones establecidas.</p>
+
+        <h3>CLÁUSULA SEGUNDA. - INTERESES</h3>
+        <p>El crédito devengará intereses ordinarios a una tasa fija del {{tasa}}% anual sobre saldos insolutos. En caso de mora, se aplicará un interés moratorio del 5% adicional sobre el monto del pago no realizado.</p>
+
+        <h3>CLÁUSULA TERCERA. - PLAZO Y AMORTIZACIONES</h3>
+        <p>El plazo del crédito será de {{plazo}} meses, contados a partir de la firma del presente contrato. Las amortizaciones serán mensuales, fijas y consecutivas.</p>
+
+        <h3>CLÁUSULA CUARTA. - ANTICIPO</h3>
+        <p>El ACREDITADO se obliga a cubrir un anticipo del {{porcentaje_anticipo}}% del monto total del crédito, mismo que será descontado del saldo a financiar. Dicho anticipo se destinará: 70% a la reducción de capital y 30% a gastos administrativos y de gestión.</p>
+
+        <h3>CLÁUSULA QUINTA. - ENTREGA DE LA TARJETA</h3>
+        <p>Una vez cubierto el anticipo y firmado el presente contrato, LA INSTITUCIÓN entregará al ACREDITADO una tarjeta de débito asociada al crédito, la cual será enviada al domicilio señalado en un plazo no mayor a 10 días hábiles. Dicha tarjeta permitirá al ACREDITADO disponer del crédito aprobado en cajeros automáticos, comercios afiliados y realizar transferencias electrónicas.</p>
+
+        <h3>CLÁUSULA SEXTA. - PAGOS</h3>
+        <p>Los pagos deberán realizarse a más tardar el día {{dia_pago}} de cada mes, pudiendo efectuarse en cualquiera de las siguientes formas: a) Depósito en ventanilla, b) Transferencia electrónica, c) Cargo automático a la tarjeta, d) En tiendas de conveniencia.</p>
+
+        <h3>CLÁUSULA SÉPTIMA. - PAGO ANTICIPADO</h3>
+        <p>El ACREDITADO podrá realizar pagos anticipados sin penalización, los cuales serán aplicados directamente a capital, reduciendo los intereses generados.</p>
+
+        <h3>CLÁUSULA OCTAVA. - SEGURO</h3>
+        <p>El crédito incluye un seguro de vida por el saldo deudor, cuyo costo está incluido en los pagos mensuales.</p>
+
+        <h3>CLÁUSULA NOVENA. - JURISDICCIÓN</h3>
+        <p>Para la interpretación y cumplimiento del presente contrato, las partes se someten a los tribunales de Valladolid, Yucatán.</p>
+      </div>
+
+      <!-- Firma digital -->
+      <div class="signature">
+        <p style="margin-bottom:40px;">Leído y aprobado por las partes, firman electrónicamente el presente contrato.</p>
+        
+        <div style="display:inline-block; width:45%; margin-right:5%; text-align:center;">
+          <div class="signature-line"></div>
+          <p><strong>POR LA INSTITUCIÓN</strong><br>
+          {{nombre_asesor}}<br>
+          Asesor Financiero</p>
+        </div>
+        
+        <div style="display:inline-block; width:45%; text-align:center;">
+          <div class="signature-line"></div>
+          <p><strong>EL ACREDITADO</strong><br>
+          {{nombre_cliente}}</p>
+        </div>
+      </div>
+
+      <!-- Botón para firmar (versión web) -->
+      <div style="text-align:center; margin:30px 0;" class="no-print">
+        <a href="{{link_firma}}" class="button">✍️ FIRMAR CONTRATO DIGITALMENTE</a>
+        <p style="color:#666; font-size:12px; margin-top:10px;">
+          Al hacer clic, confirmas que has leído y aceptas los términos y condiciones.
+        </p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Caja Popular San Bernardino de Siena Valladolid · Registro: 29198 · CONDUSEF ID: 4930</p>
+      <p>www.cajavalladolid.com · contacto@cajavalladolid.com</p>
+    </div>
+  </div>
+</body>
+</html>
