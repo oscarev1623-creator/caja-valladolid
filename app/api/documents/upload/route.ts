@@ -1,64 +1,141 @@
-// app/api/documents/upload/route.ts - VERSIÓN CORREGIDA
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { existsSync, mkdirSync } from 'fs'
+import nodemailer from 'nodemailer'
 
 const prisma = new PrismaClient()
-
-// Configuración de almacenamiento
 const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'documents')
 
-// Crear directorio de uploads si no existe
 if (!existsSync(UPLOAD_DIR)) {
   mkdirSync(UPLOAD_DIR, { recursive: true })
-  console.log(`📁 Directorio creado: ${UPLOAD_DIR}`)
+  console.log('📁 Directorio creado:', UPLOAD_DIR)
 }
 
-// Función para generar nombre único
-function generateUniqueId() {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2)
+// Definir interfaz para el documento subido
+interface UploadedDocument {
+  id: string
+  filename: string
+  fileUrl: string
+  fileType: string
+  fileSize: number
+  uploadedAt: Date
+  leadId: string
+  uploadedById: string | null
+  documentType: string
+  filePath: string | null
+  mimeType: string | null
+}
+
+// Función para enviar correo de confirmación
+async function sendConfirmationEmail(lead: any) {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '465'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    })
+
+    // ✅ Validar que el lead tenga email
+    if (!lead.email) {
+      console.log('⚠️ Lead sin email, no se envía correo de confirmación')
+      return
+    }
+
+    await transporter.sendMail({
+      from: `"Caja Valladolid" <${process.env.SMTP_USER}>`,
+      to: lead.email,
+      subject: '📄 Hemos recibido tus documentos - Caja Valladolid',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <!-- Header con gradiente -->
+          <div style="background: linear-gradient(135deg, #0d9488, #0f766e); padding: 40px 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 32px; font-weight: bold;">Caja Valladolid</h1>
+            <p style="color: #e6fffa; margin: 10px 0 0; font-size: 16px;">Tu aliado financiero de confianza</p>
+          </div>
+          
+          <!-- Cuerpo del correo -->
+          <div style="background: #f8fafc; padding: 40px 30px; border: 1px solid #e2e8f0;">
+            <h2 style="color: #1e293b; margin-top: 0; font-size: 24px;">¡Hola ${lead.fullName}!</h2>
+            
+            <p style="color: #334155; line-height: 1.6; font-size: 16px;">Hemos recibido <strong>tus documentos</strong> correctamente. Nuestro equipo de analistas ya está revisando tu información.</p>
+            
+            <!-- Lista de documentos recibidos -->
+            <div style="background: #f0fdf4; border-left: 4px solid #059669; padding: 20px; margin: 25px 0; border-radius: 8px;">
+              <p style="color: #065f46; margin: 0 0 10px 0; font-weight: bold; font-size: 16px;">✅ Documentos recibidos:</p>
+              <ul style="color: #065f46; margin: 0; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">INE/IFE (frontal y trasera)</li>
+                <li style="margin-bottom: 8px;">Comprobante de domicilio</li>
+                <li style="margin-bottom: 8px;">Constancia laboral / Comprobante de ingresos</li>
+              </ul>
+            </div>
+            
+            <p style="color: #334155; line-height: 1.6; font-size: 16px;">En las próximas <strong>24-48 horas</strong> recibirás una respuesta sobre tu solicitud de crédito.</p>
+            
+            <!-- WhatsApp Box -->
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 25px; margin: 30px 0; text-align: center;">
+              <h3 style="color: #1e3a8a; margin-top: 0; font-size: 18px;">📱 ¿Tienes dudas?</h3>
+              <p style="color: #1e40af; margin-bottom: 20px;">Contáctanos por WhatsApp para atención personalizada:</p>
+              <a href="https://wa.me/529541184165" style="display: inline-block; background: #25D366; color: white; padding: 14px 35px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 16px;">💬 WhatsApp</a>
+            </div>
+            
+            <!-- Footer -->
+            <hr style="border: none; border-top: 2px solid #e2e8f0; margin: 30px 0 20px;">
+            
+            <p style="color: #64748b; font-size: 13px; text-align: center; line-height: 1.5; margin: 0;">
+              Caja Popular San Bernardino de Siena Valladolid<br>
+              Registro Oficial: 29198 • CONDUSEF ID: 4930<br>
+              <span style="font-size: 12px;">Este es un correo automático, por favor no responder.</span>
+            </p>
+          </div>
+        </div>
+      `
+    })
+    
+    console.log('✅ Correo de confirmación enviado a:', lead.email)
+    
+    await prisma.lead.update({
+      where: { id: lead.id },
+      data: {
+        emailSent: true,
+        emailSentAt: new Date()
+      }
+    })
+    
+  } catch (error) {
+    console.error('❌ Error enviando correo:', error)
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📤 Iniciando subida de documentos...')
+    console.log('='.repeat(50))
+    console.log('🚀 INICIO - SUBIDA DE DOCUMENTOS')
+    console.log('='.repeat(50))
     
     const formData = await request.formData()
-    
-    // Obtener datos del formulario
-    const token = formData.get('token') as string
     const leadId = formData.get('leadId') as string
     
-    console.log('📋 Token:', token, 'Lead ID:', leadId)
+    console.log('📋 Lead ID recibido:', leadId)
     
     if (!leadId) {
-      console.log('❌ Lead ID no proporcionado')
       return NextResponse.json(
         { success: false, error: 'Lead ID requerido' },
         { status: 400 }
       )
     }
-    
-    // Información adicional del formulario
-    const formInfo = {
-      curp: formData.get('curp') as string || '',
-      rfc: formData.get('rfc') as string || '',
-      ocupacion: formData.get('ocupacion') as string || '',
-      ingresoMensual: formData.get('ingresoMensual') as string || '',
-      tiempoEmpleo: formData.get('tiempoEmpleo') as string || '',
-      direccion: formData.get('direccion') as string || '',
-      comentarios: formData.get('comentarios') as string || ''
-    }
-    
+
     // Verificar lead
     const lead = await prisma.lead.findUnique({
       where: { id: leadId }
     })
-    
+
     if (!lead) {
-      console.log('❌ Lead no encontrado:', leadId)
       return NextResponse.json(
         { success: false, error: 'Lead no encontrado' },
         { status: 404 }
@@ -66,21 +143,9 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('✅ Lead encontrado:', lead.fullName)
-    
-    // Obtener un usuario admin para uploadedById
-    const adminUser = await prisma.user.findFirst({
-      where: { 
-        OR: [
-          { email: 'admin@cajavalladolid.com' },
-          { email: 'admin@cajavalladolid.com.mx' },
-          { role: 'ADMIN' }
-        ]
-      }
-    })
-    
-    console.log('👤 Usuario admin encontrado:', adminUser?.email || 'No encontrado')
-    
-    // Procesar cada documento
+
+    // Procesar archivos - Tipado explícito
+    const uploadedDocuments: UploadedDocument[] = []
     const documentTypes = [
       { field: 'ineFront', type: 'INE_FRONTAL' },
       { field: 'ineBack', type: 'INE_TRASERA' },
@@ -89,114 +154,69 @@ export async function POST(request: NextRequest) {
       { field: 'estadosCuenta', type: 'ESTADOS_CUENTA' },
       { field: 'otrosDocumentos', type: 'OTROS' }
     ]
-    
-    const uploadedDocuments = []
-    
+
     for (const docType of documentTypes) {
       const file = formData.get(docType.field) as File
       
       if (file && file.size > 0) {
-        console.log(`📁 Procesando ${docType.type}: ${file.name} (${file.size} bytes)`)
+        console.log(`📁 Procesando ${docType.type}:`, file.name)
         
-        try {
-          // Generar nombre único
-          const fileExtension = file.name.split('.').pop() || 'bin'
-          const fileName = `${leadId}_${docType.type}_${Date.now()}.${fileExtension}`
-          const filePath = join(UPLOAD_DIR, fileName)
-          
-          // Convertir File a Buffer y guardar
-          const bytes = await file.arrayBuffer()
-          const buffer = Buffer.from(bytes)
-          await writeFile(filePath, buffer)
-          console.log('💾 Archivo guardado en:', filePath)
-          
-          // ✅ CREAR DOCUMENTO (SOLO UNA VEZ)
-          const documentData: any = {
+        const fileExtension = file.name.split('.').pop() || 'bin'
+        const fileName = `${leadId}_${docType.type}_${Date.now()}.${fileExtension}`
+        const filePath = join(UPLOAD_DIR, fileName)
+        
+        const bytes = await file.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+        await writeFile(filePath, buffer)
+        
+        const document = await prisma.document.create({
+          data: {
             filename: file.name,
             fileUrl: `/uploads/documents/${fileName}`,
             fileType: docType.type,
+            documentType: docType.type,
             fileSize: file.size,
-            lead: {
-              connect: { id: leadId }
-            }
+            leadId: leadId,
+            uploadedById: null,
+            filePath: null,
+            mimeType: file.type || null
           }
-          
-          // Solo agregar uploadedById si existe un admin
-          if (adminUser?.id) {
-            documentData.uploadedById = adminUser.id
-          }
-          
-          // Guardar en base de datos
-          const document = await prisma.document.create({
-            data: documentData
-          })
-          
-          uploadedDocuments.push(document)
-          console.log(`✅ Documento ${docType.type} guardado en BD con ID: ${document.id}`)
-          
-        } catch (fileError) {
-          console.error(`❌ Error procesando ${docType.type}:`, fileError)
-          // Continuar con otros archivos
-        }
+        })
+        
+        // El documento ya cumple con la interfaz UploadedDocument
+        uploadedDocuments.push(document as UploadedDocument)
+        console.log(`✅ Documento guardado: ${docType.type}`)
       }
     }
-    
-    // Construir mensaje actualizado
-    const newMessage = `${lead.message || ''}\n\n--- INFORMACIÓN ADICIONAL ---\nCURP: ${formInfo.curp}\nRFC: ${formInfo.rfc}\nOcupación: ${formInfo.ocupacion}\nIngreso: ${formInfo.ingresoMensual}\nAntigüedad: ${formInfo.tiempoEmpleo}\nDirección: ${formInfo.direccion}\nComentarios: ${formInfo.comentarios}`
-    
-    // Actualizar lead (solo si se subió al menos un documento)
+
+    // Actualizar lead y enviar correo
     if (uploadedDocuments.length > 0) {
       const updatedLead = await prisma.lead.update({
         where: { id: leadId },
         data: {
           documentsSubmitted: true,
           docsSubmittedAt: new Date(),
-          status: 'PENDING_DOCUMENTS', // Cambié a PENDING_DOCUMENTS que existe en tu schema
-          message: newMessage.substring(0, 1000) // Limitar a 1000 caracteres
+          status: 'DOCUMENTS_SUBMITTED'
         }
       })
       
-      console.log(`✅ Lead ${leadId} actualizado. Status: ${updatedLead.status}`)
-    } else {
-      console.log('⚠️ No se subieron documentos, no se actualiza el lead')
+      console.log('✅ Lead actualizado. Documentos subidos:', uploadedDocuments.length)
+      
+      // Enviar correo de confirmación
+      await sendConfirmationEmail(updatedLead)
     }
-    
+
     return NextResponse.json({
       success: true,
-      message: uploadedDocuments.length > 0 
-        ? `Documentos subidos exitosamente (${uploadedDocuments.length} archivos)` 
-        : 'No se subieron documentos',
-      leadId: leadId,
-      documentsCount: uploadedDocuments.length,
-      leadStatus: 'PENDING_DOCUMENTS'
+      message: `Documentos subidos exitosamente (${uploadedDocuments.length} archivos)`,
+      documentsCount: uploadedDocuments.length
     })
     
   } catch (error: any) {
-    console.error('❌ Error en endpoint /api/documents/upload:')
-    console.error('Mensaje:', error.message)
-    console.error('Stack:', error.stack?.split('\n').slice(0, 5).join('\n'))
-    
-    // Detalles específicos de Prisma
-    if (error.code) {
-      console.error('Código de error:', error.code)
-    }
-    if (error.meta) {
-      console.error('Meta información:', error.meta)
-    }
-    
+    console.error('❌ Error:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Error al procesar la solicitud',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
+      { success: false, error: 'Error al procesar la solicitud' },
       { status: 500 }
     )
-  } finally {
-    try {
-      await prisma.$disconnect()
-    } catch (disconnectError) {
-      console.error('Error desconectando Prisma:', disconnectError)
-    }
   }
 }

@@ -4,9 +4,36 @@
 import { useState, useEffect } from 'react'
 import { MessageSquare, User, Search, Calendar, Filter } from 'lucide-react'
 
+// Definir interfaces para los tipos
+interface Lead {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  status?: string;
+  source?: string;
+}
+
+interface Message {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string | Date;
+}
+
+interface ChatSession {
+  id: string;
+  lead?: Lead;
+  startedAt: string | Date;
+  platform: string;
+  messages?: Message[];
+  ipAddress?: string;
+  userId?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
+
 export default function ChatSessionsPage() {
-  const [sessions, setSessions] = useState([])
-  const [selectedSession, setSelectedSession] = useState(null)
+  const [sessions, setSessions] = useState<ChatSession[]>([])
+  const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null)
   const [search, setSearch] = useState('')
   
   useEffect(() => {
@@ -14,13 +41,28 @@ export default function ChatSessionsPage() {
   }, [])
   
   const fetchChatSessions = async () => {
-    const token = localStorage.getItem('admin_token')
-    const response = await fetch('/api/chat/sessions', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    const data = await response.json()
-    if (data.success) setSessions(data.sessions)
+    try {
+      const token = localStorage.getItem('admin_token')
+      const response = await fetch('/api/chat/sessions', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.success) setSessions(data.sessions)
+    } catch (error) {
+      console.error('Error fetching chat sessions:', error)
+    }
   }
+  
+  // Filtrar sesiones basado en la búsqueda
+  const filteredSessions = sessions.filter(session => {
+    if (!search) return true
+    const searchLower = search.toLowerCase()
+    return (
+      session.lead?.fullName?.toLowerCase().includes(searchLower) ||
+      session.lead?.email?.toLowerCase().includes(searchLower) ||
+      session.id?.toLowerCase().includes(searchLower)
+    )
+  })
   
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -63,47 +105,53 @@ export default function ChatSessionsPage() {
             </div>
             
             <div className="bg-white rounded-xl shadow overflow-hidden">
-              {sessions.map(session => (
-                <div
-                  key={session.id}
-                  onClick={() => setSelectedSession(session)}
-                  className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
-                    selectedSession?.id === session.id ? 'bg-blue-50' : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-green-800" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">
-                          {session.lead?.fullName || 'Visitante'}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {session.lead?.email || 'No identificado'}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {new Date(session.startedAt).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  
-                  <div className="text-sm text-gray-700 line-clamp-2">
-                    {session.messages?.[0]?.content || 'Sin mensajes'}
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs px-2 py-1 bg-gray-100 rounded">
-                      {session.platform}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {session.messages?.length || 0} mensajes
-                    </span>
-                  </div>
+              {filteredSessions.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  No hay sesiones disponibles
                 </div>
-              ))}
+              ) : (
+                filteredSessions.map(session => (
+                  <div
+                    key={session.id}
+                    onClick={() => setSelectedSession(session)}
+                    className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
+                      selectedSession?.id === session.id ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                          <User className="w-4 h-4 text-green-800" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">
+                            {session.lead?.fullName || 'Visitante'}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {session.lead?.email || 'No identificado'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {new Date(session.startedAt).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    
+                    <div className="text-sm text-gray-700 line-clamp-2">
+                      {session.messages?.[0]?.content || 'Sin mensajes'}
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs px-2 py-1 bg-gray-100 rounded">
+                        {session.platform}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {session.messages?.length || 0} mensajes
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
           

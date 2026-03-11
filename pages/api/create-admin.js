@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // SOLO aceptar método POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
@@ -25,10 +25,19 @@ export default async function handler(req, res) {
 
     const admin = await prisma.user.upsert({
       where: { email },
-      update: { password: hashedPassword, role: 'ADMIN' },
-      create: { email, password: hashedPassword, name, role: 'ADMIN' },
+      update: { 
+        password: hashedPassword, 
+        role: 'ADMIN' 
+      },
+      create: { 
+        email, 
+        password: hashedPassword, 
+        name, 
+        role: 'ADMIN' 
+      },
     });
 
+    // No enviar la contraseña en la respuesta
     const { password: _, ...adminWithoutPassword } = admin;
     
     res.status(200).json({ 
@@ -44,3 +53,5 @@ export default async function handler(req, res) {
     await prisma.$disconnect();
   }
 }
+
+module.exports = handler;

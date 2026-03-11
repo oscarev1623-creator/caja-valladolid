@@ -73,6 +73,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // ✅ VALIDAR QUE EL LEAD TENGA EMAIL
+    if (!lead.email) {
+      return NextResponse.json(
+        { success: false, error: 'El lead no tiene un email registrado' },
+        { status: 400 }
+      )
+    }
+
     // Calcular valores
     const monto = lead.estimatedAmount || 50000
     const anticipo = calculateAdvance(monto)
@@ -91,30 +99,39 @@ export async function POST(request: NextRequest) {
 
     // Leer la plantilla HTML
     const templatePath = path.join(process.cwd(), 'emails', 'aprobacion.html')
+    
+    // Verificar que la plantilla existe
+    if (!fs.existsSync(templatePath)) {
+      return NextResponse.json(
+        { success: false, error: 'Plantilla de correo no encontrada' },
+        { status: 500 }
+      )
+    }
+    
     let htmlContent = fs.readFileSync(templatePath, 'utf8')
 
     // Reemplazar variables
     htmlContent = htmlContent
-      .replace('{{nombre_cliente}}', lead.fullName)
-      .replace('{{monto}}', monto.toLocaleString('es-MX'))
-      .replace('{{plazo}}', plazo.toString())
-      .replace('{{tasa}}', tasa.toString())
-      .replace('{{pago_mensual}}', Math.round(pagoMensual).toLocaleString('es-MX'))
-      .replace('{{anticipo}}', anticipo.toLocaleString('es-MX'))
-      .replace('{{porcentaje_anticipo}}', porcentajeAnticipo)
-      .replace('{{descuento_capital}}', (anticipo * 0.7).toLocaleString('es-MX'))
-      .replace('{{gastos_admin}}', (anticipo * 0.3).toLocaleString('es-MX'))
-      .replace('{{primer_pago}}', new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('es-MX'))
-      .replace('{{link_contrato}}', `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/contratos/${lead.id}`)
-      .replace('{{link_firma}}', `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/firmar/${lead.id}`)
+      .replace(/{{nombre_cliente}}/g, lead.fullName)
+      .replace(/{{monto}}/g, monto.toLocaleString('es-MX'))
+      .replace(/{{plazo}}/g, plazo.toString())
+      .replace(/{{tasa}}/g, tasa.toString())
+      .replace(/{{pago_mensual}}/g, Math.round(pagoMensual).toLocaleString('es-MX'))
+      .replace(/{{anticipo}}/g, anticipo.toLocaleString('es-MX'))
+      .replace(/{{porcentaje_anticipo}}/g, porcentajeAnticipo)
+      .replace(/{{descuento_capital}}/g, (anticipo * 0.7).toLocaleString('es-MX'))
+      .replace(/{{gastos_admin}}/g, (anticipo * 0.3).toLocaleString('es-MX'))
+      .replace(/{{primer_pago}}/g, new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('es-MX'))
+      .replace(/{{link_contrato}}/g, `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/contratos/${lead.id}`)
+      .replace(/{{link_firma}}/g, `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/firmar/${lead.id}`)
       // Agregar estas variables si tu plantilla las usa
-      .replace('{{total_intereses}}', Math.round(totalIntereses).toLocaleString('es-MX'))
-      .replace('{{total_pagar}}', Math.round(totalPagar).toLocaleString('es-MX'))
+      .replace(/{{total_intereses}}/g, Math.round(totalIntereses).toLocaleString('es-MX'))
+      .replace(/{{total_pagar}}/g, Math.round(totalPagar).toLocaleString('es-MX'))
 
-    // Enviar correo
+    // ✅ AHORA lead.email SEGURO QUE EXISTE
     const info = await transporter.sendMail({
       from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
-      to: lead.email,
+      to: lead.email, // Ya validado arriba
       subject: '✅ ¡Felicidades! Tu crédito ha sido aprobado',
       html: htmlContent,
     })

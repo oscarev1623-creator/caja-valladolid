@@ -11,13 +11,48 @@ import {
   Bitcoin, FileSignature
 } from 'lucide-react'
 
+// Interfaces para tipado
+interface Document {
+  id: string
+  filename: string
+  fileUrl: string
+  fileSize: number
+  uploadedAt: string
+}
+
+interface Note {
+  content: string
+  createdAt: string
+  author?: {
+    name: string
+  }
+}
+
+interface Lead {
+  id: string
+  fullName: string
+  email: string
+  phone: string
+  estimatedAmount?: number
+  creditType?: 'TRADITIONAL' | 'CRYPTO'
+  status: string
+  createdAt: string
+  updatedAt: string
+  documentsSubmitted?: boolean
+  uniqueToken?: string
+  notes?: Note[]
+  documents?: Document[]
+}
+
 export default function LeadDetailPage() {
   const router = useRouter()
   const params = useParams()
-  const leadId = params.id as string
+  
+  // Manejo seguro de params.id
+  const leadId = params?.id as string | undefined
   
   const [loading, setLoading] = useState(true)
-  const [lead, setLead] = useState<any>(null)
+  const [lead, setLead] = useState<Lead | null>(null)
   const [error, setError] = useState('')
   
   // Estados para generación de link
@@ -27,11 +62,17 @@ export default function LeadDetailPage() {
   const [showShareOptions, setShowShareOptions] = useState(false)
   
   // Estados para documentos
-  const [documents, setDocuments] = useState<any[]>([])
+  const [documents, setDocuments] = useState<Document[]>([])
   const [loadingDocs, setLoadingDocs] = useState(false)
   const [sendingCriptoEmail, setSendingCriptoEmail] = useState<string | null>(null)
 
   useEffect(() => {
+    // Redirigir si no hay ID
+    if (!leadId) {
+      router.push('/admin/leads')
+      return
+    }
+
     const fetchLead = async () => {
       try {
         setLoading(true)
@@ -49,12 +90,10 @@ export default function LeadDetailPage() {
 
         if (data.success) {
           setLead(data.data)
-          // Si ya tiene token, mostrar el link generado
           if (data.data.uniqueToken) {
             setGeneratedLink(`${window.location.origin}/formulario-documentos/${data.data.uniqueToken}`)
             setShowShareOptions(true)
           }
-          // Cargar documentos si existen
           if (data.data.documents && data.data.documents.length > 0) {
             setDocuments(data.data.documents)
           }
@@ -72,12 +111,16 @@ export default function LeadDetailPage() {
     fetchLead()
   }, [leadId, router])
 
-  // Función para generar link con animación de carga
+  useEffect(() => {
+    if (leadId) {
+      fetchDocuments()
+    }
+  }, [leadId])
+
   // Función para generar link con animación de carga
   const generateLink = async () => {
     try {
       setGenerating(true)
-      // Simular un pequeño retraso para ver la animación
       await new Promise(resolve => setTimeout(resolve, 800))
       
       const response = await fetch('/api/leads/generate-link', {
@@ -94,7 +137,7 @@ export default function LeadDetailPage() {
       
       if (data.success) {
         setGeneratedLink(data.data.url)
-        setLead({ ...lead, uniqueToken: data.data.token })
+        setLead(prev => prev ? { ...prev, uniqueToken: data.data.token } : null)
         setShowShareOptions(true)
       } else {
         alert('❌ Error: ' + data.error)
@@ -107,7 +150,7 @@ export default function LeadDetailPage() {
     }
   }
 
-  // ✅ FUNCIÓN PARA ENVIAR CORREO CRIPTO (DEBE ESTAR AQUÍ, FUERA DE generateLink)
+  // Función para enviar correo cripto
   const handleSendCriptoApprovalEmail = async (leadId: string) => {
     if (!confirm('¿Enviar correo de aprobación CRIPTO a este cliente?')) return
     
@@ -136,7 +179,6 @@ export default function LeadDetailPage() {
 
   // Función para copiar al portapapeles
   const copyToClipboard = async () => {
-    // ... resto del código
     try {
       await navigator.clipboard.writeText(generatedLink)
       setCopied(true)
@@ -148,6 +190,8 @@ export default function LeadDetailPage() {
 
   // Función para enviar por WhatsApp
   const sendByWhatsApp = () => {
+    if (!lead) return
+    
     const message = encodeURIComponent(
       `Hola ${lead?.fullName || 'cliente'},\n\n` +
       `Para continuar con tu solicitud de crédito, necesitamos que subas algunos documentos. ` +
@@ -161,6 +205,8 @@ export default function LeadDetailPage() {
 
   // Función para enviar por email
   const sendByEmail = () => {
+    if (!lead) return
+    
     const subject = encodeURIComponent('Enlace para subir documentos - Caja Valladolid')
     const body = encodeURIComponent(
       `Hola ${lead?.fullName || 'cliente'},\n\n` +
@@ -190,12 +236,13 @@ export default function LeadDetailPage() {
   const fetchDocuments = async () => {
     try {
       setLoadingDocs(true)
-      const response = await fetch(`/api/leads/${leadId}/documents`, {
+      const response = await fetch(`/api/leads/documents?leadId=${leadId}`, {
         credentials: 'include'
       })
       const data = await response.json()
       if (data.success) {
         setDocuments(data.documents || [])
+        console.log('Documentos cargados:', data.documents)
       }
     } catch (error) {
       console.error('Error cargando documentos:', error)
@@ -220,6 +267,7 @@ export default function LeadDetailPage() {
   }
 
   const handleDelete = async () => {
+    if (!leadId) return
     if (!confirm('¿Estás seguro de eliminar este lead?')) return
 
     try {
@@ -240,7 +288,12 @@ export default function LeadDetailPage() {
     }
   }
 
+  // ============================================
+  // FUNCIÓN DE CAMBIO DE ESTADO CON CORREO DE APROBACIÓN
+  // ============================================
   const handleStatusChange = async (newStatus: string) => {
+    if (!lead || !leadId) return
+    
     try {
       const response = await fetch(`/api/leads/${leadId}`, {
         method: 'PATCH',
@@ -255,9 +308,69 @@ export default function LeadDetailPage() {
 
       if (data.success) {
         setLead({ ...lead, status: newStatus })
-        alert('✅ Estado actualizado')
+        
+        // ✅ SI SE APROBÓ, ENVIAR CORREO DE APROBACIÓN
+        if (newStatus === 'APPROVED') {
+          try {
+            const emailResponse = await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: lead.email,
+                nombre: lead.fullName,
+                tipo: 'aprobacion',
+                leadId: lead.id,
+                monto: lead.estimatedAmount,
+                creditType: lead.creditType
+              })
+            })
+            
+            const emailData = await emailResponse.json()
+            
+            if (emailData.success) {
+              alert('✅ Crédito aprobado y correo enviado al cliente')
+            } else {
+              alert('⚠️ Crédito aprobado pero hubo un error al enviar el correo')
+            }
+          } catch (emailError) {
+            console.error('Error enviando correo:', emailError)
+            alert('⚠️ Crédito aprobado pero no se pudo enviar el correo')
+          }
+        } else {
+          alert('✅ Estado actualizado')
+        }
       } else {
         alert(data.error || 'Error al actualizar')
+      }
+    } catch (error) {
+      alert('Error de conexión')
+    }
+  }
+
+  // Función para reenviar correo de aprobación manualmente
+  const handleResendApprovalEmail = async () => {
+    if (!lead) return
+    
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: lead.email,
+          nombre: lead.fullName,
+          tipo: 'aprobacion',
+          leadId: lead.id,
+          monto: lead.estimatedAmount,
+          creditType: lead.creditType
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        alert('✅ Correo de aprobación reenviado correctamente')
+      } else {
+        alert('❌ Error: ' + data.error)
       }
     } catch (error) {
       alert('Error de conexión')
@@ -278,7 +391,7 @@ export default function LeadDetailPage() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number = 0) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN'
@@ -295,6 +408,17 @@ export default function LeadDetailPage() {
       'PENDING_DOCUMENTS': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: FileText, text: 'Pendiente Documentos' }
     }
     return config[status] || config['PENDING']
+  }
+
+  // Validar que tenemos leadId antes de continuar
+  if (!leadId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600">Redirigiendo...</p>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -421,7 +545,7 @@ export default function LeadDetailPage() {
           </div>
         </div>
 
-        {/* SECCIÓN DE GENERACIÓN DE LINK MEJORADA */}
+        {/* SECCIÓN DE GENERACIÓN DE LINK */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -494,7 +618,7 @@ export default function LeadDetailPage() {
                     </div>
                   </div>
 
-                  {/* Opciones de envío - Solo WhatsApp y Email */}
+                  {/* Opciones de envío */}
                   <div className="space-y-4">
                     <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
                       <Send className="w-4 h-4" />
@@ -519,7 +643,6 @@ export default function LeadDetailPage() {
                       </button>
                     </div>
 
-                    {/* Vista previa del mensaje */}
                     <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                       <p className="text-xs text-gray-500 mb-2">📱 Vista previa del mensaje:</p>
                       <p className="text-sm text-gray-700">
@@ -586,7 +709,7 @@ export default function LeadDetailPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {documents.map((doc: any) => (
+                {documents.map((doc: Document) => (
                   <div 
                     key={doc.id} 
                     className="group border rounded-xl p-4 hover:shadow-lg transition-all hover:border-green-300 bg-white"
@@ -675,7 +798,26 @@ export default function LeadDetailPage() {
             </button>
           </div>
 
-          {/* 🟣 BOTONES ESPECÍFICOS PARA CRÉDITOS CRIPTO */}
+          {/* BOTÓN PARA REENVIAR CORREO DE APROBACIÓN (SOLO SI ESTÁ APROBADO) */}
+          {lead.status === 'APPROVED' && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Mail className="w-5 h-5 text-green-600" />
+                Notificaciones
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  onClick={handleResendApprovalEmail}
+                  className="p-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 flex items-center justify-center gap-3 shadow-md transition-all group"
+                >
+                  <Mail className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="font-medium">📧 Reenviar correo de aprobación</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* BOTONES ESPECÍFICOS PARA CRÉDITOS CRIPTO */}
           {lead.creditType === 'CRYPTO' && lead.status === 'APPROVED' && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -684,32 +826,21 @@ export default function LeadDetailPage() {
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
-                  onClick={() => {
-                    if (!confirm('¿Enviar correo de aprobación CRIPTO a este cliente?')) return;
-                    
-                    fetch('/api/admin/send-approval-email-cripto', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ leadId: lead.id }),
-                      credentials: 'include'
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                      if (data.success) {
-                        alert('✅ Correo de aprobación CRIPTO enviado correctamente');
-                      } else {
-                        alert('❌ Error: ' + data.error);
-                      }
-                    })
-                    .catch(error => {
-                      console.error('Error:', error);
-                      alert('❌ Error de conexión');
-                    });
-                  }}
-                  className="p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 flex items-center justify-center gap-3 shadow-md transition-all group"
+                  onClick={() => handleSendCriptoApprovalEmail(lead.id)}
+                  disabled={sendingCriptoEmail === lead.id}
+                  className="p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 flex items-center justify-center gap-3 shadow-md transition-all group disabled:opacity-50"
                 >
-                  <Bitcoin className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="font-medium">📧 Enviar Correo Cripto</span>
+                  {sendingCriptoEmail === lead.id ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="font-medium">Enviando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bitcoin className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                      <span className="font-medium">📧 Enviar Correo Cripto</span>
+                    </>
+                  )}
                 </button>
                 
                 <button
@@ -733,7 +864,7 @@ export default function LeadDetailPage() {
           <div className="mt-6 bg-white rounded-xl shadow-lg p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">📝 Notas</h2>
             <div className="space-y-4">
-              {lead.notes.map((note: any, index: number) => (
+              {lead.notes.map((note: Note, index: number) => (
                 <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-100">
                   <p className="text-gray-800">{note.content}</p>
                   <p className="text-xs text-gray-500 mt-2">

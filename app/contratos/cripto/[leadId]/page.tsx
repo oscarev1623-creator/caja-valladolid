@@ -8,13 +8,28 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 
+// Interfaces para tipado
+interface Lead {
+  id: string
+  fullName: string
+  email: string
+  phone: string
+  estimatedAmount?: number
+  selectedCrypto?: string
+  plazo?: number
+  tasa?: number
+  status?: string
+}
+
 export default function ContratoCriptoPage() {
   const params = useParams()
   const router = useRouter()
-  const leadId = params.leadId as string
+  
+  // Manejo seguro de params.leadId
+  const leadId = params?.leadId as string | undefined
 
   const [loading, setLoading] = useState(true)
-  const [lead, setLead] = useState<any>(null)
+  const [lead, setLead] = useState<Lead | null>(null)
   const [error, setError] = useState('')
   const [aceptado, setAceptado] = useState(false)
   const [firmando, setFirmando] = useState(false)
@@ -29,6 +44,13 @@ export default function ContratoCriptoPage() {
   }
 
   useEffect(() => {
+    // Redirigir si no hay leadId
+    if (!leadId) {
+      setError('Enlace inválido')
+      setLoading(false)
+      return
+    }
+
     const fetchLead = async () => {
       try {
         const response = await fetch(`/api/public/lead/${leadId}`)
@@ -40,6 +62,7 @@ export default function ContratoCriptoPage() {
           setError('Enlace inválido o expirado')
         }
       } catch (error) {
+        console.error('Error:', error)
         setError('Error al cargar la información')
       } finally {
         setLoading(false)
@@ -50,19 +73,38 @@ export default function ContratoCriptoPage() {
   }, [leadId])
 
   const handleFirmar = async () => {
+    if (!leadId) return
+    
     setFirmando(true)
-    // Simular proceso de firma
-    setTimeout(() => {
-      setAceptado(true)
+    
+    try {
+      // Llamada real a API para firmar contrato
+      const response = await fetch(`/api/contratos/cripto/${leadId}/firmar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aceptado: true, cripto: lead?.selectedCrypto })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        setAceptado(true)
+      } else {
+        alert('Error al firmar el contrato: ' + data.error)
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error de conexión al firmar el contrato')
+    } finally {
       setFirmando(false)
-    }, 2000)
+    }
   }
 
-  const getCryptoPrice = (crypto: string) => {
+  const getCryptoPrice = (crypto: string): number => {
     return cryptoPrices[crypto] || 1
   }
 
-  const getCryptoLogo = (crypto: string) => {
+  const getCryptoLogo = (crypto: string): string => {
     const logos: Record<string, string> = {
       'USDT': '/crypto-logos/usdt.png',
       'BTC': '/crypto-logos/bitcoin.png',
@@ -73,6 +115,7 @@ export default function ContratoCriptoPage() {
     return logos[crypto] || '/crypto-logos/bitcoin.png'
   }
 
+  // Mostrar pantalla de carga inicial
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center">
@@ -87,6 +130,7 @@ export default function ContratoCriptoPage() {
     )
   }
 
+  // Mostrar error si no hay leadId o hubo error
   if (error || !lead) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
@@ -96,7 +140,7 @@ export default function ContratoCriptoPage() {
           <p className="text-gray-600 mb-6">{error || 'El enlace ha expirado o no existe'}</p>
           <a
             href="https://cajavalladolid.com"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Volver al inicio
@@ -109,12 +153,17 @@ export default function ContratoCriptoPage() {
   const cripto = lead.selectedCrypto || 'USDT'
   const precioUSD = getCryptoPrice(cripto)
   const montoUSDT = lead.estimatedAmount || 50000
-  const montoCripto = cripto === 'USDT' ? montoUSDT : (montoUSDT / precioUSD).toFixed(6)
+  const montoCripto = cripto === 'USDT' 
+    ? montoUSDT.toString() 
+    : (montoUSDT / precioUSD).toFixed(6)
   const anticipoUSDT = montoUSDT * 0.10
-  const anticipoCripto = cripto === 'USDT' ? anticipoUSDT : (anticipoUSDT / precioUSD).toFixed(6)
+  const anticipoCripto = cripto === 'USDT' 
+    ? anticipoUSDT.toString() 
+    : (anticipoUSDT / precioUSD).toFixed(6)
   const montoMXN = montoUSDT * 20
   const anticipoMXN = anticipoUSDT * 20
 
+  // Mostrar pantalla de éxito después de firmar
   if (aceptado) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center p-4">
@@ -145,7 +194,7 @@ export default function ContratoCriptoPage() {
           </div>
           <a
             href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
           >
             Volver al inicio
           </a>
@@ -189,7 +238,16 @@ export default function ContratoCriptoPage() {
             <div>
               <p className="text-sm text-gray-600 mb-1">Criptomoneda</p>
               <div className="flex items-center gap-2">
-                <Image src={getCryptoLogo(cripto)} alt={cripto} width={24} height={24} />
+                <Image 
+                  src={getCryptoLogo(cripto)} 
+                  alt={cripto} 
+                  width={24} 
+                  height={24}
+                  onError={(e) => {
+                    // Fallback si la imagen no carga
+                    e.currentTarget.src = '/crypto-logos/bitcoin.png'
+                  }}
+                />
                 <p className="font-semibold text-gray-900">{cripto}</p>
               </div>
             </div>

@@ -46,17 +46,17 @@ export function Chatbot() {
     }
   }
 
-  // Base de conocimientos del chatbot - ¡AHORA CON RESPUESTAS ÚNICAS!
+  // Base de conocimientos del chatbot - ACTUALIZADO con tasa 11%
   const knowledgeBase = [
     {
       keywords: ['tasa', 'interés', 'interes', 'porcentaje', 'intereses'],
       response: `💰 Tasas de interés vigentes:
 
-• Crédito Tradicional: 12% a 18% anual (dependiendo del monto)
+• Crédito Tradicional: <strong>11% anual fijo</strong> (tasa preferencial)
 • Crédito Cripto: 8% a 14% anual (tasas preferenciales)
-• Plazos de 6 a 36 meses
+• Plazos de 4 a 20 años
 
-Ejemplo práctico: Para un préstamo de $50,000 a 12 meses, tu pago mensual sería aproximadamente $4,500. ¿Te gustaría que te ayude a simular un monto específico?`
+Ejemplo práctico: Para un préstamo de $50,000 a 5 años, tu pago mensual sería aproximadamente $1,100. ¿Te gustaría que te ayude a simular un monto específico?`
     },
     {
       keywords: ['buró', 'buro', 'historial', 'credito', 'crédito', 'mal historial', 'manchado'],
@@ -108,8 +108,8 @@ Para negocios (adicional):
       keywords: ['monto', 'cantidad', 'cuánto', 'maximo', 'máximo', 'hasta cuanto', 'mínimo'],
       response: `💰 Escala de montos disponibles:
 
-Crédito Personal: $5,000 - $500,000
-Crédito Cripto: $10,000 - $500,000
+Crédito Personal: $50,000 - $10,000,000
+Crédito Cripto: $10,000 - $500,000 (en USD)
 Crédito Negocios: $20,000 - $1,000,000
 Crédito Automotriz: $50,000 - $500,000
 Crédito Hipotecario: $100,000 - $2,000,000
@@ -148,7 +148,7 @@ Tiempo total promedio: 5 a 8 días hábiles. Los créditos exprés (montos menor
 
 • Inicio: Calculadoras y bienvenida
 • Quiénes somos: Nuestra historia y valores
-• Calculadora: Simula tu crédito en pesos
+• Calculadora: Simula tu crédito en pesos (11% anual)
 • Calculadora Cripto: Simula crédito en crypto
 • Solicitar: Formulario de aplicación
 • Contacto: Ubicación y horarios
@@ -278,7 +278,7 @@ Opciones para tu patrimonio:
 
 Condiciones especiales:
 • Plazos: 5 a 20 años
-• Tasa fija primeros 5 años (desde 10.5%)
+• Tasa fija primeros 5 años (desde 11%)
 • Financiamiento hasta 80% del valor
 • Prepagos sin penalización
 
@@ -290,11 +290,11 @@ Ejemplo: Casa de $1,000,000, enganche $200,000, crédito $800,000 a 15 años, me
 
 Puedes preguntarme sobre:
 
-💰 Tasas de interés (porcentajes y ejemplos)
+💰 Tasas de interés (11% anual en créditos tradicionales)
 📊 Buró de crédito (segundas oportunidades)
 📋 Formularios (proceso paso a paso)
 📄 Requisitos (documentos necesarios)
-💰 Montos (desde $5,000 hasta $2M)
+💰 Montos (desde $50,000 hasta $10M)
 📞 Contacto (asesores humanos)
 ⏱️ Tiempos (cronograma completo)
 ₿ Cripto (créditos con crypto)
@@ -349,7 +349,7 @@ Puedes preguntarme sobre:
 
   // Categorías de preguntas rápidas
   const quickCategories = [
-    { name: "💰 Tasas", keywords: "¿Cuál es la tasa de interés?" },
+    { name: "💰 Tasas (11%)", keywords: "¿Cuál es la tasa de interés?" },
     { name: "📊 Buró", keywords: "¿Revisan Buró de Crédito?" },
     { name: "📋 Formulario", keywords: "¿Cómo solicito un crédito?" },
     { name: "📄 Requisitos", keywords: "¿Qué documentos necesito?" },
@@ -384,7 +384,7 @@ Puedes preguntarme sobre:
               <Bot className="w-5 h-5" />
               <div>
                 <h3 className="font-bold text-sm">FinBot - Asistente Virtual</h3>
-                <p className="text-xs opacity-90">Caja Valladolid · Responde en segundos</p>
+                <p className="text-xs opacity-90">Caja Valladolid · Tasa 11% anual</p>
               </div>
             </div>
           </div>

@@ -39,18 +39,18 @@ export function AvailableAmounts() {
           className="bg-card rounded-2xl shadow-xl p-8 sm:p-12 border border-border/50 text-center"
         >
           <div className="mb-8">
-            <p className="text-5xl sm:text-6xl md:text-7xl font-bold text-primary mb-4">500 USD - 800,000 USD</p>
+            <p className="text-5xl sm:text-6xl md:text-7xl font-bold text-primary mb-4">2.500 USD - 1.000,000 USD</p>
             <p className="text-xl sm:text-2xl text-muted-foreground">(o equivalente en criptomonedas)</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
             <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20">
               <h3 className="text-lg font-semibold text-card-foreground mb-2">Créditos Tradicionales</h3>
-              <p className="text-sm text-muted-foreground">Pagos en MXN con tasa del 6.9% anual</p>
+              <p className="text-sm text-muted-foreground">Pagos en MXN con tasa del 11% anual</p>
             </div>
             <div className="p-6 bg-gradient-to-br from-accent/10 to-accent/5 rounded-xl border border-accent/20">
               <h3 className="text-lg font-semibold text-card-foreground mb-2">Créditos Cripto</h3>
-              <p className="text-sm text-muted-foreground">Pagos en USD/Crypto con tasa del 4% anual</p>
+              <p className="text-sm text-muted-foreground">Pagos en USD/Crypto con tasa del 5.4% anual</p>
             </div>
           </div>
 

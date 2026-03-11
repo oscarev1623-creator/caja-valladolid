@@ -4,18 +4,40 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { CheckCircle, XCircle, AlertCircle, FileSignature, Shield, ArrowLeft, Download, Mail } from 'lucide-react'
 
+// Interfaces para tipado
+interface Lead {
+  id: string
+  fullName: string
+  email: string
+  phone: string
+  estimatedAmount?: number
+  plazo?: number
+  tasa?: number
+  creditType?: string
+  status?: string
+}
+
 export default function ContratoPage() {
   const params = useParams()
   const router = useRouter()
-  const leadId = params.leadId as string
+  
+  // Manejo seguro de params.leadId
+  const leadId = params?.leadId as string | undefined
 
   const [loading, setLoading] = useState(true)
-  const [lead, setLead] = useState<any>(null)
+  const [lead, setLead] = useState<Lead | null>(null)
   const [error, setError] = useState('')
   const [aceptado, setAceptado] = useState(false)
   const [firmando, setFirmando] = useState(false)
 
   useEffect(() => {
+    // Redirigir si no hay leadId
+    if (!leadId) {
+      setError('Enlace inválido')
+      setLoading(false)
+      return
+    }
+
     const fetchLead = async () => {
       try {
         const response = await fetch(`/api/public/lead/${leadId}`)
@@ -27,6 +49,7 @@ export default function ContratoPage() {
           setError('Enlace inválido o expirado')
         }
       } catch (error) {
+        console.error('Error:', error)
         setError('Error al cargar la información')
       } finally {
         setLoading(false)
@@ -37,14 +60,34 @@ export default function ContratoPage() {
   }, [leadId])
 
   const handleFirmar = async () => {
+    if (!leadId) return
+    
     setFirmando(true)
-    // Simular proceso de firma
-    setTimeout(() => {
-      setAceptado(true)
+    
+    try {
+      // Llamada real a API para firmar contrato
+      const response = await fetch(`/api/contratos/${leadId}/firmar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aceptado: true })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        setAceptado(true)
+      } else {
+        alert('Error al firmar el contrato: ' + data.error)
+      }
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error de conexión al firmar el contrato')
+    } finally {
       setFirmando(false)
-    }, 2000)
+    }
   }
 
+  // Mostrar pantalla de carga inicial
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center">
@@ -59,6 +102,7 @@ export default function ContratoPage() {
     )
   }
 
+  // Mostrar error si no hay leadId o hubo error
   if (error || !lead) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
@@ -68,7 +112,7 @@ export default function ContratoPage() {
           <p className="text-gray-600 mb-6">{error || 'El enlace ha expirado o no existe'}</p>
           <a
             href="https://cajavalladolid.com"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Volver al inicio
@@ -78,6 +122,7 @@ export default function ContratoPage() {
     )
   }
 
+  // Mostrar pantalla de éxito después de firmar
   if (aceptado) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
@@ -108,7 +153,7 @@ export default function ContratoPage() {
           </div>
           <a
             href="https://cajavalladolid.com"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
           >
             Volver al inicio
           </a>
@@ -116,6 +161,12 @@ export default function ContratoPage() {
       </div>
     )
   }
+
+  // Calcular valores para mostrar
+  const estimatedAmount = lead.estimatedAmount || 50000
+  const plazo = lead.plazo || 36
+  const tasa = lead.tasa || 12
+  const anticipo = estimatedAmount * 0.2
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4">
@@ -149,7 +200,7 @@ export default function ContratoPage() {
             <div>
               <p className="text-sm text-gray-600 mb-1">Monto aprobado</p>
               <p className="font-semibold text-green-600">
-                ${lead.estimatedAmount?.toLocaleString('es-MX') || '50,000'} MXN
+                ${estimatedAmount.toLocaleString('es-MX')} MXN
               </p>
             </div>
           </div>
@@ -162,18 +213,18 @@ export default function ContratoPage() {
           <div className="space-y-4 text-gray-700">
             <div className="p-4 bg-gray-50 rounded-xl">
               <p className="font-semibold mb-2">📌 Monto y Plazo</p>
-              <p className="text-sm">Crédito por ${lead.estimatedAmount?.toLocaleString('es-MX') || '50,000'} a {lead.plazo || 36} meses</p>
+              <p className="text-sm">Crédito por ${estimatedAmount.toLocaleString('es-MX')} a {plazo} meses</p>
             </div>
             
             <div className="p-4 bg-gray-50 rounded-xl">
               <p className="font-semibold mb-2">💰 Tasa de Interés</p>
-              <p className="text-sm">Tasa fija del {lead.tasa || 12}% anual</p>
+              <p className="text-sm">Tasa fija del {tasa}% anual</p>
             </div>
             
             <div className="p-4 bg-green-50 rounded-xl border border-green-200">
               <p className="font-semibold mb-2 text-green-800">🔒 Pago de Anticipo</p>
               <p className="text-sm text-green-700">
-                Anticipo requerido: ${((lead.estimatedAmount || 50000) * 0.2).toLocaleString('es-MX')} MXN (20% del total)
+                Anticipo requerido: ${anticipo.toLocaleString('es-MX')} MXN (20% del total)
               </p>
               <p className="text-xs text-green-600 mt-2">
                 • 70% se descuenta de tu crédito<br />

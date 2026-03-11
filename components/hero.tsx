@@ -28,7 +28,7 @@ export default function Hero() {
   const features = [
     { icon: ShieldCheck, text: "Sin Buró de Crédito", color: "text-green-600" },
     { icon: Clock, text: "Aprobación Rápida", color: "text-green-500" },
-    { icon: TrendingUp, text: "Tasa Fija 6.9%", color: "text-green-600" },
+    { icon: TrendingUp, text: "Tasa Fija 11%", color: "text-green-600" },
     { icon: Award, text: "100% Transparente", color: "text-gray-800" },
   ]
 

@@ -4,6 +4,24 @@ const MONTHLY_RATE = ANNUAL_RATE / 12
 const CRYPTO_ANNUAL_RATE = 0.04
 const CRYPTO_MONTHLY_RATE = CRYPTO_ANNUAL_RATE / 12
 
+// Interfaces para los tipos de schedule
+interface PaymentScheduleItem {
+  month: number;
+  payment: number;
+  principal: number;
+  interest: number;
+  balance: number;
+}
+
+interface CryptoScheduleItem {
+  month: number;
+  paymentCrypto: number;
+  paymentMXN: number;
+  principal: number;
+  interest: number;
+  balance: number;
+}
+
 function calculateAdvanceFee(amount: number): number {
   // Small credits (below 20,000): 10% advance fee
   if (amount < 20000) {
@@ -21,7 +39,8 @@ export function calculateCreditDetails(amount: number, termYears: number) {
   const monthlyPayment = netAmount * (MONTHLY_RATE / (1 - Math.pow(1 + MONTHLY_RATE, -numberOfMonths)))
   const totalPayment = monthlyPayment * numberOfMonths
 
-  const schedule = []
+  // Array tipado explícitamente
+  const schedule: PaymentScheduleItem[] = []
   let balance = netAmount
   for (let i = 1; i <= numberOfMonths; i++) {
     const interest = balance * MONTHLY_RATE
@@ -59,7 +78,8 @@ export function calculateCryptoDetails(amountMXN: number, termYears: number, cry
   const monthlyPaymentMXN = monthlyPaymentCrypto * cryptoPrice
   const totalPaymentMXN = totalPaymentCrypto * cryptoPrice
 
-  const schedule = []
+  // Array tipado explícitamente
+  const schedule: CryptoScheduleItem[] = []
   let balance = netAmountCrypto
   for (let i = 1; i <= numberOfMonths; i++) {
     const interest = balance * CRYPTO_MONTHLY_RATE

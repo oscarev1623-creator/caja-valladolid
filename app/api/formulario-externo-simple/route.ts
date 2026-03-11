@@ -4,93 +4,161 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 export async function POST(request: NextRequest) {
+  console.log('='.repeat(50))
+  console.log('🚀 ENDPOINT LLAMADO - INICIO')
+  console.log('='.repeat(50))
+  
   try {
-    const data = await request.json()
-    
-    console.log('📥 [formulario-externo-simple] Datos recibidos:', data)
-    
-    // Validaciones básicas
-    if (!data.fullName && !data.nombre) {
+    // 1. VERIFICAR CONEXIÓN A BD
+    console.log('🔍 Probando conexión a base de datos...')
+    try {
+      await prisma.$connect()
+      console.log('✅ Conexión a BD exitosa')
+    } catch (dbError) {
+      console.error('❌ Error de conexión a BD:', dbError)
       return NextResponse.json(
-        { success: false, error: 'Nombre completo es requerido' },
-        { status: 400 }
+        { success: false, error: 'Error de conexión a base de datos' },
+        { status: 500 }
       )
     }
-    
-    if (!data.phone && !data.telefono) {
+
+    // 2. LEER BODY
+    console.log('📦 Leyendo request.json()...')
+    let body
+    try {
+      body = await request.json()
+      console.log('Body recibido:', JSON.stringify(body, null, 2))
+    } catch (e) {
+      console.error('❌ Error parseando JSON:', e)
       return NextResponse.json(
-        { success: false, error: 'Teléfono es requerido' },
+        { success: false, error: 'JSON inválido' },
         { status: 400 }
       )
     }
 
-    // Preparar datos para el schema Lead
-    const fullName = data.fullName || data.nombre || 'Cliente'
-    const phone = data.phone || data.telefono
-    const email = data.email || null
-    const estimatedAmount = data.estimatedAmount || data.monto ? parseFloat(data.estimatedAmount || data.monto) : null
-    const creditType = data.creditType || data.tipoCredito || 'TRADITIONAL'
-    const selectedCrypto = data.selectedCrypto || null
-    const plazo = data.plazo ? parseInt(data.plazo) : null
-    const contactoPreferido = data.preferredContact || data.contactoPreferido || 'whatsapp'
-    const message = data.message || data.mensaje || 'Pre-evaluación de crédito'
+    // 3. VALIDAR CAMPOS
+    const fullName = body.fullName || body.nombre
+    const phone = body.phone || body.telefono
     
-    // Determinar formType basado en creditType
-    const formType = (creditType === 'crypto' || creditType === 'CRYPTO') 
-      ? 'CRYPTO_PRE_EVALUATION' 
-      : 'PRE_EVALUATION'
-    
-    // Mapear status inicial
-    const status = 'PENDING_CONTACT'
-    
-    console.log('💾 Creando lead con datos:', {
-      fullName, phone, email, estimatedAmount, creditType,
-      selectedCrypto, plazo, contactoPreferido, formType, status
+    if (!fullName || !phone) {
+      console.log('❌ Faltan campos obligatorios')
+      return NextResponse.json(
+        { success: false, error: 'Nombre y teléfono son requeridos' },
+        { status: 400 }
+      )
+    }
+
+    // 4. VERIFICAR EL MODELO LEAD
+    console.log('🔍 Verificando modelo Lead...')
+    try {
+      // Intentar contar leads para ver si el modelo funciona
+      const count = await prisma.lead.count()
+      console.log(`✅ Modelo Lead funciona. Total leads: ${count}`)
+    } catch (modelError: any) {
+      console.error('❌ Error con modelo Lead:', modelError.message)
+      console.error('Código:', modelError.code)
+      console.error('Meta:', modelError.meta)
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Error con modelo de base de datos',
+          details: modelError.message
+        },
+        { status: 500 }
+      )
+    }
+
+    // 5. INTENTAR CREAR LEAD
+    console.log('📝 Creando lead...')
+    console.log('Datos a insertar:', {
+      fullName,
+      phone,
+      email: body.email || null,
+      estimatedAmount: body.monto ? parseFloat(body.monto) : null,
+      creditType: body.tipoCredito === 'crypto' ? 'CRYPTO' : 'TRADITIONAL',
+      contactoPreferido: body.contactoPreferido || 'whatsapp',
+      message: body.mensaje || 'Solicitud desde formulario',
+      formType: 'SIMPLE',
+      status: 'PENDING_CONTACT',
+      source: 'CONTACT_FORM'
     })
-    
-    const lead = await prisma.lead.create({
-      data: {
-        fullName,
-        firstName: fullName.split(' ')[0] || '',
-        lastName: fullName.split(' ').slice(1).join(' ') || null,
-        phone,
-        email,
-        estimatedAmount,
-        creditType: creditType.toUpperCase(),
-        selectedCrypto,
-        plazo,
-        contactoPreferido,
-        message,
-        formType,
-        status,
-        source: 'WEB_FORM'
+
+    let lead
+    try {
+      lead = await prisma.lead.create({
+        data: {
+          fullName: fullName,
+          firstName: fullName.split(' ')[0] || '',
+          lastName: fullName.split(' ').slice(1).join(' ') || null,
+          phone: phone,
+          email: body.email || null,
+          estimatedAmount: body.monto ? parseFloat(body.monto) : null,
+          creditType: body.tipoCredito === 'crypto' ? 'CRYPTO' : 'TRADITIONAL',
+          contactoPreferido: body.contactoPreferido || 'whatsapp',
+          message: body.mensaje || 'Solicitud desde formulario',
+          formType: 'SIMPLE',
+          status: 'PENDING_CONTACT',
+          source: 'CONTACT_FORM'
+        }
+      })
+      console.log('✅ Lead creado con ID:', lead.id)
+    } catch (createError: any) {
+      console.error('❌ Error creando lead:')
+      console.error('Mensaje:', createError.message)
+      console.error('Código:', createError.code)
+      console.error('Meta:', createError.meta)
+      
+      // Si hay error de columna que no existe
+      if (createError.code === 'P2022') {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Error en base de datos: columna no existe',
+            details: `La columna '${createError.meta?.column}' no existe en la tabla Lead`
+          },
+          { status: 500 }
+        )
       }
-    })
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Error al crear lead',
+          details: createError.message
+        },
+        { status: 500 }
+      )
+    }
 
-    console.log('✅ Lead creado ID:', lead.id)
-
+    // 6. ÉXITO
+    console.log('✅ Proceso completado exitosamente')
+    console.log('='.repeat(50))
+    
     return NextResponse.json({
       success: true,
       leadId: lead.id,
-      message: 'Solicitud registrada correctamente. Un asesor se pondrá en contacto pronto.',
-      data: {
-        nombre: fullName,
-        tipo: formType === 'CRYPTO_PRE_EVALUATION' ? 'Crédito en Criptomonedas' : 'Crédito Tradicional',
-        asesorAsignado: 'Próximamente',
-        siguientePaso: 'Recibirás un formulario completo para documentación'
-      }
+      message: 'Solicitud recibida correctamente'
     })
 
   } catch (error: any) {
-    console.error('❌ Error en formulario-externo-simple:', error)
+    console.error('❌ Error GENERAL en endpoint:')
+    console.error('Nombre:', error.name)
+    console.error('Mensaje:', error.message)
+    console.error('Stack:', error.stack)
     
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Error procesando la solicitud',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: 'Error interno del servidor',
+        details: error.message
       },
       { status: 500 }
     )
+  } finally {
+    await prisma.$disconnect().catch(e => console.error('Error desconectando:', e))
+    console.log('='.repeat(50))
+    console.log('🏁 ENDPOINT FINALIZADO')
+    console.log('='.repeat(50))
   }
 }

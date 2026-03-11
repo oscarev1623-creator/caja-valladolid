@@ -35,7 +35,7 @@ export function StrategicCTASection() {
   
   const benefits = [
     "Sin consulta a buró de crédito",
-    "Tasa fija 6.9% anual",
+    "Tasa fija 11% anual",
     "Aprobación en 24-48 horas",
     "Asesor personal asignado",
     "Documentación guiada",

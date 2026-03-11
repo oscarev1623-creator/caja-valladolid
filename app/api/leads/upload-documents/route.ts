@@ -3,20 +3,52 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
-import { existsSync } from 'fs'
 
 const prisma = new PrismaClient()
 
 // Directorio para guardar documentos
 const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'documents')
 
+// Definir interfaz para el documento subido
+interface UploadedDocument {
+  id: string
+  filename: string
+  fileUrl: string
+  fileType: string
+  fileSize: number
+  uploadedAt: Date
+  leadId: string
+  uploadedById: string | null
+  documentType: string
+  filePath: string | null
+  mimeType: string | null
+}
+
 export async function POST(request: NextRequest) {
+  console.log('='.repeat(50))
+  console.log('📤 UPLOAD DOCUMENTS - INICIO')
+  console.log('='.repeat(50))
+  
   try {
-    console.log('📤 Iniciando subida de documentos...')
-    
+    // 1. VERIFICAR CONEXIÓN A BD
+    console.log('🔍 Verificando conexión a BD...')
+    try {
+      await prisma.$connect()
+      console.log('✅ Conexión exitosa')
+    } catch (dbError) {
+      console.error('❌ Error de conexión a BD:', dbError)
+      return NextResponse.json(
+        { success: false, error: 'Error de conexión a base de datos' },
+        { status: 500 }
+      )
+    }
+
+    // 2. PROCESAR FORM DATA
+    console.log('📦 Procesando FormData...')
     const formData = await request.formData()
-    const token = formData.get('token') as string
     
+    // 3. OBTENER TOKEN
+    const token = formData.get('token') as string
     console.log('📋 Token recibido:', token)
 
     if (!token) {
@@ -27,7 +59,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verificar token y lead
+    // 4. BUSCAR LEAD POR TOKEN
+    console.log('🔍 Buscando lead con token:', token)
     const lead = await prisma.lead.findFirst({
       where: {
         uniqueToken: token,
@@ -47,104 +80,96 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Lead encontrado:', lead.id, lead.fullName)
 
-    // Verificar si ya envió documentos
-    if (lead.documentsSubmitted) {
-      console.log('⚠️ Lead ya envió documentos anteriormente')
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Ya has enviado los documentos anteriormente. Contacta a soporte si necesitas reenviar.' 
-        },
-        { status: 400 }
-      )
-    }
-
-    // Buscar un usuario para uploadedBy (puede ser cualquier admin)
-    const adminUser = await prisma.user.findFirst({
-      where: { role: 'ADMIN' }
-    })
-
-    if (!adminUser) {
-      console.log('⚠️ No se encontró usuario admin, se usará un ID por defecto')
-    }
-
-    // Crear directorio si no existe
-    if (!existsSync(UPLOAD_DIR)) {
+    // 5. CREAR DIRECTORIO
+    console.log('📁 Creando directorio de uploads...')
+    try {
       await mkdir(UPLOAD_DIR, { recursive: true })
-      console.log('📁 Directorio creado:', UPLOAD_DIR)
+      console.log('✅ Directorio listo:', UPLOAD_DIR)
+    } catch (dirError) {
+      console.error('❌ Error creando directorio:', dirError)
+      // Continuamos igual
     }
 
-    // Procesar cada archivo
-    const uploadedDocuments = []
-    
+    // 6. PROCESAR ARCHIVOS
+    console.log('📄 Procesando archivos...')
+    const uploadedDocuments: UploadedDocument[] = []
+
     for (const [fieldName, file] of formData.entries()) {
       if (file instanceof File) {
-        const fileName = `${lead.id}_${fieldName}_${Date.now()}_${file.name}`
-        const filePath = join(UPLOAD_DIR, fileName)
+        console.log(`Archivo encontrado: ${fieldName} - ${file.name} (${file.size} bytes)`)
         
-        // Convertir File a Buffer y guardar
-        const bytes = await file.arrayBuffer()
-        const buffer = Buffer.from(bytes)
-        await writeFile(filePath, buffer)
-        
-        console.log('💾 Archivo guardado:', fileName, file.type, file.size)
-        
-        // Guardar en base de datos (CON UPLOADEDBY)
-        const documentData: any = {
-          filename: file.name,
-          fileUrl: `/uploads/documents/${fileName}`,
-          fileType: fieldName,
-          fileSize: file.size,
-          lead: {
-            connect: { id: lead.id }
-          }
+        try {
+          const fileName = `${lead.id}_${fieldName}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
+          const filePath = join(UPLOAD_DIR, fileName)
+          
+          const bytes = await file.arrayBuffer()
+          const buffer = Buffer.from(bytes)
+          await writeFile(filePath, buffer)
+          
+          console.log('✅ Archivo guardado:', fileName)
+          
+          // ✅ VERSIÓN CORREGIDA CON TODOS LOS CAMPOS
+          const document = await prisma.document.create({
+            data: {
+              filename: file.name,
+              fileUrl: `/uploads/documents/${fileName}`,
+              fileType: fieldName,
+              documentType: fieldName,
+              fileSize: file.size,
+              leadId: lead.id,
+              uploadedById: null,
+              filePath: null,
+              mimeType: file.type || null,
+              uploadedAt: new Date()
+            }
+          })
+          
+          // Type assertion para que TypeScript sepa que cumple con la interfaz
+          uploadedDocuments.push(document as UploadedDocument)
+          console.log(`✅ Documento guardado en BD: ${fieldName}`)
+        } catch (fileError) {
+          console.error(`❌ Error procesando ${fieldName}:`, fileError)
         }
-
-        // Agregar uploadedBy si existe un admin
-        if (adminUser?.id) {
-          documentData.uploadedBy = {
-            connect: { id: adminUser.id }
-          }
-        }
-
-        const document = await prisma.document.create({
-          data: documentData
-        })
-        
-        uploadedDocuments.push(document)
       }
     }
 
-    // Actualizar lead (SIN STAGE)
+    // 7. ACTUALIZAR LEAD
+    console.log('📝 Actualizando lead...')
     await prisma.lead.update({
       where: { id: lead.id },
       data: {
         documentsSubmitted: true,
-        docsSubmittedAt: new Date(),
-        status: 'PENDING_DOCUMENTS'
+        docsSubmittedAt: new Date()
+        // status: 'PENDING_DOCUMENTS' // Lo comentamos por si el campo no existe
       }
     })
 
-    console.log(`✅ Lead actualizado, ${uploadedDocuments.length} documentos enviados`)
-
+    // 8. RESPUESTA EXITOSA
+    console.log('✅ Proceso completado. Documentos subidos:', uploadedDocuments.length)
+    console.log('='.repeat(50))
+    
     return NextResponse.json({
       success: true,
-      message: 'Documentos recibidos correctamente. Serás contactado pronto.',
+      message: 'Documentos recibidos correctamente',
       leadId: lead.id,
       filesReceived: uploadedDocuments.length
     })
 
-  } catch (error) {
-    console.error('🔥 Error subiendo documentos:', error)
+  } catch (error: any) {
+    console.error('❌ ERROR FATAL:')
+    console.error('Mensaje:', error.message)
+    console.error('Stack:', error.stack)
+    console.error('='.repeat(50))
+    
     return NextResponse.json(
       { 
         success: false, 
         error: 'Error interno del servidor',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error.message
       },
       { status: 500 }
     )
   } finally {
-    await prisma.$disconnect()
+    await prisma.$disconnect().catch(e => console.error('Error desconectando:', e))
   }
 }

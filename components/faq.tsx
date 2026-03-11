@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { 
   ChevronDown, Shield, Lock, Clock, RefreshCw, BadgeCheck, 
   TrendingUp, FileCheck, Percent, CreditCard, Home, Zap,
-  Bitcoin  // ← AGREGADO
+  Bitcoin
 } from "lucide-react"
 
 interface FAQItemProps {
@@ -66,7 +66,7 @@ export default function FAQ() {
           <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 p-4 rounded-lg border border-green-500/20">
             <p className="font-medium text-[var(--foreground)] mb-2">Tasa Competitiva y Transparente</p>
             <p className="mb-3">
-              Ofrecemos una <strong>tasa fija anual del 6.9%</strong> para créditos tradicionales y <strong>5.4%</strong> para créditos en criptomonedas, una de las más competitivas del mercado. 
+              Ofrecemos una <strong>tasa fija anual del 11%</strong> para créditos tradicionales y <strong>5.4%</strong> para créditos en criptomonedas, una de las más competitivas del mercado. 
               Estas tasas incluyen:
             </p>
             <ul className="list-disc list-inside space-y-2 ml-2 text-sm">
@@ -127,7 +127,7 @@ export default function FAQ() {
             <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 p-4 rounded-lg border border-green-500/20">
               <h4 className="font-semibold text-green-700 mb-3">Crédito Tradicional</h4>
               <ul className="text-sm space-y-2">
-                <li>• Tasa: 6.9% anual</li>
+                <li>• Tasa: 11% anual</li>
                 <li>• Anticipo: 20%</li>
                 <li>• Recibes: Tarjeta física Mastercard/Visa</li>
                 <li>• Uso: Cajeros, comercios, transferencias</li>
@@ -295,7 +295,8 @@ export default function FAQ() {
                   <strong>Empresariales:</strong> Estados financieros, acta constitutiva
                 </li>
                 <li>
-                  <strong>Cripto:</strong> Wallet activa, historial de transacciones (opcional)</li>
+                  <strong>Cripto:</strong> Wallet activa, historial de transacciones (opcional)
+                </li>
               </ul>
             </div>
           </div>

@@ -5,6 +5,12 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+// Definir interfaz para los items de navegación
+interface NavItem {
+  name: string
+  href: string
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -62,8 +68,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return null
   }
 
-  // Menú de navegación
-  const navItems = [
+  // Menú de navegación con tipado explícito
+  const navItems: NavItem[] = [
     { name: 'Dashboard', href: '/admin/dashboard' },
     { name: 'Leads', href: '/admin/leads' },
     { name: 'Tickets', href: '/admin/tickets' },
@@ -74,7 +80,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar (simplificado) */}
+      {/* Sidebar */}
       <aside className={`bg-white border-r fixed h-full z-50 transition-all ${
         sidebarOpen ? 'w-64' : 'w-20'
       }`}>
@@ -146,7 +152,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className={`h-0.5 bg-gray-600 transition-all ${sidebarOpen ? 'w-4' : 'w-5'}`}></div>
               </div>
             </button>
-            <span className="text-lg font-semibold">{getPageTitle(pathname, navItems)}</span>
+            <span className="text-lg font-semibold">{getPageTitle(pathname ?? '', navItems)}</span>
           </div>
         </header>
 
@@ -159,7 +165,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   )
 }
 
-function getIcon(name: string) {
+function getIcon(name: string): string {
   const icons: Record<string, string> = {
     'Dashboard': '📊',
     'Leads': '👥',
@@ -171,7 +177,10 @@ function getIcon(name: string) {
   return icons[name] || '📋'
 }
 
-function getPageTitle(pathname: string, navItems: any[]) {
+function getPageTitle(pathname: string, navItems: NavItem[]): string {
+  // Asegurarse de que pathname es un string válido
+  if (!pathname) return 'Dashboard'
+  
   const item = navItems.find(item => pathname === item.href)
   return item ? item.name : 'Dashboard'
 }

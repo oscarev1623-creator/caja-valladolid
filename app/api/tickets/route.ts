@@ -140,29 +140,39 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Enviar email al lead (si está configurado)
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    // Enviar email al lead (si está configurado y el lead tiene email)
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS && lead.email) {
       try {
         await transporter.sendMail({
-          from: process.env.EMAIL_FROM,
+          from: process.env.EMAIL_FROM || `"Caja Valladolid" <${process.env.EMAIL_USER}>`,
           to: lead.email,
           subject: 'Caja Valladolid - Solicitud de Documentación',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #10b981;">Caja Valladolid</h2>
-              <p>Estimado/a ${lead.fullName},</p>
-              <p>Para continuar con el proceso de tu solicitud de crédito, necesitamos que completes la siguiente documentación:</p>
-              <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <p><strong>Número de Ticket:</strong> ${ticketNumber}</p>
-                <p><strong>Enlace único:</strong> <a href="${process.env.APP_URL}/formulario-completo/${uniqueToken}">Completar formulario</a></p>
-                <p><strong>Válido hasta:</strong> ${expiresAt.toLocaleDateString('es-MX')}</p>
+              <div style="background: linear-gradient(135deg, #0d9488, #0f766e); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">Caja Valladolid</h1>
               </div>
-              <p>Este enlace es personal e intransferible.</p>
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-              <p style="font-size: 12px; color: #6b7280;">
-                Caja Popular San Bernardino de Siena Valladolid<br>
-                Registro Oficial: 29198 • CONDUSEF ID: 4930
-              </p>
+              
+              <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #1e293b; margin-top: 0;">Estimado/a ${lead.fullName},</h2>
+                
+                <p style="color: #334155; line-height: 1.6;">Para continuar con el proceso de tu solicitud de crédito, necesitamos que completes la siguiente documentación:</p>
+                
+                <div style="background: white; border-left: 4px solid #0d9488; padding: 20px; margin: 20px 0;">
+                  <p style="margin: 5px 0;"><strong>📋 Número de Ticket:</strong> ${ticketNumber}</p>
+                  <p style="margin: 5px 0;"><strong>🔗 Enlace único:</strong> <a href="${process.env.APP_URL}/formulario-completo/${uniqueToken}" style="color: #0d9488;">Completar formulario</a></p>
+                  <p style="margin: 5px 0;"><strong>⏰ Válido hasta:</strong> ${expiresAt.toLocaleDateString('es-MX')}</p>
+                </div>
+                
+                <p style="color: #334155;">Este enlace es personal e intransferible.</p>
+                
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0 20px;">
+                
+                <p style="font-size: 12px; color: #64748b; text-align: center;">
+                  Caja Popular San Bernardino de Siena Valladolid<br>
+                  Registro Oficial: 29198 • CONDUSEF ID: 4930
+                </p>
+              </div>
             </div>
           `
         })
@@ -171,6 +181,8 @@ export async function POST(request: NextRequest) {
         console.error('❌ Error enviando email:', emailError)
         // Continuar aunque falle el email
       }
+    } else if (!lead.email) {
+      console.log('⚠️ No se envió email: El lead no tiene email registrado')
     }
 
     return NextResponse.json({

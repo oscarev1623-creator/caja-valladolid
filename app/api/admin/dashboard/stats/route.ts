@@ -68,12 +68,15 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Formatear
+    // Formatear con manejo de estimatedAmount null
     const formattedRecentLeads = recentLeads.map(lead => ({
       id: lead.id,
       name: lead.fullName,
       email: lead.email,
-      amount: `$${lead.estimatedAmount.toLocaleString('es-MX')}`,
+      // CORREGIDO: Manejar estimatedAmount que puede ser null
+      amount: lead.estimatedAmount 
+        ? `$${lead.estimatedAmount.toLocaleString('es-MX')}`
+        : '$0',
       type: lead.creditType,
       status: lead.status,
       date: new Date(lead.createdAt).toLocaleDateString('es-MX')

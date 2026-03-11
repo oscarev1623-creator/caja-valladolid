@@ -15,11 +15,11 @@ const prisma = new PrismaClient()
 // Función para obtener precio de criptomoneda en USD
 const getCryptoPrice = (crypto: string): number => {
   const prices: Record<string, number> = {
-    'USDT': 1,      // 1 USDT = 1 USD
-    'BTC': 65000,   // 1 BTC = $65,000 USD
-    'ETH': 3500,    // 1 ETH = $3,500 USD
-    'BNB': 600,     // 1 BNB = $600 USD
-    'SOL': 150,     // 1 SOL = $150 USD
+    'USDT': 1,
+    'BTC': 65000,
+    'ETH': 3500,
+    'BNB': 600,
+    'SOL': 150,
   }
   return prices[crypto] || 1
 }
@@ -50,13 +50,13 @@ export async function GET(
       )
     }
 
-    // ✅ VALORES CORREGIDOS
-    const criptoMoneda = lead.selectedCrypto || 'USDT'
+    // ✅ VALORES REALES DEL LEAD
+    const criptoMoneda = lead.selectedCrypto || 'BTC'
     const precioUSD = getCryptoPrice(criptoMoneda)
     const tipoCambio = 20 // 1 USD = 20 MXN
 
-    // Monto en USDT (siempre la base es USDT)
-    const montoUSDT = lead.estimatedAmount || 50000
+    // ✅ MONTO EN USDT (LO QUE EL USUARIO INGRESÓ)
+    const montoUSDT = lead.estimatedAmount || 10000
     
     // Calcular valores
     const montoCripto = criptoMoneda === 'USDT' 
@@ -75,7 +75,6 @@ export async function GET(
     const plazo = lead.plazo || 12
     const tasa = 5.4
     
-    // Calcular pago mensual
     const tasaMensual = tasa / 100 / 12
     const netAmountUSDT = montoUSDT - anticipoUSDT
     const pagoMensualUSDT = (netAmountUSDT * tasaMensual * Math.pow(1 + tasaMensual, plazo)) / 
@@ -101,244 +100,216 @@ export async function GET(
     const chunks: Buffer[] = []
     doc.on('data', chunk => chunks.push(chunk))
 
-    // Colores (púrpura para cripto)
+    // Colores CORPORATIVOS (púrpura para cripto)
     const primaryColor = '#7b2cbf'
     const secondaryColor = '#5a189a'
-    const textColor = '#333333'
-    const lightGray = '#f3f4f6'
+    const textColor = '#1f2937'
+    const lightGray = '#f9fafb'
 
     // --- ENCABEZADO ---
-    doc.rect(0, 0, doc.page.width, 20).fill(primaryColor)
-    
+    doc.rect(0, 0, doc.page.width, 100).fill(primaryColor)
+
     // Logo
     try {
       const logoPath = path.join(process.cwd(), 'public', 'logotipo.png')
       if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, 50, 30, { width: 80 })
+        doc.image(logoPath, 50, 20, { width: 70 })
       }
     } catch (error) {}
-    
+
     doc.fillColor('white')
-    doc.fontSize(20)
+    doc.fontSize(22)
     doc.font('Helvetica-Bold')
-    doc.text('CONTRATO DE CRÉDITO CRIPTO', 140, 45)
-    doc.moveTo(50, 90).lineTo(doc.page.width - 50, 90).stroke(primaryColor)
-    
-    doc.fillColor(textColor)
-    doc.fontSize(10)
-    doc.font('Helvetica')
-    doc.text(`Valladolid, Yucatán, ${new Date().toLocaleDateString('es-MX')}`, { align: 'right' })
-    
+    doc.text('CONTRATO DE CRÉDITO CRIPTO', 140, 35)
+
     // --- DATOS DE LAS PARTES ---
-    doc.rect(50, 120, doc.page.width - 100, 80).fill(lightGray).stroke(primaryColor)
+    // Institución
+    doc.roundedRect(50, 120, 240, 70, 5).fill(lightGray).stroke(primaryColor)
     doc.fillColor(primaryColor)
     doc.fontSize(11)
     doc.font('Helvetica-Bold')
-    doc.text('LA INSTITUCIÓN (DIVISIÓN CRIPTO):', 60, 130)
+    doc.text('LA INSTITUCIÓN', 65, 130)
     
     doc.fillColor(textColor)
-    doc.fontSize(9)
+    doc.fontSize(8)
     doc.font('Helvetica')
-    doc.text('Caja Popular San Bernardino de Siena Valladolid', 60, 145)
-    doc.text('S.C. de A.P. de R.L. de C.V. · Reg: 29198 · CONDUSEF: 4930', 60, 158)
-    doc.text('División de Activos Digitales', 60, 171)
+    doc.text('Caja Popular San Bernardino', 65, 145)
+    doc.text('de Siena Valladolid S.C. de A.P.', 65, 158)
+    doc.text('Reg: 29198 · CONDUSEF: 4930', 65, 171)
     
-    doc.rect(50, 210, doc.page.width - 100, 90).fill(lightGray).stroke(primaryColor)
+    // Fecha debajo de Institución
+    doc.fillColor(primaryColor)
+    doc.fontSize(8)
+    doc.font('Helvetica')
+    doc.text(`${new Date().toLocaleDateString('es-MX', { 
+      year: 'numeric', month: 'long', day: 'numeric' 
+    })}`, 65, 185)
+    
+    // Acreditado
+    doc.roundedRect(310, 120, 240, 70, 5).fill(lightGray).stroke(primaryColor)
     doc.fillColor(primaryColor)
     doc.fontSize(11)
     doc.font('Helvetica-Bold')
-    doc.text('EL ACREDITADO:', 60, 220)
+    doc.text('EL ACREDITADO', 325, 130)
     
     doc.fillColor(textColor)
-    doc.fontSize(9)
+    doc.fontSize(8)
     doc.font('Helvetica')
-    doc.text(lead.fullName.toUpperCase(), 60, 235)
-    doc.text(`Email: ${lead.email} · Tel: ${lead.phone}`, 60, 248)
-    doc.text(`Criptomoneda seleccionada: ${criptoMoneda}`, 60, 261)
+    doc.text(lead.fullName.length > 30 ? lead.fullName.substring(0, 27) + '...' : lead.fullName, 325, 145)
+    doc.text(`Email: ${lead.email}`, 325, 158)
+    doc.text(`Tel: ${lead.phone}`, 325, 171)
+    doc.text(`Criptomoneda: ${criptoMoneda}`, 325, 184)
 
     // --- TABLA DE DETALLES ---
     doc.fillColor(primaryColor)
-    doc.fontSize(12)
+    doc.fontSize(14)
     doc.font('Helvetica-Bold')
-    doc.text('DETALLES DEL CRÉDITO', 50, 320)
+    doc.text('DETALLES DEL CRÉDITO', 50, 220)
     
-    doc.rect(50, 335, doc.page.width - 100, 140).fill(lightGray).stroke(primaryColor)
+    // Cabecera
+    doc.roundedRect(50, 235, doc.page.width - 100, 20, 3).fill(primaryColor)
+    doc.fillColor('white')
+    doc.fontSize(9)
+    doc.font('Helvetica-Bold')
+    doc.text('CONCEPTO', 60, 240)
+    doc.text('VALOR', 400, 240)
     
+    // Filas
     doc.fillColor(textColor)
     doc.fontSize(9)
     doc.font('Helvetica')
     
-    let yPos = 345
-    const leftCol = 70
-    const rightCol = 350
-    
+    let yPos = 265
     const detalles = [
-      { label: `Monto en ${criptoMoneda}:`, valor: `${montoCripto} ${criptoMoneda}` },
+      { label: `Monto solicitado en ${criptoMoneda}:`, valor: `${montoCripto} ${criptoMoneda}` },
       { label: 'Equivalente en MXN:', valor: `$${montoMXN} MXN` },
-      { label: 'Tipo de cambio:', valor: `1 USD = $${tipoCambio} MXN · 1 ${criptoMoneda} = $${precioUSD.toLocaleString('es-MX')} USD` },
-      { label: `Anticipo (10%):`, valor: `${anticipoCripto} ${criptoMoneda} ($${anticipoMXN} MXN)` },
+      { label: 'Anticipo (10%):', valor: `${anticipoCripto} ${criptoMoneda} ($${anticipoMXN} MXN)` },
       { label: 'Plazo:', valor: `${plazo} meses` },
       { label: 'Tasa anual:', valor: `${tasa}% fija` },
-      { label: `Pago mensual:`, valor: `${pagoMensualCripto} ${criptoMoneda} ($${pagoMensualMXN} MXN)` },
-      { label: 'Total a pagar:', valor: `${totalPagar} ${criptoMoneda}` }
+      { label: 'Pago mensual:', valor: `${pagoMensualCripto} ${criptoMoneda} ($${pagoMensualMXN} MXN)` },
+      { label: 'Total a pagar:', valor: `${totalPagar} ${criptoMoneda}` },
+      { label: 'Garantía (20%):', valor: `${garantiaCripto} ${criptoMoneda}` }
     ]
 
     detalles.forEach(detalle => {
-      doc.font('Helvetica').text(detalle.label, leftCol, yPos)
-      doc.font('Helvetica-Bold').text(detalle.valor, rightCol, yPos)
-      yPos += 16
+      doc.text(detalle.label, 60, yPos)
+      doc.font('Helvetica-Bold').text(detalle.valor, 400, yPos)
+      doc.font('Helvetica')
+      yPos += 18
     })
 
-    // --- ANTICIPO DESTACADO ---
-    doc.rect(50, 485, doc.page.width - 100, 60).fill('#f3e8ff').stroke(primaryColor)
+    // --- ANTICIPO Y GARANTÍA ---
+    const anticipoY = yPos + 10
+    doc.roundedRect(50, anticipoY, doc.page.width - 100, 40, 3).fill('#f3e8ff').stroke(primaryColor)
     doc.fillColor(primaryColor)
-    doc.fontSize(10)
+    doc.fontSize(9)
     doc.font('Helvetica-Bold')
-    doc.text('🔒 ANTICIPO 10%', 60, 495)
+    doc.text('DETALLE DEL ANTICIPO Y GARANTÍA', 60, anticipoY + 8)
     
-    doc.fillColor(secondaryColor)
+    doc.fillColor(textColor)
     doc.fontSize(8)
     doc.font('Helvetica')
-    doc.text(`Monto: ${anticipoCripto} ${criptoMoneda} ($${anticipoMXN} MXN) · 70% a capital · 30% gastos admin`, 
-      60, 510, { width: doc.page.width - 120 })
-
-    // --- GARANTÍA ---
-    doc.rect(50, 555, doc.page.width - 100, 40).fill('#f3e8ff').stroke(primaryColor)
-    doc.fillColor(primaryColor)
-    doc.fontSize(10)
-    doc.font('Helvetica-Bold')
-    doc.text('🔐 GARANTÍA', 60, 565)
-    
-    doc.fillColor(secondaryColor)
-    doc.fontSize(8)
-    doc.font('Helvetica')
-    doc.text(`20%: ${garantiaCripto} ${criptoMoneda} (genera rendimientos, se devuelve al finalizar)`, 
-      60, 578, { width: doc.page.width - 120 })
+    doc.text(
+      `Anticipo 10%: ${anticipoCripto} ${criptoMoneda} · Garantía 20%: ${garantiaCripto} ${criptoMoneda} (genera rendimientos)`,
+      60, anticipoY + 20
+    )
 
     // --- CLÁUSULAS ---
-    let currentY = 610
+    let currentY = anticipoY + 60
     const clausulas = [
-      { t: 'CLÁUSULA PRIMERA - OBJETO', 
-        t2: `Crédito en ${criptoMoneda} por ${montoCripto} ${criptoMoneda} (equivalente a $${montoMXN} MXN), a pagar en ${plazo} meses.` },
-      { t: 'CLÁUSULA SEGUNDA - INTERESES', 
-        t2: `Tasa fija ${tasa}% anual. Mora: 5% adicional.` },
-      { t: 'CLÁUSULA TERCERA - ANTICIPO', 
-        t2: `Anticipo del 10%: ${anticipoCripto} ${criptoMoneda} ($${anticipoMXN} MXN).` }
+      `PRIMERA. La INSTITUCIÓN otorga al ACREDITADO un crédito en ${criptoMoneda} por ${montoCripto} ${criptoMoneda} (equivalente a $${montoMXN} MXN), a pagar en ${plazo} meses.`,
+      `SEGUNDA. El crédito devengará intereses ordinarios a una tasa fija anual del ${tasa}% sobre saldos insolutos.`,
+      `TERCERA. El ACREDITADO cubrirá un anticipo del 10%: ${anticipoCripto} ${criptoMoneda} ($${anticipoMXN} MXN).`,
+      `CUARTA. El ACREDITADO constituye una garantía del 20%: ${garantiaCripto} ${criptoMoneda}, que generará rendimientos y será devuelta al finalizar.`,
+      `QUINTA. El ACREDITADO se obliga a realizar ${plazo} pagos mensuales de ${pagoMensualCripto} ${criptoMoneda} ($${pagoMensualMXN} MXN).`,
+      `SEXTA. Pagos anticipados sin penalización, aplicables directamente a capital.`,
+      `SÉPTIMA. Los fondos se entregarán en ${criptoMoneda} a la wallet o exchange designado por el ACREDITADO.`
     ]
 
-    clausulas.forEach(c => {
+    clausulas.forEach((texto, index) => {
       doc.fillColor(primaryColor)
-      doc.fontSize(9)
+      doc.fontSize(8)
       doc.font('Helvetica-Bold')
-      doc.text(c.t, 50, currentY)
-      currentY += 12
+      doc.text(`CLÁUSULA ${['PRIMERA','SEGUNDA','TERCERA','CUARTA','QUINTA','SEXTA','SÉPTIMA'][index]}`, 50, currentY)
+      currentY += 10
       doc.fillColor(textColor)
       doc.fontSize(8)
       doc.font('Helvetica')
-      const textHeight = doc.heightOfString(c.t2, { width: doc.page.width - 100 })
-      doc.text(c.t2, 50, currentY, { width: doc.page.width - 100 })
-      currentY += textHeight + 15
-    })
-
-    // --- NUEVA PÁGINA ---
-    doc.addPage()
-    currentY = 50
-
-    // --- ENCABEZADO DE NUEVA PÁGINA ---
-    doc.rect(0, 0, doc.page.width, 20).fill(primaryColor)
-    
-    try {
-      const logoPath = path.join(process.cwd(), 'public', 'logotipo.png')
-      if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, 50, 25, { width: 50 })
-      }
-    } catch (error) {}
-    
-    doc.fillColor('white')
-    doc.fontSize(14)
-    doc.font('Helvetica-Bold')
-    doc.text('CONTRATO CRIPTO (CONTINUACIÓN)', 110, 30)
-    doc.moveTo(50, 55).lineTo(doc.page.width - 50, 55).stroke(primaryColor)
-
-    // --- CLÁUSULAS RESTANTES ---
-    const clausulasRestantes = [
-      { t: 'CLÁUSULA CUARTA - GARANTÍA', 
-        t2: `Garantía del 20%: ${garantiaCripto} ${criptoMoneda}. Se devuelve al finalizar más rendimientos.` },
-      { t: 'CLÁUSULA QUINTA - ENTREGA', 
-        t2: `Los fondos se entregarán en ${criptoMoneda} a la wallet o exchange designado por el ACREDITADO.` }
-    ]
-
-    currentY = 70
-    clausulasRestantes.forEach(c => {
-      doc.fillColor(primaryColor)
-      doc.fontSize(9)
-      doc.font('Helvetica-Bold')
-      doc.text(c.t, 50, currentY)
-      currentY += 12
-      doc.fillColor(textColor)
-      doc.fontSize(8)
-      doc.font('Helvetica')
-      const textHeight = doc.heightOfString(c.t2, { width: doc.page.width - 100 })
-      doc.text(c.t2, 50, currentY, { width: doc.page.width - 100 })
-      currentY += textHeight + 20
+      doc.text(texto, 50, currentY, { width: doc.page.width - 100, align: 'left' })
+      currentY += 20
     })
 
     // --- FIRMAS ---
-    const firmaY = doc.page.height - 140
+    const firmaY = doc.page.height - 130
 
-    doc.moveTo(50, firmaY - 10).lineTo(doc.page.width - 50, firmaY - 10).stroke(primaryColor)
-    
+    // Línea separadora
+    doc.strokeColor(primaryColor)
+    .lineWidth(1)
+    .moveTo(50, firmaY - 10)
+    .lineTo(doc.page.width - 50, firmaY - 10)
+    .stroke()
+
     doc.fillColor(primaryColor)
-    doc.fontSize(10)
+    doc.fontSize(9)
     doc.font('Helvetica-Bold')
-    doc.text('FIRMAS', 50, firmaY, { align: 'center' })
-    
-    doc.fillColor(textColor)
-    doc.fontSize(7)
-    doc.font('Helvetica')
-    doc.text('LEÍDO Y APROBADO EN VALLADOLID, YUCATÁN', 50, firmaY + 12, { align: 'center' })
+    doc.text('FIRMAS', 50, firmaY - 5, { align: 'center' })
 
-    // FIRMA INSTITUCIÓN
-    const instX = 70
-    const instY = firmaY + 30
-    
-    doc.rect(instX - 10, instY - 5, 200, 70).fill('#f9fafb').stroke(primaryColor)
-    
+    // FIRMA INSTITUCIÓN (izquierda)
+    doc.roundedRect(70, firmaY + 10, 200, 60, 3).stroke(primaryColor)
+
+    // Línea para firma
+    doc.strokeColor(primaryColor)
+    .lineWidth(1)
+    .moveTo(80, firmaY + 40)
+    .lineTo(240, firmaY + 40)
+    .stroke()
+
+    // Imagen de la firma del presidente
     try {
       const firmaPath = path.join(process.cwd(), 'public', 'juanmendez.png')
       if (fs.existsSync(firmaPath)) {
-        doc.image(firmaPath, instX - 20, instY - 10, { width: 140, height: 70 })
+        doc.image(firmaPath, 75, firmaY + 15, { width: 150, height: 35 })
       }
-    } catch {}
-    
-    doc.fillColor(primaryColor)
-    doc.fontSize(8)
-    doc.font('Helvetica-Bold')
-    doc.text('PRESIDENTE DEL CONSEJO', instX, instY + 40)
-    doc.fillColor(textColor)
-    doc.fontSize(7)
-    doc.text('LIC. JUAN CARLOS MÉNDEZ P.', instX, instY + 50)
+    } catch (error) {}
 
-    // FIRMA CLIENTE
-    const cliX = doc.page.width - 270
-    const cliY = firmaY + 30
-    
-    doc.rect(cliX - 10, cliY - 5, 200, 70).fill('#f9fafb').stroke(primaryColor)
-    doc.moveTo(cliX, cliY + 15).lineTo(cliX + 150, cliY + 15).stroke(primaryColor)
-    
     doc.fillColor(primaryColor)
-    doc.fontSize(8)
-    doc.font('Helvetica-Bold')
-    doc.text('EL ACREDITADO', cliX, cliY + 40)
-    doc.fillColor(textColor)
     doc.fontSize(7)
-    doc.text(lead.fullName, cliX, cliY + 50)
+    doc.font('Helvetica-Bold')
+    doc.text('PRESIDENTE DEL CONSEJO', 80, firmaY + 45)
+    doc.fillColor(textColor)
+    doc.fontSize(6)
+    doc.text('LIC. JUAN CARLOS MÉNDEZ P.', 80, firmaY + 53)
+
+    // FIRMA CLIENTE (derecha)
+    doc.roundedRect(330, firmaY + 10, 200, 60, 3).stroke(primaryColor)
+    doc.strokeColor(primaryColor)
+    .lineWidth(1)
+    .moveTo(340, firmaY + 40)
+    .lineTo(500, firmaY + 40)
+    .stroke()
+
+    doc.fillColor(primaryColor)
+    doc.fontSize(7)
+    doc.font('Helvetica-Bold')
+    doc.text('EL ACREDITADO', 340, firmaY + 45)
+    doc.fillColor(textColor)
+    doc.fontSize(6)
+    doc.text(lead.fullName.length > 30 ? lead.fullName.substring(0, 27) + '...' : lead.fullName, 340, firmaY + 53)
+    doc.text(`Wallet: ___________________`, 340, firmaY + 61)
 
     // --- PIE DE PÁGINA ---
-    doc.fontSize(6)
-    doc.fillColor('#999999')
-    doc.text('Caja Popular San Bernardino de Siena Valladolid · División Cripto', 50, doc.page.height - 30, { align: 'center', width: doc.page.width - 100 })
-    doc.text(`Reg: 29198 · CONDUSEF: 4930 · cripto@cajavalladolid.com`, 50, doc.page.height - 20, { align: 'center', width: doc.page.width - 100 })
+    doc.fontSize(5)
+    doc.fillColor('#6b7280')
+    doc.text(
+      'Caja Popular San Bernardino de Siena Valladolid · División de Activos Digitales', 
+      50, doc.page.height - 40, 
+      { align: 'center', width: doc.page.width - 100 }
+    )
+    doc.text(
+      `Folio: ${lead.id.slice(-8).toUpperCase()} · Documento generado electrónicamente · ${new Date().toLocaleDateString('es-MX')}`, 
+      50, doc.page.height - 30, 
+      { align: 'center', width: doc.page.width - 100 }
+    )
 
     doc.end()
 

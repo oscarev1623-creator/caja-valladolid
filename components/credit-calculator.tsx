@@ -1,15 +1,27 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Calculator, Download, Table, Loader2, CreditCard, Calendar, Percent, X, FileText, Info } from 'lucide-react';
+import { Calculator, Download, Table, Loader2, CreditCard, Calendar, Percent, X, FileText, Info, Zap, Shield, Smartphone, Send } from 'lucide-react';
+import Image from 'next/image';
+import { ContactFormModal } from './contact-form-modal';
+
+// Interfaz para las filas de la tabla de amortización
+interface AmortizationRow {
+  month: number;
+  payment: number;
+  interest: number;
+  principal: number;
+  balance: number;
+}
 
 const CreditCalculator = () => {
   // Estados
-  const [creditAmount, setCreditAmount] = useState(400000);
+  const [creditAmount, setCreditAmount] = useState(50000);
   const [years, setYears] = useState(8);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showAmortizationModal, setShowAmortizationModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
   
   // Resultados
   const [results, setResults] = useState({
@@ -18,31 +30,23 @@ const CreditCalculator = () => {
     totalInterest: 0
   });
 
-  // Constantes
-  const interestRate = 6.9 / 100 / 12;
+  // Tasa de interés 11% anual
+  const interestRate = 11 / 100 / 12; // 11% anual -> mensual
 
   // Opciones de plazo
   const yearOptions = [4, 6, 8, 10, 12, 16, 20];
 
-  // Calcular anticipo FIJO según tu tabla
+  // Calcular anticipo por rangos
   const calculateAdvance = (amount: number) => {
-    if (amount >= 10000 && amount <= 30000) return 800;
-    if (amount >= 40000 && amount <= 60000) return 900;
-    if (amount >= 70000 && amount <= 90000) return 1000;
-    if (amount >= 100000 && amount <= 120000) return 1100;
-    if (amount >= 130000 && amount <= 150000) return 1200;
-    if (amount >= 160000 && amount <= 180000) return 1250;
-    if (amount >= 190000 && amount <= 200000) return 1300;
-    if (amount >= 210000 && amount <= 240000) return 1350;
-    if (amount >= 250000 && amount <= 280000) return 1400;
-    if (amount >= 290000 && amount <= 320000) return 1450;
-    if (amount >= 330000 && amount <= 360000) return 1500;
-    if (amount >= 370000 && amount <= 400000) return 1500;
-    if (amount >= 410000 && amount <= 440000) return 2000;
-    if (amount >= 450000 && amount <= 470000) return 2500;
-    if (amount >= 480000 && amount <= 500000) return 3000;
-    if (amount >= 600000) return amount * 0.005; // 0.5% del monto
-    return 0;
+    if (amount >= 50000 && amount <= 200000) {
+      return 2308.23;
+    } else if (amount > 200000 && amount <= 1000000) {
+      return 6811.52;
+    } else if (amount > 1000000 && amount <= 5000000) {
+      return 9960.47;
+    } else {
+      return 0;
+    }
   };
 
   // Calcular préstamo
@@ -50,6 +54,16 @@ const CreditCalculator = () => {
     const advanceAmount = calculateAdvance(creditAmount);
     const netAmount = creditAmount - advanceAmount;
     const months = years * 12;
+    
+    // Evitar división por cero si netAmount es negativo o cero
+    if (netAmount <= 0) {
+      setResults({
+        monthlyPayment: 0,
+        advanceAmount,
+        totalInterest: 0
+      });
+      return;
+    }
     
     const monthlyPayment = (netAmount * interestRate * Math.pow(1 + interestRate, months)) / 
                            (Math.pow(1 + interestRate, months) - 1);
@@ -61,6 +75,19 @@ const CreditCalculator = () => {
       advanceAmount,
       totalInterest
     });
+  };
+
+  // Obtener el rango actual para mostrar
+  const getCurrentRange = (amount: number) => {
+    if (amount >= 50000 && amount <= 200000) {
+      return "Crédito de $50,000 a $200,000 MXN";
+    } else if (amount > 200000 && amount <= 1000000) {
+      return "Crédito de $200,001 a $1,000,000 MXN";
+    } else if (amount > 1000000 && amount <= 5000000) {
+      return "Crédito de $1,000,001 a $5,000,000 MXN";
+    } else {
+      return "Rango no válido";
+    }
   };
 
   // Calcular al cambiar valores
@@ -91,13 +118,13 @@ const CreditCalculator = () => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(amount);
   };
 
-  // Generar tabla de amortización
-  const generateAmortizationTable = () => {
+  // Generar tabla de amortización - CORREGIDO CON TIPO EXPLÍCITO
+  const generateAmortizationTable = (): AmortizationRow[] => {
     const advanceAmount = results.advanceAmount;
     const netAmount = creditAmount - advanceAmount;
     const months = years * 12;
@@ -105,47 +132,126 @@ const CreditCalculator = () => {
     let balance = netAmount;
     const monthlyRate = interestRate;
     
-    const rows = [];
+    const rows: AmortizationRow[] = [];
     
     for (let month = 1; month <= months; month++) {
       const interest = balance * monthlyRate;
       const principal = monthlyPayment - interest;
       balance -= principal;
 
-      // Mostrar primeros 12 meses y luego cada año
-      if (month <= 12 || month % 12 === 0 || month === months) {
-        rows.push({
-          month,
-          payment: monthlyPayment,
-          interest,
-          principal,
-          balance: Math.max(balance, 0)
-        });
-      }
+      // Mostrar todos los meses
+      rows.push({
+        month,
+        payment: monthlyPayment,
+        interest,
+        principal,
+        balance: Math.max(balance, 0)
+      });
     }
     
     return rows;
   };
 
-  // Manejar descarga PDF
+  // Función mejorada para descargar PDF
   const handleDownloadPDF = () => {
-    alert('✅ Se está generando tu PDF...\n\nEn una implementación real, el PDF se descargaría automáticamente.');
+    // Crear contenido HTML para el PDF
+    const amortizationRows = generateAmortizationTable().slice(0, 12); // Primeros 12 meses para el PDF
+    
+    let htmlContent = `
+      <html>
+        <head>
+          <title>Simulación de Crédito - Caja Valladolid</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #059669; text-align: center; }
+            h2 { color: #065f46; margin-top: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { background: #059669; color: white; padding: 10px; text-align: left; }
+            td { padding: 8px; border-bottom: 1px solid #ddd; }
+            .total { font-weight: bold; background: #f3f4f6; }
+            .summary { background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            .oxxo-badge { background: #fbbf24; color: #000; padding: 5px 10px; border-radius: 20px; display: inline-block; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <h1>Caja Popular San Bernardino de Siena Valladolid</h1>
+          <h2>Simulación de Crédito - Tasa 11% Anual</h2>
+          
+          <div class="summary">
+            <p><strong>Monto solicitado:</strong> ${formatCurrency(creditAmount)}</p>
+            <p><strong>Rango de crédito:</strong> ${getCurrentRange(creditAmount)}</p>
+            <p><strong>Plazo:</strong> ${years} años (${years * 12} meses)</p>
+            <p><strong>Mensualidad:</strong> ${formatCurrency(results.monthlyPayment)}</p>
+            <p><strong>Anticipo (cuota fija por rango):</strong> ${formatCurrency(results.advanceAmount)}</p>
+            <p><strong>Interés total:</strong> ${formatCurrency(results.totalInterest)}</p>
+            <p><strong>Total a pagar:</strong> ${formatCurrency(creditAmount + results.totalInterest)}</p>
+          </div>
+          
+          <h3>Primeros 12 meses de amortización</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Mes</th>
+                <th>Pago</th>
+                <th>Interés</th>
+                <th>Capital</th>
+                <th>Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    amortizationRows.forEach(row => {
+      htmlContent += `
+        <tr>
+          <td>${row.month}</td>
+          <td>${formatCurrency(row.payment)}</td>
+          <td>${formatCurrency(row.interest)}</td>
+          <td>${formatCurrency(row.principal)}</td>
+          <td>${formatCurrency(row.balance)}</td>
+        </tr>
+      `;
+    });
+    
+    htmlContent += `
+            </tbody>
+          </table>
+          <p style="text-align: center; margin-top: 30px; color: #666;">
+            Esta simulación es informativa y puede variar según condiciones finales.
+          </p>
+          <p style="text-align: center; margin-top: 20px; color: #059669; font-weight: bold;">
+            Paga tu anticipo en más de 20,000 OXXOs en todo México
+          </p>
+        </body>
+      </html>
+    `;
+    
+    // Abrir en nueva ventana para imprimir/guardar como PDF
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    } else {
+      alert('Por favor, permite las ventanas emergentes para descargar el PDF');
+    }
   };
 
   return (
-    <div id="calculadora" className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8"> {/* ID AGREGADO AQUÍ */}
+    <div id="calculadora" className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Simula tu crédito personalizado
+            Simula tu crédito personalizado en <span className="text-green-600">Pesos Mexicanos</span>
           </h1>
           <p className="text-gray-600 text-lg">
-            Ajusta los parámetros y calcula tu préstamo ideal
+            Ajusta los parámetros y calcula tu préstamo ideal en MXN
           </p>
         </div>
 
-        {/* Calculadora - Centrada y LIMPIA */}
+        {/* Calculadora */}
         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-12 border border-gray-100">
           <div className="max-w-2xl mx-auto">
             <div className="flex items-center justify-center gap-3 mb-8">
@@ -153,15 +259,16 @@ const CreditCalculator = () => {
                 <Calculator className="w-6 h-6 text-green-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900">
-                Personaliza tu crédito
+                Personaliza tu crédito en MXN
               </h2>
             </div>
 
-            {/* Monto del crédito - SIN INFO DE ANTICIPO */}
+            {/* Monto del crédito */}
             <div className="mb-10">
               <div className="flex items-center justify-between mb-4">
-                <label className="text-lg font-semibold text-gray-800">
-                  Monto del crédito
+                <label className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-green-600" />
+                  Monto del crédito (MXN)
                 </label>
                 <div className="text-2xl md:text-3xl font-bold text-green-600">
                   {formatCurrency(creditAmount)}
@@ -170,17 +277,17 @@ const CreditCalculator = () => {
               
               <input
                 type="range"
-                min="10000"
-                max="1000000"
-                step="10000"
+                min="50000"
+                max="5000000"
+                step="50000"
                 value={creditAmount}
                 onChange={(e) => setCreditAmount(parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-green"
               />
               
               <div className="flex justify-between text-sm text-gray-500 mt-3">
-                <span>$10K</span>
-                <span>$1M</span>
+                <span>$50,000 MXN</span>
+                <span>$5,000,000 MXN</span>
               </div>
             </div>
 
@@ -224,7 +331,7 @@ const CreditCalculator = () => {
               ) : (
                 <div className="flex items-center justify-center gap-3">
                   <Calculator className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  Calcular crédito personalizado
+                  Calcular crédito en MXN
                 </div>
               )}
             </button>
@@ -240,7 +347,7 @@ const CreditCalculator = () => {
           </div>
         )}
 
-        {/* Resultados - Aparece después de calcular */}
+        {/* Resultados */}
         {showResults && (
           <div 
             id="results-section"
@@ -248,14 +355,14 @@ const CreditCalculator = () => {
           >
             <div className="text-center mb-8">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-                Resultados de tu crédito
+                Resultados de tu crédito en MXN
               </h2>
               <p className="text-gray-600">
-                Resumen de tu préstamo personalizado
+                Resumen de tu préstamo personalizado en pesos mexicanos
               </p>
             </div>
 
-            {/* Tarjetas de resultados en HORIZONTAL */}
+            {/* Tarjetas de resultados */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
               {/* Monto solicitado */}
               <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
@@ -271,6 +378,9 @@ const CreditCalculator = () => {
                 <div className="text-gray-500 text-sm">
                   Plazo: <span className="font-semibold">{years} años</span>
                 </div>
+                <div className="text-xs text-gray-400 mt-2">
+                  {getCurrentRange(creditAmount)}
+                </div>
               </div>
 
               {/* Mensualidad */}
@@ -285,11 +395,11 @@ const CreditCalculator = () => {
                   {formatCurrency(results.monthlyPayment)}
                 </div>
                 <div className="text-gray-500 text-sm">
-                  Pago mensual fijo
+                  Pago mensual fijo en MXN
                 </div>
               </div>
 
-              {/* Anticipo */}
+              {/* Anticipo - POR RANGOS */}
               <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-green-100 rounded-lg">
@@ -301,20 +411,74 @@ const CreditCalculator = () => {
                   {formatCurrency(results.advanceAmount)}
                 </div>
                 <div className="text-gray-500 text-sm">
-                  Monto fijo según tabla
+                  Cuota fija por rango de crédito
                 </div>
               </div>
             </div>
 
-            {/* Interés total - Tarjeta grande */}
+            {/* Interés total */}
             <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-6 md:p-8 mb-10">
               <div className="flex flex-col md:flex-row md:items-center justify-between">
                 <div>
                   <h3 className="text-xl font-semibold mb-2">Interés total</h3>
-                  <p className="text-green-100">Costo total del crédito a lo largo del plazo</p>
+                  <p className="text-green-100">Costo total del crédito en MXN a lo largo del plazo (tasa 11% anual)</p>
                 </div>
                 <div className="text-4xl md:text-5xl font-bold mt-4 md:mt-0">
                   {formatCurrency(results.totalInterest)}
+                </div>
+              </div>
+            </div>
+
+            {/* Alianza OXXO */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-8 mb-10 border border-amber-200 shadow-md">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                {/* Logo OXXO */}
+                <div className="flex-shrink-0 bg-white p-4 rounded-xl shadow-md">
+                  <img 
+                    src="/oxxo.png" 
+                    alt="OXXO" 
+                    className="h-16 w-auto object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement!.innerHTML += `
+                        <div class="text-amber-600 font-bold text-2xl">OXXO</div>
+                      `;
+                    }}
+                  />
+                </div>
+                
+                {/* Texto informativo */}
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-amber-600" />
+                    Paga tu anticipo en más de 20,000 OXXOs
+                  </h3>
+                  
+                  <p className="text-gray-700 mb-4">
+                    Gracias a nuestra alianza estratégica con <strong>OXXO</strong>, ahora puedes realizar el pago de tu anticipo de forma 
+                    <strong> rápida, segura y sin complicaciones</strong> en cualquier sucursal OXXO de todo México.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                    <div className="flex items-start gap-2">
+                      <div className="bg-green-100 p-1 rounded-full">
+                        <Smartphone className="w-4 h-4 text-green-600" />
+                      </div>
+                      <span className="text-sm text-gray-600">Genera tu línea de captura</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="bg-green-100 p-1 rounded-full">
+                        <Shield className="w-4 h-4 text-green-600" />
+                      </div>
+                      <span className="text-sm text-gray-600">Pago seguro y protegido</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="bg-green-100 p-1 rounded-full">
+                        <Zap className="w-4 h-4 text-green-600" />
+                      </div>
+                      <span className="text-sm text-gray-600">Confirmación inmediata</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -338,203 +502,134 @@ const CreditCalculator = () => {
             </div>
 
             {/* Nota informativa */}
-            <div className="p-6 bg-green-50 rounded-xl border border-green-200">
+            <div className="p-6 bg-green-50 rounded-xl border border-green-200 mb-10">
               <p className="text-gray-700 text-sm text-center">
-                <strong>Nota:</strong> La tasa de interés es fija del 6.9% anual. 
-                El anticipo cubre gastos administrativos y se descuenta del monto total. 
+                <strong>Nota:</strong> La tasa de interés es fija del <strong>11% anual</strong> en pesos mexicanos (MXN). 
+                El anticipo corresponde a una <strong>cuota fija por rango de crédito</strong> que cubre gastos administrativos y de gestión. 
+                <br /><br />
+                <span className="font-semibold text-amber-600">✅ Paga tu anticipo en cualquier OXXO de México.</span>
                 Esta simulación es informativa y puede variar según condiciones finales.
               </p>
             </div>
-          </div>
-        )}
 
-        {/* Modal de tabla de amortización - CORREGIDO */}
-        {showAmortizationModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden animate-scaleIn">
-              {/* Header del modal */}
-              <div className="sticky top-0 bg-gradient-to-r from-green-600 to-green-700 text-white p-6 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <Table className="w-6 h-6" />
-                  <h2 className="text-xl font-bold">Tabla de amortización</h2>
-                </div>
-                <button 
-                  onClick={() => setShowAmortizationModal(false)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Contenido del modal */}
-              <div className="p-8 overflow-auto max-h-[calc(85vh-80px)]">
-                {/* Encabezado limpio */}
-                <div className="mb-8 text-center">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                    Detalle de pagos mensuales
-                  </h3>
-                  <div className="inline-flex items-center gap-4 bg-green-50 px-4 py-2 rounded-lg">
-                    <span className="text-gray-700">
-                      <span className="font-semibold">Crédito:</span> {formatCurrency(creditAmount)}
-                    </span>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-gray-700">
-                      <span className="font-semibold">Plazo:</span> {years} años
-                    </span>
-                  </div>
-                </div>
-
-                {/* Tabla */}
-                <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm mb-8">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-green-600">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                          Mes
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                          Pago mensual
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                          Interés
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                          Capital
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                          Saldo restante
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
-                      {generateAmortizationTable().map((row, index) => (
-                        <tr 
-                          key={row.month} 
-                          className={`hover:bg-green-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                        >
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                            {row.month}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                            {formatCurrency(row.payment)}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-medium text-red-600">
-                            {formatCurrency(row.interest)}
-                          </td>
-                          <td className="px-6 py-4 text-sm font-medium text-green-600">
-                            {formatCurrency(row.principal)}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-700">
-                            {formatCurrency(row.balance)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Resumen */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-4 text-center">Resumen total</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                      <p className="text-sm text-green-800 font-semibold mb-2">Total pagado</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        {formatCurrency(creditAmount + results.totalInterest)}
-                      </p>
-                    </div>
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                      <p className="text-sm text-green-800 font-semibold mb-2">Interés total</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        {formatCurrency(results.totalInterest)}
-                      </p>
-                    </div>
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                      <p className="text-sm text-green-800 font-semibold mb-2">Monto del crédito</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        {formatCurrency(creditAmount)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cuadro de información CORREGIDO - SOLO TEXTO NECESARIO */}
-                <div className="mb-6">
-                  <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
-                    <Info className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        Esta tabla muestra los pagos mensuales estimados basados en una tasa de interés fija del 6.9% anual.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer del modal - CORREGIDO */}
-              <div className="sticky bottom-0 bg-green-50 p-4 border-t border-green-200 flex justify-between items-center">
-                <div className="text-sm text-gray-700 font-medium">
-                  Total de pagos: <span className="text-green-600">{years * 12} meses</span>
-                </div>
-                <button
-                  onClick={handleDownloadPDF}
-                  className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transition-all flex items-center gap-2 shadow-md hover:shadow-lg"
-                >
-                  <Download className="w-4 h-4" />
-                  Exportar a PDF
-                </button>
-              </div>
+            {/* BOTÓN DE SOLICITAR CRÉDITO - AHORA USA EL MODAL PROFESIONAL */}
+            <div className="text-center mb-12">
+              <button
+                onClick={() => setShowFormModal(true)}
+                className="px-10 py-5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-xl rounded-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3 mx-auto"
+              >
+                <Send className="w-6 h-6" />
+                Solicitar crédito
+              </button>
+              <p className="text-gray-500 text-sm mt-4">
+                ¿Listo para dar el siguiente paso? Solicita tu crédito con la simulación que acabas de realizar.
+              </p>
             </div>
           </div>
         )}
       </div>
 
+      {/* MODAL DEL FORMULARIO PROFESIONAL */}
+      <ContactFormModal 
+        isOpen={showFormModal} 
+        onClose={() => setShowFormModal(false)} 
+      />
+
+      {/* Modal de tabla de amortización */}
+      {showAmortizationModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 animate-fadeIn"
+          onClick={() => setShowAmortizationModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del modal */}
+            <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 flex justify-between items-center">
+              <div>
+                <h3 className="text-2xl font-bold flex items-center gap-2">
+                  <Table className="w-6 h-6" />
+                  Tabla de Amortización
+                </h3>
+                <p className="text-green-100 mt-1">
+                  {formatCurrency(creditAmount)} a {years} años • Tasa {interestRate * 12}% anual
+                </p>
+                <p className="text-green-100 text-sm mt-1">
+                  Anticipo: {formatCurrency(results.advanceAmount)} ({getCurrentRange(creditAmount)})
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAmortizationModal(false)}
+                className="p-2 hover:bg-green-800 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Cuerpo del modal - Tabla */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mes</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago mensual</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interés</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capital</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {generateAmortizationTable().map((row: AmortizationRow) => (
+                    <tr key={row.month} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap font-medium">Mes {row.month}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-green-600">{formatCurrency(row.payment)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-orange-600">{formatCurrency(row.interest)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-blue-600">{formatCurrency(row.principal)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-900 font-medium">{formatCurrency(row.balance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer del modal */}
+            <div className="bg-gray-50 p-4 border-t border-gray-200 flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                <strong>Total de pagos:</strong> {years * 12} meses
+              </div>
+              <button
+                onClick={() => setShowAmortizationModal(false)}
+                className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Estilos CSS */}
       <style jsx>{`
         @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
         
         @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
         }
         
-        .animate-fadeInUp {
-          animation: fadeInUp 0.6s ease-out;
-        }
+        .animate-fadeInUp { animation: fadeInUp 0.6s ease-out; }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+        .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
         
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-        
-        .animate-scaleIn {
-          animation: scaleIn 0.3s ease-out;
-        }
-        
-        /* Estilo del slider en VERDE */
         .slider-green {
           -webkit-appearance: none;
           height: 8px;

@@ -1,19 +1,19 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Calculator, Bitcoin, DollarSign, Percent, Download, Zap, Shield, TrendingDown, MessageSquare, UserCheck, Loader2 } from 'lucide-react';
-import { LeadCaptureForm } from "./lead-capture-form";
+import { Calculator, Bitcoin, DollarSign, Percent, Download, Zap, Shield, TrendingDown, MessageSquare, UserCheck, Loader2, Send } from 'lucide-react';
 import Image from "next/image";
+import { CryptoContactFormModal } from "./crypto-contact-form-modal";
 
 const CryptoCreditCalculator = () => {
   // Estados
-  const [creditAmount, setCreditAmount] = useState(10000); // En USDT
-  const [selectedCrypto, setSelectedCrypto] = useState('USDT');
-  const [years, setYears] = useState(12); // meses
+  const [creditAmount, setCreditAmount] = useState(10000);
+  const [selectedCrypto, setSelectedCrypto] = useState('BTC');
+  const [years, setYears] = useState(12);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   
-  // NUEVO ESTADO PARA EL MODAL
+  // ESTADO PARA EL MODAL
   const [isLeadFormOpen, setIsLeadFormOpen] = useState(false);
   
   // Resultados
@@ -30,17 +30,8 @@ const CryptoCreditCalculator = () => {
   // Opciones de plazo
   const yearOptions = [6, 12, 18, 24, 36, 48];
 
-  // Criptomonedas disponibles para crédito - CON LOGOS
+  // Criptomonedas disponibles para crédito - CON LOGOS - ORDEN PERSONALIZADO
   const cryptocurrencies = [
-    { 
-      id: 'USDT', 
-      name: 'Tether', 
-      symbol: 'USDT', 
-      color: 'from-green-500 to-emerald-600',
-      icon: '/crypto-logos/usdt.png',
-      stablecoin: true,
-      description: 'Estable 1:1 con USD'
-    },
     { 
       id: 'BTC', 
       name: 'Bitcoin', 
@@ -76,12 +67,21 @@ const CryptoCreditCalculator = () => {
       icon: '/crypto-logos/sol.png',
       stablecoin: false,
       description: 'Valor variable'
+    },
+    { 
+      id: 'USDT', 
+      name: 'Tether', 
+      symbol: 'USDT', 
+      color: 'from-green-500 to-emerald-600',
+      icon: '/crypto-logos/usdt.png',
+      stablecoin: true,
+      description: 'Estable 1:1 con USD'
     }
   ];
 
   // Calcular anticipo al 10% del monto
   const calculateAdvance = (amount: number) => {
-    return amount * 0.10; // 10% del monto
+    return amount * 0.10;
   };
 
   // Convertir a criptomoneda seleccionada (simulado)
@@ -121,7 +121,7 @@ const CryptoCreditCalculator = () => {
     calculateLoan();
   }, [creditAmount, years]);
 
-  // Manejar cálculo con animación - IGUAL QUE CREDIT CALCULATOR
+  // Manejar cálculo con animación
   const handleCalculate = () => {
     setIsLoading(true);
     setShowResults(false);
@@ -136,12 +136,11 @@ const CryptoCreditCalculator = () => {
           behavior: "smooth" 
         });
       }, 100);
-    }, 1200); // Mismo tiempo que credit-calculator (1200ms)
+    }, 1200);
   };
 
-  // NUEVA FUNCIÓN PARA ABRIR EL FORMULARIO
-  const handleRequestAdvisor = () => {
-    // Abre el modal de pre-evaluación
+  // FUNCIÓN PARA ABRIR EL FORMULARIO
+  const handleOpenForm = () => {
     setIsLeadFormOpen(true);
   };
 
@@ -167,8 +166,6 @@ const CryptoCreditCalculator = () => {
     return `${cryptoAmount.toFixed(6)} ${crypto?.symbol}`;
   };
 
-  const selectedCryptoData = cryptocurrencies.find(c => c.id === selectedCrypto);
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -180,9 +177,9 @@ const CryptoCreditCalculator = () => {
                 <Image
                   src="/crypto-logos/bitcoin.png"
                   alt="Bitcoin"
-                  width={48}
-                  height={48}
+                  fill
                   className="object-contain drop-shadow-lg"
+                  sizes="48px"
                 />
               </div>
             </div>
@@ -202,8 +199,7 @@ const CryptoCreditCalculator = () => {
               <Image
                 src="/crypto-logos/bitcoin.png"
                 alt="Crypto"
-                width={20}
-                height={20}
+                fill
                 className="object-contain"
               />
             </div>
@@ -232,7 +228,7 @@ const CryptoCreditCalculator = () => {
           </div>
         </div>
 
-        {/* Calculadora - Todo en una columna */}
+        {/* Calculadora */}
         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-12 border border-gray-100">
           <div className="max-w-2xl mx-auto">
             <div className="flex items-center justify-center gap-3 mb-8">
@@ -250,7 +246,7 @@ const CryptoCreditCalculator = () => {
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-5 h-5 text-gray-600" />
                   <label className="text-lg font-semibold text-gray-800">
-                    Monto del crédito
+                    Monto del crédito (USDT)
                   </label>
                 </div>
                 <div className="text-2xl md:text-3xl font-bold text-green-600">
@@ -269,23 +265,15 @@ const CryptoCreditCalculator = () => {
               />
               
               <div className="flex justify-between text-sm text-gray-500 mt-3">
-                <span>1K USDT</span>
-                <span>1M USDT</span>
+                <span>1,000 USDT</span>
+                <span>1,000,000 USDT</span>
               </div>
             </div>
 
             {/* Selección de criptomoneda CON LOGOS */}
             <div className="mb-10">
               <div className="flex items-center gap-3 mb-6">
-                <div className="relative w-6 h-6">
-                  <Image
-                    src="/crypto-logos/bitcoin.png"
-                    alt="Criptomonedas"
-                    width={24}
-                    height={24}
-                    className="object-contain"
-                  />
-                </div>
+                <Bitcoin className="w-5 h-5 text-gray-600" />
                 <label className="text-lg font-semibold text-gray-800">
                   Recibir crédito en
                 </label>
@@ -302,7 +290,6 @@ const CryptoCreditCalculator = () => {
                         : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-green-300 hover:bg-gray-100'
                     }`}
                   >
-                    {/* Logo con fondo circular */}
                     <div className={`w-16 h-16 rounded-full ${
                       selectedCrypto === crypto.id 
                         ? 'bg-white/20' 
@@ -312,14 +299,13 @@ const CryptoCreditCalculator = () => {
                         <Image
                           src={crypto.icon}
                           alt={`${crypto.name} logo`}
-                          width={40}
-                          height={40}
+                          fill
                           className="object-contain"
+                          sizes="40px"
                         />
                       </div>
                     </div>
                     
-                    {/* Símbolo y nombre */}
                     <div className="font-semibold text-base">{crypto.symbol}</div>
                     <div className="text-xs opacity-80 mt-1 text-center">{crypto.name}</div>
                   </button>
@@ -353,7 +339,7 @@ const CryptoCreditCalculator = () => {
               </div>
             </div>
 
-            {/* Botón calcular - CON LA MISMA ANIMACIÓN */}
+            {/* Botón calcular */}
             <button
               onClick={handleCalculate}
               disabled={isLoading}
@@ -374,7 +360,7 @@ const CryptoCreditCalculator = () => {
           </div>
         </div>
 
-        {/* Animación de carga - EXACTAMENTE IGUAL QUE CREDIT CALCULATOR */}
+        {/* Animación de carga */}
         {isLoading && (
           <div className="max-w-md mx-auto text-center mb-12">
             <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-green-500 mb-4"></div>
@@ -383,7 +369,7 @@ const CryptoCreditCalculator = () => {
           </div>
         )}
 
-        {/* Resultados - CON LAS MISMAS ANIMACIONES */}
+        {/* Resultados */}
         {showResults && (
           <div 
             id="crypto-credit-results"
@@ -398,7 +384,7 @@ const CryptoCreditCalculator = () => {
               </p>
             </div>
 
-            {/* Tarjetas de resultados en HORIZONTAL */}
+            {/* Tarjetas de resultados */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
               {/* Monto solicitado */}
               <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
@@ -432,7 +418,7 @@ const CryptoCreditCalculator = () => {
                 </div>
               </div>
 
-              {/* Anticipo - AHORA 10% */}
+              {/* Anticipo - 10% */}
               <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-green-100 rounded-lg">
@@ -478,22 +464,18 @@ const CryptoCreditCalculator = () => {
               </div>
             </div>
 
-            {/* Botones de acción - ACTUALIZADOS Y FUNCIONALES */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
-              <button 
-                onClick={handleRequestAdvisor}
-                className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transition-colors flex items-center justify-center gap-3 shadow-md hover:shadow-lg group"
+            {/* SOLO BOTÓN DE SOLICITAR CRÉDITO */}
+            <div className="text-center mb-12">
+              <button
+                onClick={handleOpenForm}
+                className="px-10 py-5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-xl rounded-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3 mx-auto"
               >
-                <UserCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                Hablar con Asesor Especializado
+                <Send className="w-6 h-6" />
+                Solicitar crédito
               </button>
-              <button 
-                onClick={() => alert('📄 Se está generando tu contrato en formato PDF...\n\nPodrás revisar todos los términos y condiciones antes de continuar.')}
-                className="px-8 py-3 bg-white text-gray-700 font-semibold rounded-lg border-2 border-gray-200 hover:border-green-300 hover:text-green-700 hover:bg-green-50 transition-all flex items-center justify-center gap-3 group"
-              >
-                <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                Ver Contrato de Ejemplo
-              </button>
+              <p className="text-gray-500 text-sm mt-4">
+                ¿Listo para dar el siguiente paso? Solicita tu crédito con la simulación que acabas de realizar.
+              </p>
             </div>
 
             {/* Llamada a la acción */}
@@ -503,7 +485,7 @@ const CryptoCreditCalculator = () => {
                 <h4 className="text-xl font-bold text-gray-900">¿Listo para comenzar?</h4>
               </div>
               <p className="text-gray-700 mb-4 max-w-2xl mx-auto">
-                Completa la etapa 1 hablando con nuestro asesor y te guiaremos paso a paso 
+                Completa la etapa 1 con nuestro asesor y te guiaremos paso a paso 
                 en el proceso formal de tu crédito en criptomonedas.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -544,10 +526,6 @@ const CryptoCreditCalculator = () => {
                     </li>
                     <li className="flex items-start gap-2">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
-                      <span>Refuerza la confianza entre el cliente y la institución</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
                       <span>Se descuenta del total del crédito, no es un cargo adicional</span>
                     </li>
                   </ul>
@@ -564,15 +542,7 @@ const CryptoCreditCalculator = () => {
                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-5 rounded-lg border border-green-200">
                   <div className="text-center mb-3">
                     <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3 p-2">
-                      <div className="relative w-8 h-8">
-                        <Image
-                          src="/crypto-logos/bitcoin.png"
-                          alt="Bitcoin"
-                          width={32}
-                          height={32}
-                          className="object-contain"
-                        />
-                      </div>
+                      <Bitcoin className="w-6 h-6 text-green-600" />
                     </div>
                     <h4 className="font-semibold text-gray-900">Créditos en Cripto</h4>
                     <p className="text-sm text-gray-600">Nuestra plataforma</p>
@@ -621,14 +591,16 @@ const CryptoCreditCalculator = () => {
         )}
       </div>
       
-      {/* MODAL DE PRE-EVALUACIÓN - SE ABRE AL HACER CLIC EN "Hablar con Asesor Especializado" */}
-      <LeadCaptureForm 
+      {/* MODAL DE PRE-EVALUACIÓN - AHORA CON LAS PROPS CORRECTAS */}
+      <CryptoContactFormModal 
         isOpen={isLeadFormOpen} 
         onClose={() => setIsLeadFormOpen(false)}
-        creditType="crypto"  // Especifica que es para crédito en criptomonedas
+        selectedCrypto={selectedCrypto}
+        plazo={years}
+        monto={creditAmount}
       />
 
-      {/* Estilos CSS - EXACTAMENTE IGUAL QUE CREDIT CALCULATOR */}
+      {/* Estilos CSS */}
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -641,39 +613,10 @@ const CryptoCreditCalculator = () => {
           }
         }
         
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        
         .animate-fadeInUp {
           animation: fadeInUp 0.6s ease-out;
         }
         
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-        
-        .animate-scaleIn {
-          animation: scaleIn 0.3s ease-out;
-        }
-        
-        /* Estilo del slider en VERDE - EXACTAMENTE IGUAL */
         .slider-green {
           -webkit-appearance: none;
           height: 8px;

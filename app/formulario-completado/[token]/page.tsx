@@ -3,16 +3,25 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { CheckCircle, Home, Clock, FileText } from 'lucide-react'
+import { CheckCircle, Home, Clock, FileText, AlertCircle } from 'lucide-react'
 
 export default function FormularioCompletadoPage() {
   const params = useParams()
   const router = useRouter()
-  const token = params.token as string
+  
+  // Manejo seguro de params.token
+  const token = params?.token as string | undefined
   
   const [countdown, setCountdown] = useState(10)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Si no hay token, mostrar error
+    if (!token) {
+      setError('Token no válido')
+      return
+    }
+
     const timer = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
@@ -25,7 +34,27 @@ export default function FormularioCompletadoPage() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [router])
+  }, [router, token])
+
+  // Mostrar error si no hay token
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <AlertCircle className="w-20 h-20 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Enlace no válido</h1>
+          <p className="text-gray-600 mb-6">El enlace no es válido o ha expirado.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-3 rounded-lg hover:from-green-700 hover:to-emerald-700 font-medium shadow-lg hover:shadow-xl transition-all"
+          >
+            <Home className="w-5 h-5" />
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 p-4">

@@ -56,6 +56,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // ✅ VALIDAR QUE EL LEAD TENGA EMAIL
+    if (!lead.email) {
+      return NextResponse.json(
+        { success: false, error: 'El lead no tiene un email registrado' },
+        { status: 400 }
+      )
+    }
+
     // ✅ Obtener la criptomoneda seleccionada por el usuario
     const criptoMoneda = lead.selectedCrypto || 'USDT'
     
@@ -131,41 +139,41 @@ export async function POST(request: NextRequest) {
 
     let htmlContent = fs.readFileSync(templatePath, 'utf8')
 
-// Reemplazar variables
-htmlContent = htmlContent
-  .replace(/{{nombre_cliente}}/g, lead.fullName)
-  .replace(/{{cripto}}/g, criptoMoneda)
-  .replace(/{{monto_usdt}}/g, montoUSDT.toLocaleString('es-MX'))
-  .replace(/{{monto_cripto}}/g, montoCripto.toLocaleString('es-MX', { 
-    minimumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6,
-    maximumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6
-  }))
-  .replace(/{{monto_mxn}}/g, Math.round(montoMXN).toLocaleString('es-MX'))
-  .replace(/{{precio_usd}}/g, precioUSD.toLocaleString('es-MX'))
-  .replace(/{{tipo_cambio_mxn}}/g, tipoCambioUSDMXN.toString())
-  .replace(/{{anticipo_usdt}}/g, (montoUSDT * 0.10).toLocaleString('es-MX'))
-  .replace(/{{anticipo_usdt_70}}/g, Math.round(montoUSDT * 0.10 * 0.7).toLocaleString('es-MX')) // ✅ NUEVO
-  .replace(/{{anticipo_usdt_30}}/g, Math.round(montoUSDT * 0.10 * 0.3).toLocaleString('es-MX')) // ✅ NUEVO
-  .replace(/{{anticipo_cripto}}/g, anticipoCripto.toLocaleString('es-MX', { 
-    minimumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6,
-    maximumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6
-  }))
-  .replace(/{{anticipo_mxn}}/g, Math.round(anticipoMXN).toLocaleString('es-MX'))
-  .replace(/{{pago_mensual_usdt}}/g, Math.round(pagoMensualUSDT).toLocaleString('es-MX'))
-  .replace(/{{pago_mensual_cripto}}/g, pagoMensualCripto.toLocaleString('es-MX', { 
-    minimumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6,
-    maximumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6
-  }))
-  .replace(/{{pago_mensual_mxn}}/g, Math.round(pagoMensualMXN).toLocaleString('es-MX'))
-  .replace(/{{plazo}}/g, plazo.toString())
-  .replace(/{{tasa}}/g, tasa.toString())
-  .replace(/{{primer_pago}}/g, new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('es-MX'))
-  .replace(/{{link_contrato}}/g, `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/contratos/cripto/${lead.id}`)
+    // Reemplazar variables
+    htmlContent = htmlContent
+      .replace(/{{nombre_cliente}}/g, lead.fullName)
+      .replace(/{{cripto}}/g, criptoMoneda)
+      .replace(/{{monto_usdt}}/g, montoUSDT.toLocaleString('es-MX'))
+      .replace(/{{monto_cripto}}/g, montoCripto.toLocaleString('es-MX', { 
+        minimumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6,
+        maximumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6
+      }))
+      .replace(/{{monto_mxn}}/g, Math.round(montoMXN).toLocaleString('es-MX'))
+      .replace(/{{precio_usd}}/g, precioUSD.toLocaleString('es-MX'))
+      .replace(/{{tipo_cambio_mxn}}/g, tipoCambioUSDMXN.toString())
+      .replace(/{{anticipo_usdt}}/g, (montoUSDT * 0.10).toLocaleString('es-MX'))
+      .replace(/{{anticipo_usdt_70}}/g, Math.round(montoUSDT * 0.10 * 0.7).toLocaleString('es-MX'))
+      .replace(/{{anticipo_usdt_30}}/g, Math.round(montoUSDT * 0.10 * 0.3).toLocaleString('es-MX'))
+      .replace(/{{anticipo_cripto}}/g, anticipoCripto.toLocaleString('es-MX', { 
+        minimumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6,
+        maximumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6
+      }))
+      .replace(/{{anticipo_mxn}}/g, Math.round(anticipoMXN).toLocaleString('es-MX'))
+      .replace(/{{pago_mensual_usdt}}/g, Math.round(pagoMensualUSDT).toLocaleString('es-MX'))
+      .replace(/{{pago_mensual_cripto}}/g, pagoMensualCripto.toLocaleString('es-MX', { 
+        minimumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6,
+        maximumFractionDigits: criptoMoneda === 'USDT' ? 2 : 6
+      }))
+      .replace(/{{pago_mensual_mxn}}/g, Math.round(pagoMensualMXN).toLocaleString('es-MX'))
+      .replace(/{{plazo}}/g, plazo.toString())
+      .replace(/{{tasa}}/g, tasa.toString())
+      .replace(/{{primer_pago}}/g, new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('es-MX'))
+      .replace(/{{link_contrato}}/g, `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/contratos/cripto/${lead.id}`)
 
-    // Enviar correo con el logo adjunto
+    // ✅ AHORA lead.email SEGURO QUE EXISTE
     const info = await transporter.sendMail({
       from: '"Caja Valladolid - División Cripto" <contacto@cajavalladolid.com>',
-      to: lead.email,
+      to: lead.email, // Ya validado arriba
       subject: `₿ ¡Felicidades! Tu crédito en ${criptoMoneda} ha sido aprobado`,
       html: htmlContent,
       attachments: [
