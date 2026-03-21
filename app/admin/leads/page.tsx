@@ -22,6 +22,7 @@ interface Lead {
   status: string
   stage: string
   createdAt: string
+  message?: string
   assignedTo?: {
     id: string
     name: string
@@ -55,7 +56,6 @@ export default function LeadsPage() {
   const [activeCategory, setActiveCategory] = useState('all')
   const [sendingEmail, setSendingEmail] = useState<string | null>(null)
 
-  // DEBUG
   useEffect(() => {
     console.log('🔄 LeadsPage MOUNTED')
     console.log('📍 URL:', window.location.pathname)
@@ -165,7 +165,6 @@ export default function LeadsPage() {
     }
   }
 
-  // ✅ NUEVA FUNCIÓN: Enviar correo de aprobación
   const handleSendApprovalEmail = async (leadId: string) => {
     if (!confirm('¿Enviar correo de aprobación a este cliente?')) return
     
@@ -181,7 +180,7 @@ export default function LeadsPage() {
       const data = await response.json()
       if (data.success) {
         alert('✅ Correo de aprobación enviado correctamente')
-        fetchLeads() // Recargar para actualizar estado
+        fetchLeads()
       } else {
         alert('❌ Error: ' + data.error)
       }
@@ -279,7 +278,7 @@ export default function LeadsPage() {
           </div>
         </div>
 
-        {/* Categorías con diseño mejorado */}
+        {/* Categorías */}
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
             <span className="w-1 h-6 bg-green-500 rounded-full"></span>
@@ -433,286 +432,274 @@ export default function LeadsPage() {
           </div>
         )}
 
-{/* Tabla de Leads */}
-<div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
-  {filteredLeads.length === 0 ? (
-    <div className="py-20 text-center">
-      <div className="text-7xl mb-4 opacity-20">📋</div>
-      <h3 className="text-2xl font-bold text-gray-900 mb-2">No hay leads</h3>
-      <p className="text-gray-600 mb-8 max-w-md mx-auto">
-        {search || statusFilter 
-          ? 'No se encontraron resultados con los filtros seleccionados'
-          : 'Comienza creando tu primer lead para verlo aquí'}
-      </p>
-      <button
-        onClick={() => router.push('/admin/leads/new')}
-        className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 font-semibold shadow-lg inline-flex items-center gap-2"
-      >
-        <span className="text-xl">+</span>
-        Crear Primer Lead
-      </button>
-    </div>
-  ) : (
-    <>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-<thead className="bg-gray-50">
-  <tr>
-    <th className="px-6 py-4 text-left">
-      <button
-        onClick={toggleSelectAll}
-        className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-green-600 transition-colors"
-      >
-        {selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 ? (
-          <CheckSquare className="w-5 h-5 text-green-600" />
-        ) : (
-          <Square className="w-5 h-5 text-gray-400" />
-        )}
-        SEL
-      </button>
-    </th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CLIENTE</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CONTACTO</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MENSAJE</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CURP</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">RFC</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">OCUPACIÓN</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">INGRESO</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MONTO</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ESTADO</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">FECHA</th>
-    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ACCIONES</th>
-  </tr>
-</thead>
-          <tbody className="bg-white divide-y divide-gray-100">
-            {filteredLeads.map((lead) => {
-              const statusConfig = getStatusConfig(lead.status)
-              const StatusIcon = statusConfig.icon
-              const isSelected = selectedLeads.includes(lead.id)
-              const isSelectableLead = isSelectable(lead)
-              
-              return (
-                <tr 
-                  key={lead.id} 
-                  className={`group transition-all ${
-                    isSelected ? 'bg-green-50/50' : 'hover:bg-gray-50/80'
-                  }`}
-                >
-                  <td className="px-6 py-4">
-                    <div
-                      onClick={() => isSelectableLead && toggleSelectLead(lead.id)}
-                      className={`flex items-center justify-center cursor-pointer ${
-                        !isSelectableLead ? 'cursor-not-allowed opacity-40' : ''
-                      }`}
-                      title={!isSelectableLead ? 'Lead ya procesado' : isSelected ? 'Deseleccionar' : 'Seleccionar'}
-                    >
-                      {isSelected ? (
-                        <CheckSquare className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <Square className="w-5 h-5 text-gray-300 group-hover:text-gray-400" />
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm shadow-sm ${
-                        isSelectableLead ? 'bg-gradient-to-br from-green-100 to-emerald-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {lead?.fullName ? lead.fullName.charAt(0) : '?'}
-                      </div>
-                      <div>
-                        <p className={`font-semibold text-gray-900 ${!isSelectableLead && 'opacity-60'}`}>
-                          {lead?.fullName || 'Nombre no disponible'}
-                        </p>
-                        <p className="text-xs text-gray-500 capitalize">
-                          {lead?.creditType === 'TRADITIONAL' ? 'Crédito Tradicional' : 'Crédito Cripto'}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-gray-700 truncate max-w-[180px]">
-                          {lead?.email || 'Sin email'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-gray-600">
-                          {lead?.phone || 'Sin teléfono'}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-<td className="px-6 py-4">
-  <div className="max-w-xs">
-    <p className="text-sm text-gray-700 truncate" title={lead.message || ''}>
-      {lead.message || '—'}
-    </p>
-  </div>
-</td>
-
-{/* NUEVAS CELDAS */}
-<td className="px-6 py-4 text-sm text-gray-700">{lead.curp || '—'}</td>
-<td className="px-6 py-4 text-sm text-gray-700">{lead.rfc || '—'}</td>
-<td className="px-6 py-4 text-sm text-gray-700">{lead.ocupacion || '—'}</td>
-<td className="px-6 py-4 text-sm text-gray-700">
-  {lead.ingresoMensual ? formatCurrency(lead.ingresoMensual) : '—'}
-</td>
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-gray-900">{formatCurrency(lead?.estimatedAmount || 0)}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {lead?.stage ? String(lead.stage).replace('_', ' ') : 'Sin etapa'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-8 h-8 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: statusConfig.bg }}
-                      >
-                        <StatusIcon className="w-4 h-4" style={{ color: statusConfig.text }} />
-                      </div>
-                      <span className="text-sm font-medium" style={{ color: statusConfig.text }}>
-                        {statusConfig.label}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-gray-600">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span className="text-sm">{formatDate(lead?.createdAt || '')}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => router.push(`/admin/leads/${lead.id}`)}
-                          className="p-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-                          title="Ver detalles"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/admin/leads/${lead.id}/edit`)}
-                          className="p-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
-                          title="Editar"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(lead.id)}
-                          className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      
-                      {/* ✅ NUEVOS BOTONES DE APROBACIÓN Y CONTRATOS */}
-                      {lead.status === 'APPROVED' && (
-                        <div className="flex gap-1 mt-1 pt-1 border-t border-gray-100">
-                          <button
-                            onClick={() => handleSendApprovalEmail(lead.id)}
-                            disabled={sendingEmail === lead.id}
-                            className="flex-1 p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-xs flex items-center justify-center gap-1"
-                            title="Enviar correo de aprobación"
-                          >
-                            {sendingEmail === lead.id ? (
-                              <div className="w-3 h-3 border-2 border-green-700 border-t-transparent rounded-full animate-spin"></div>
-                            ) : (
-                              <MailIcon className="w-3 h-3" />
-                            )}
-                            <span>Correo</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => window.open(`/api/contratos/tradicional/${lead.id}`, '_blank')}
-                            className="flex-1 p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-xs flex items-center justify-center gap-1"
-                            title="Contrato tradicional"
-                          >
-                            <FileSignature className="w-3 h-3" />
-                            <span>Tradicional</span>
-                          </button>
-                          
-                          {lead.creditType === 'CRYPTO' && (
-                            <button
-                              onClick={() => window.open(`/api/contratos/cripto/${lead.id}`, '_blank')}
-                              className="flex-1 p-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-xs flex items-center justify-center gap-1"
-                              title="Contrato cripto"
-                            >
-                              <Coins className="w-3 h-3" />
-                              <span>Cripto</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Paginación mejorada */}
-      <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50/50">
-        <div className="text-gray-600 text-sm">
-          Mostrando <span className="font-semibold text-gray-900">1</span> a{' '}
-          <span className="font-semibold text-gray-900">{filteredLeads.length}</span> de{' '}
-          <span className="font-semibold text-gray-900">{totalLeads}</span> leads
-        </div>
-        <div className="flex items-center gap-3">
+        {/* Tabla de Leads - SOLO COLUMNAS PRINCIPALES */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+          {filteredLeads.length === 0 ? (
+            <div className="py-20 text-center">
+              <div className="text-7xl mb-4 opacity-20">📋</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">No hay leads</h3>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                {search || statusFilter 
+                  ? 'No se encontraron resultados con los filtros seleccionados'
+                  : 'Comienza creando tu primer lead para verlo aquí'}
+              </p>
+              <button
+                onClick={() => router.push('/admin/leads/new')}
+                className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 font-semibold shadow-lg inline-flex items-center gap-2"
+              >
+                <span className="text-xl">+</span>
+                Crear Primer Lead
+              </button>
+            </div>
+          ) : (
+            <>
+<div className="overflow-x-auto rounded-lg">
+  <table className="min-w-[800px] md:min-w-full divide-y divide-gray-200">
+    <thead className="bg-gray-50">
+      <tr>
+        <th className="px-3 py-4 text-left w-12">
           <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              page === 1 
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 shadow-sm'
+            onClick={toggleSelectAll}
+            className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-green-600 transition-colors"
+          >
+            {selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 ? (
+              <CheckSquare className="w-5 h-5 text-green-600" />
+            ) : (
+              <Square className="w-5 h-5 text-gray-400" />
+            )}
+            SEL
+          </button>
+        </th>
+        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CLIENTE</th>
+        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CONTACTO</th>
+        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MENSAJE</th>
+        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MONTO</th>
+        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ESTADO</th>
+        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">FECHA</th>
+        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ACCIONES</th>
+      </tr>
+    </thead>
+    <tbody className="bg-white divide-y divide-gray-100">
+      {filteredLeads.map((lead) => {
+        const statusConfig = getStatusConfig(lead.status)
+        const StatusIcon = statusConfig.icon
+        const isSelected = selectedLeads.includes(lead.id)
+        const isSelectableLead = isSelectable(lead)
+        
+        return (
+          <tr 
+            key={lead.id} 
+            className={`group transition-all ${
+              isSelected ? 'bg-green-50/50' : 'hover:bg-gray-50/80'
             }`}
           >
-            ← Anterior
-          </button>
-          <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const pageNum = i + 1
-              return (
+            <td className="px-3 py-4">
+              <div
+                onClick={() => isSelectableLead && toggleSelectLead(lead.id)}
+                className={`flex items-center justify-center cursor-pointer ${
+                  !isSelectableLead ? 'cursor-not-allowed opacity-40' : ''
+                }`}
+                title={!isSelectableLead ? 'Lead ya procesado' : isSelected ? 'Deseleccionar' : 'Seleccionar'}
+              >
+                {isSelected ? (
+                  <CheckSquare className="w-5 h-5 text-green-600" />
+                ) : (
+                  <Square className="w-5 h-5 text-gray-300 group-hover:text-gray-400" />
+                )}
+              </div>
+            </td>
+            <td className="px-4 py-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm shadow-sm ${
+                  isSelectableLead ? 'bg-gradient-to-br from-green-100 to-emerald-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {lead?.fullName ? lead.fullName.charAt(0) : '?'}
+                </div>
+                <div>
+                  <p className={`font-semibold text-gray-900 ${!isSelectableLead && 'opacity-60'}`}>
+                    {lead?.fullName || 'Nombre no disponible'}
+                  </p>
+                  <p className="text-xs text-gray-500 capitalize">
+                    {lead?.creditType === 'TRADITIONAL' ? 'Crédito Tradicional' : 'Crédito Cripto'}
+                  </p>
+                </div>
+              </div>
+            </td>
+            <td className="px-4 py-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-gray-700 truncate max-w-[160px]">
+                    {lead?.email || 'Sin email'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-gray-600">
+                    {lead?.phone || 'Sin teléfono'}
+                  </span>
+                </div>
+              </div>
+            </td>
+            <td className="px-4 py-4">
+              <div className="max-w-[180px]">
+                <p className="text-sm text-gray-700 truncate" title={lead.message || ''}>
+                  {lead.message || '—'}
+                </p>
+              </div>
+            </td>
+            <td className="px-4 py-4">
+              <div className="font-bold text-gray-900 whitespace-nowrap">
+                {formatCurrency(lead?.estimatedAmount || 0)}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {lead?.stage ? String(lead.stage).replace('_', ' ') : 'Sin etapa'}
+              </div>
+            </td>
+            <td className="px-4 py-4">
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <div 
+                  className="w-8 h-8 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: statusConfig.bg }}
+                >
+                  <StatusIcon className="w-4 h-4" style={{ color: statusConfig.text }} />
+                </div>
+                <span className="text-sm font-medium" style={{ color: statusConfig.text }}>
+                  {statusConfig.label}
+                </span>
+              </div>
+            </td>
+            <td className="px-4 py-4 whitespace-nowrap">
+              <div className="flex items-center gap-1 text-gray-600">
+                <Calendar className="w-3.5 h-3.5" />
+                <span className="text-sm">{formatDate(lead?.createdAt || '')}</span>
+              </div>
+            </td>
+            <td className="px-4 py-4">
+              <div className="flex gap-1">
                 <button
-                  key={pageNum}
-                  onClick={() => setPage(pageNum)}
-                  className={`w-9 h-9 rounded-xl text-sm font-medium transition-all ${
-                    page === pageNum 
-                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md' 
-                      : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 border border-gray-200'
-                  }`}
+                  onClick={() => router.push(`/admin/leads/${lead.id}`)}
+                  className="p-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                  title="Ver detalles"
                 >
-                  {pageNum}
+                  <Eye className="w-4 h-4" />
                 </button>
-              )
-            })}
-          </div>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              page === totalPages 
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 shadow-sm'
-            }`}
-          >
-            Siguiente →
-          </button>
-        </div>
-      </div>
-    </>
-  )}
+                <button
+                  onClick={() => router.push(`/admin/leads/${lead.id}/edit`)}
+                  className="p-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+                  title="Editar"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(lead.id)}
+                  className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                  title="Eliminar"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              
+              {lead.status === 'APPROVED' && (
+                <div className="flex gap-1 mt-2 pt-1 border-t border-gray-100">
+                  <button
+                    onClick={() => handleSendApprovalEmail(lead.id)}
+                    disabled={sendingEmail === lead.id}
+                    className="flex-1 p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-xs flex items-center justify-center gap-1"
+                    title="Enviar correo de aprobación"
+                  >
+                    {sendingEmail === lead.id ? (
+                      <div className="w-3 h-3 border-2 border-green-700 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <MailIcon className="w-3 h-3" />
+                    )}
+                    <span>Correo</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => window.open(`/api/contratos/tradicional/${lead.id}`, '_blank')}
+                    className="flex-1 p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-xs flex items-center justify-center gap-1"
+                    title="Contrato tradicional"
+                  >
+                    <FileSignature className="w-3 h-3" />
+                    <span>Tradicional</span>
+                  </button>
+                  
+                  {lead.creditType === 'CRYPTO' && (
+                    <button
+                      onClick={() => window.open(`/api/contratos/cripto/${lead.id}`, '_blank')}
+                      className="flex-1 p-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-xs flex items-center justify-center gap-1"
+                      title="Contrato cripto"
+                    >
+                      <Coins className="w-3 h-3" />
+                      <span>Cripto</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </td>
+          </tr>
+        )
+      })}
+    </tbody>
+  </table>
 </div>
-        {/* Estadísticas mejoradas */}
+
+              {/* Paginación */}
+              <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50/50">
+                <div className="text-gray-600 text-sm">
+                  Mostrando <span className="font-semibold text-gray-900">1</span> a{' '}
+                  <span className="font-semibold text-gray-900">{filteredLeads.length}</span> de{' '}
+                  <span className="font-semibold text-gray-900">{totalLeads}</span> leads
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      page === 1 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 shadow-sm'
+                    }`}
+                  >
+                    ← Anterior
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = i + 1
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`w-9 h-9 rounded-xl text-sm font-medium transition-all ${
+                            page === pageNum 
+                              ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md' 
+                              : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 border border-gray-200'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      page === totalPages 
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                        : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 shadow-sm'
+                    }`}
+                  >
+                    Siguiente →
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-gray-100">
             <div className="flex justify-between items-center">

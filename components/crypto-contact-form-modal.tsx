@@ -32,24 +32,35 @@ export function CryptoContactFormModal({
   // Estados para el formulario
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
-  const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [leadId, setLeadId] = useState<string | null>(null)
+  const [leadToken, setLeadToken] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<string[]>([])
   
-  // Datos personales
+  // Datos personales (SIN CURP en paso 1)
   const [formData, setFormData] = useState({
     nombre: "",
     telefono: "",
     email: "",
-    curp: "",
     monto: monto.toString(),
     tipoCredito: "crypto",
     contactoPreferido: "whatsapp",
     mensaje: "",
   })
   
-  // Documentos
+  // Datos adicionales (para paso 2)
+  const [additionalData, setAdditionalData] = useState({
+    curp: "",
+    rfc: "",
+    ocupacion: "",
+    ingresoMensual: "",
+    tiempoEmpleo: "",
+    direccion: "",
+    comentarios: ""
+  })
+  
+  // Documentos (para paso 2)
   const [documents, setDocuments] = useState({
     ineFront: null as File | null,
     ineBack: null as File | null,
@@ -62,6 +73,14 @@ export function CryptoContactFormModal({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleAdditionalDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setAdditionalData(prev => ({
       ...prev,
       [name]: value
     }))
@@ -106,24 +125,70 @@ export function CryptoContactFormModal({
   }
 
   const validatePersonalData = () => {
-    if (!formData.nombre || !formData.telefono || !formData.email || !formData.curp) {
-      setError("Todos los campos marcados con * son obligatorios")
+    if (!formData.nombre || !formData.telefono || !formData.email) {
+      setError("Nombre, teléfono y email son requeridos")
       return false
     }
     return true
   }
 
-  const handleNextStep = () => {
+  // ============================================
+  // ETAPA 1: Crear lead con datos básicos
+  // ============================================
+  const handleSubmitStep1 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!validatePersonalData()) return
+    
+    setIsSubmitting(true)
     setError("")
-    if (step === 1 && validatePersonalData()) {
-      setStep(2)
+    setUploadProgress(20)
+    
+    try {
+      const response = await fetch('/api/leads/create-calculator-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: formData.nombre.split(' ')[0],
+          lastName: formData.nombre.split(' ').slice(1).join(' ') || '',
+          email: formData.email,
+          phone: formData.telefono,
+          estimatedAmount: parseFloat(formData.monto.replace(/[^0-9]/g, '') || '0'),
+          creditType: 'crypto',
+          message: formData.mensaje
+        })
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setLeadId(result.leadId)
+        setLeadToken(result.token)
+        setUploadProgress(100)
+        setStep(3) // Ir a opciones
+        setSubmitted(true)
+        
+        if (typeof window !== 'undefined' && window.fbq) {
+          window.fbq('track', 'Lead')
+        }
+      } else {
+        throw new Error(result.error || 'Error al enviar la solicitud')
+      }
+      
+    } catch (err: any) {
+      console.error('❌ Error:', err)
+      setError(err.message || 'Error al enviar. Por favor intenta nuevamente.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // ============================================
+  // ETAPA 2: Subir documentos y datos adicionales
+  // ============================================
+  const handleSubmitStep2 = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validar documentos obligatorios
     if (!validateRequiredDocuments()) {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
@@ -134,32 +199,29 @@ export function CryptoContactFormModal({
     setUploadProgress(20)
     
     try {
-      // PASO 1: Crear el lead usando el endpoint específico de cripto
-      const leadResponse = await fetch('/api/formulario-externo-cripto', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: formData.nombre,
-          phone: formData.telefono,
-          email: formData.email,
-          monto: formData.monto,
-          selectedCrypto: selectedCrypto,
-          plazo: plazo,
-          contactoPreferido: formData.contactoPreferido,
-          mensaje: formData.mensaje
+      // 1. Actualizar lead con datos adicionales
+      if (leadId) {
+        await fetch(`/api/leads/${leadId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            curp: additionalData.curp,
+            rfc: additionalData.rfc,
+            ocupacion: additionalData.ocupacion,
+            ingresoMensual: parseFloat(additionalData.ingresoMensual.replace(/[^0-9.-]/g, '')) || 0,
+            tiempoEmpleo: additionalData.tiempoEmpleo,
+            direccion: additionalData.direccion,
+            comentarios: additionalData.comentarios
+          })
         })
-      })
-
-      const leadResult = await leadResponse.json()
-      if (!leadResult.success) throw new Error(leadResult.error)
+      }
       
-      const leadId = leadResult.leadId
       setUploadProgress(40)
       
-      // PASO 2: Preparar documentos
+      // 2. Subir documentos
       const documentFormData = new FormData()
-      documentFormData.append('leadId', leadId)
-      documentFormData.append('token', leadResult.token || 'temp-token')
+      if (leadId) documentFormData.append('leadId', leadId)
+      if (leadToken) documentFormData.append('token', leadToken)
       
       Object.entries(documents).forEach(([key, file]) => {
         if (file) documentFormData.append(key, file)
@@ -167,7 +229,6 @@ export function CryptoContactFormModal({
       
       setUploadProgress(60)
       
-      // PASO 3: Subir documentos
       const uploadResponse = await fetch('/api/documents/upload', {
         method: 'POST',
         body: documentFormData
@@ -176,26 +237,21 @@ export function CryptoContactFormModal({
       const uploadResult = await uploadResponse.json()
       
       if (uploadResult.success) {
-        // 📧 ENVIAR CORREO
-        try {
-          await fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: formData.email,
-              nombre: formData.nombre,
-              tipo: 'documentos'
-            })
-          })
-          console.log('✅ Correo enviado')
-        } catch (emailError) {
-          console.error('Error en correo:', emailError)
-        }
-        
         setUploadProgress(100)
-        setSubmitted(true)
-        setStep(3)
-        localStorage.setItem('last_lead_id', leadId)
+        
+        // Enviar correo de confirmación
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: formData.email,
+            nombre: formData.nombre,
+            tipo: 'documentos',
+            leadId: leadId
+          })
+        })
+        
+        setStep(4) // Éxito total
       } else {
         throw new Error(uploadResult.error || 'Error al subir los documentos')
       }
@@ -203,7 +259,6 @@ export function CryptoContactFormModal({
     } catch (err: any) {
       console.error('❌ Error:', err)
       setError(err.message || 'Error al enviar. Por favor intenta nuevamente.')
-      setUploadProgress(0)
     } finally {
       setIsSubmitting(false)
     }
@@ -213,19 +268,28 @@ export function CryptoContactFormModal({
     onClose()
     setTimeout(() => {
       setStep(1)
-      setSubmitted(false)
       setError("")
-      setValidationErrors([])
       setUploadProgress(0)
+      setLeadId(null)
+      setLeadToken(null)
+      setValidationErrors([])
       setFormData({
         nombre: "",
         telefono: "",
         email: "",
-        curp: "",
         monto: monto.toString(),
         tipoCredito: "crypto",
         contactoPreferido: "whatsapp",
         mensaje: "",
+      })
+      setAdditionalData({
+        curp: "",
+        rfc: "",
+        ocupacion: "",
+        ingresoMensual: "",
+        tiempoEmpleo: "",
+        direccion: "",
+        comentarios: ""
       })
       setDocuments({
         ineFront: null,
@@ -240,7 +304,7 @@ export function CryptoContactFormModal({
 
   const handleWhatsAppClick = () => {
     const phone = "529541184165"
-    const message = encodeURIComponent("Hola, tengo una duda sobre mi solicitud de crédito en criptomonedas")
+    const message = encodeURIComponent(`Hola, soy ${formData.nombre.split(' ')[0]} y quiero información sobre mi solicitud de crédito en criptomonedas`)
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank')
   }
 
@@ -271,9 +335,10 @@ export function CryptoContactFormModal({
             <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50 sticky top-0 z-10">
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">
-                  {step === 1 && "Solicitud de Crédito en Cripto - Paso 1"}
-                  {step === 2 && "Solicitud de Crédito en Cripto - Paso 2 (Documentos)"}
-                  {step === 3 && "¡Solicitud Completada!"}
+                  {step === 1 && "Solicitud de Crédito en Cripto"}
+                  {step === 2 && "Completa tu Documentación"}
+                  {step === 3 && "¡Solicitud Recibida!"}
+                  {step === 4 && "¡Documentación Completada!"}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <ShieldCheck className="w-4 h-4 text-purple-600" />
@@ -286,22 +351,21 @@ export function CryptoContactFormModal({
             </div>
 
             {/* Progress Bar */}
-            {step < 3 && (
+            {(step === 1 || step === 2) && (
               <div className="px-6 pt-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-gray-700">Progreso</span>
-                  <span className="text-sm font-medium text-purple-600">{step === 1 ? '33%' : '66%'}</span>
+                  <span className="text-sm font-medium text-purple-600">{step === 1 ? '50%' : '100%'}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: step === 1 ? '33%' : '66%' }}
+                    style={{ width: step === 1 ? '50%' : '100%' }}
                   />
                 </div>
                 <div className="flex justify-between mt-2 text-xs text-gray-500">
-                  <span className={step >= 1 ? "text-purple-600 font-medium" : ""}>1. Datos personales</span>
-                  <span className={step >= 2 ? "text-purple-600 font-medium" : ""}>2. Documentos</span>
-                  <span className={step >= 3 ? "text-purple-600 font-medium" : ""}>3. Confirmación</span>
+                  <span className={step >= 1 ? "text-purple-600 font-medium" : ""}>1. Datos básicos</span>
+                  <span className={step >= 2 ? "text-purple-600 font-medium" : ""}>2. Documentación</span>
                 </div>
               </div>
             )}
@@ -309,7 +373,7 @@ export function CryptoContactFormModal({
             {/* Content */}
             <div className="p-6">
               {/* Mensaje de error */}
-              {error && step < 3 && (
+              {error && (step === 1 || step === 2) && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -365,7 +429,7 @@ export function CryptoContactFormModal({
                           <span className="text-purple-600 font-bold">2</span>
                         </div>
                         <p>
-                          <strong>Etapa 2 (Con asesor):</strong> Te enviaremos un formulario completo para adjuntar documentos y evaluación formal de tu crédito en criptomonedas.
+                          <strong>Etapa 2 (Opcional):</strong> Después de enviar, podrás subir tu documentación para agilizar el proceso.
                         </p>
                       </div>
                     </div>
@@ -382,7 +446,7 @@ export function CryptoContactFormModal({
                     </div>
                   </div>
 
-                  <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+                  <form onSubmit={handleSubmitStep1} className="space-y-5">
                     {/* Nombre Completo */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -431,24 +495,6 @@ export function CryptoContactFormModal({
                         required
                         placeholder="ejemplo@correo.com"
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                      />
-                    </div>
-
-                    {/* CURP */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        CURP *
-                      </label>
-                      <input
-                        type="text"
-                        name="curp"
-                        value={formData.curp}
-                        onChange={handleChange}
-                        required
-                        placeholder="GARJ800101HDFLRN09"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none uppercase"
-                        maxLength={18}
                       />
                     </div>
 
@@ -544,20 +590,44 @@ export function CryptoContactFormModal({
                       />
                     </div>
 
-                    {/* Botón Siguiente */}
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-700">Enviando solicitud...</span>
+                          <span className="text-sm font-medium text-purple-600">{uploadProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botón Enviar */}
                     <button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2"
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
                     >
-                      Siguiente: Subir Documentos
-                      <ChevronRight className="w-5 h-5" />
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5" />
+                          Enviar Solicitud
+                        </>
+                      )}
                     </button>
                   </form>
                 </div>
               )}
 
-              {/* STEP 2: DOCUMENTOS */}
+              {/* STEP 2: DOCUMENTACIÓN COMPLETA */}
               {step === 2 && (
                 <div className="space-y-5">
                   {/* Resumen de datos */}
@@ -574,10 +644,6 @@ export function CryptoContactFormModal({
                       <div>
                         <span className="text-gray-500">Email:</span>
                         <p className="font-medium">{formData.email}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">CURP:</span>
-                        <p className="font-medium">{formData.curp}</p>
                       </div>
                       <div>
                         <span className="text-gray-500">Monto:</span>
@@ -611,8 +677,79 @@ export function CryptoContactFormModal({
                     </div>
                   )}
 
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Documentos obligatorios */}
+                  <form onSubmit={handleSubmitStep2} className="space-y-6">
+                    {/* INFORMACIÓN ADICIONAL */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <User className="w-5 h-5 text-purple-600" />
+                        Información Adicional
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">CURP *</label>
+                          <input
+                            type="text"
+                            name="curp"
+                            value={additionalData.curp}
+                            onChange={handleAdditionalDataChange}
+                            required
+                            placeholder="GARJ800101HDFLRN09"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Ocupación</label>
+                          <select
+                            name="ocupacion"
+                            value={additionalData.ocupacion}
+                            onChange={handleAdditionalDataChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="">Selecciona una opción</option>
+                            <option value="EMPLEADO">Empleado</option>
+                            <option value="INDEPENDIENTE">Independiente</option>
+                            <option value="EMPRESARIO">Empresario</option>
+                            <option value="JUBILADO">Jubilado</option>
+                            <option value="ESTUDIANTE">Estudiante</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Ingreso Mensual</label>
+                          <input
+                            type="text"
+                            name="ingresoMensual"
+                            value={additionalData.ingresoMensual}
+                            onChange={handleAdditionalDataChange}
+                            placeholder="$15,000"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Dirección Completa</label>
+                          <input
+                            type="text"
+                            name="direccion"
+                            value={additionalData.direccion}
+                            onChange={handleAdditionalDataChange}
+                            placeholder="Calle, número, colonia, ciudad"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Comentarios</label>
+                          <textarea
+                            name="comentarios"
+                            value={additionalData.comentarios}
+                            onChange={handleAdditionalDataChange}
+                            rows={3}
+                            placeholder="Información adicional sobre tu situación..."
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DOCUMENTOS OBLIGATORIOS */}
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <Upload className="w-5 h-5 text-purple-600" />
@@ -728,14 +865,13 @@ export function CryptoContactFormModal({
                       </div>
                     </div>
 
-                    {/* Documentos opcionales */}
+                    {/* DOCUMENTOS OPCIONALES */}
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <FileText className="w-5 h-5 text-blue-600" />
                         Documentación Adicional (Opcional)
                       </h4>
 
-                      {/* Estados de cuenta */}
                       <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 mb-4 hover:border-purple-400 transition-colors">
                         <label className="block mb-2">
                           <span className="font-medium text-gray-900">Estados de Cuenta Bancarios</span>
@@ -757,7 +893,6 @@ export function CryptoContactFormModal({
                         </div>
                       </div>
 
-                      {/* Otros documentos */}
                       <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-purple-400 transition-colors">
                         <label className="block mb-2">
                           <span className="font-medium text-gray-900">Otros Documentos Relevantes</span>
@@ -800,15 +935,15 @@ export function CryptoContactFormModal({
                     <div className="flex gap-3 pt-4">
                       <button
                         type="button"
-                        onClick={() => setStep(1)}
+                        onClick={() => setStep(3)}
                         className="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-all"
                       >
-                        ← Atrás
+                        ← Volver
                       </button>
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isSubmitting ? (
                           <>
@@ -818,7 +953,7 @@ export function CryptoContactFormModal({
                         ) : (
                           <>
                             <Send className="w-5 h-5" />
-                            Enviar Solicitud
+                            Enviar Documentación
                           </>
                         )}
                       </button>
@@ -827,8 +962,76 @@ export function CryptoContactFormModal({
                 </div>
               )}
 
-              {/* STEP 3: ÉXITO */}
-              {step === 3 && (
+{/* STEP 3: ÉXITO CON OPCIONES */}
+{step === 3 && (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    className="text-center py-6"
+  >
+    <div className="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+      <CheckCircle className="w-12 h-12 text-white" />
+    </div>
+    
+    <h3 className="text-3xl font-bold text-gray-900 mb-3">¡Hola {formData.nombre.split(' ')[0]}! 👋</h3>
+    <p className="text-xl text-gray-700 mb-2">¡Hemos recibido tu solicitud correctamente!</p>
+    
+    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 my-6 text-left shadow-sm">
+      <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+        <ShieldCheck className="w-5 h-5" />
+        ¿Qué sigue?
+      </h4>
+      
+      <ul className="space-y-3 text-gray-700">
+        <li className="flex items-start gap-2">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <span>Revisa tu correo: <strong className="text-green-700">{formData.email}</strong></span>
+        </li>
+        <li className="flex items-start gap-2">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <span>Te llegará un <strong>enlace para completar tu documentación</strong> en los próximos minutos</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <span>Nuestro equipo analizará tu información en <strong>24-48 horas</strong></span>
+        </li>
+      </ul>
+    </div>
+
+    {/* Opciones */}
+    <div className="space-y-4">
+      {/* Opción 1: WhatsApp */}
+      <button
+        onClick={handleWhatsAppClick}
+        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-md transition-all"
+      >
+        <Image src="/whatsapp.png" alt="WhatsApp" width={24} height={24} />
+        Contactar por WhatsApp con un asesor
+      </button>
+
+      {/* Opción 2: Continuar con documentación */}
+      <button
+        onClick={() => setStep(2)}
+        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-md transition-all"
+      >
+        <Upload className="w-5 h-5" />
+        Subir documentación ahora (Agiliza tu proceso)
+      </button>
+    </div>
+
+    <div className="mt-6 pt-4 border-t border-gray-200">
+      <button
+        onClick={handleClose}
+        className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-all"
+      >
+        Cerrar
+      </button>
+    </div>
+  </motion.div>
+)}
+
+              {/* STEP 4: ÉXITO TOTAL (documentación completada) */}
+              {step === 4 && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -838,77 +1041,37 @@ export function CryptoContactFormModal({
                     <Bitcoin className="w-12 h-12 text-purple-600" />
                   </div>
                   
-                  <h3 className="text-3xl font-bold text-gray-900 mb-3">¡Felicidades!</h3>
-                  <p className="text-xl text-gray-700 mb-2">Hemos recibido tu solicitud de crédito en criptomonedas</p>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-3">¡Documentación Completada!</h3>
+                  <p className="text-xl text-gray-700 mb-2">Hemos recibido toda tu información</p>
                   
                   <div className="bg-purple-50 border border-purple-200 rounded-xl p-6 my-6 text-left">
                     <h4 className="font-bold text-purple-800 mb-3 flex items-center gap-2">
                       <ShieldCheck className="w-5 h-5" />
-                      Tu información está segura con nosotros
+                      ¿Qué sigue?
                     </h4>
                     
                     <ul className="space-y-3 text-gray-700">
                       <li className="flex items-start gap-2">
                         <CheckCircle className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                        <span>Hemos recibido tus <strong>datos personales</strong> correctamente</span>
+                        <span>Revisa tu correo: <strong>{formData.email}</strong></span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                        <span>Tus <strong>documentos</strong> han sido subidos y almacenados de forma segura</span>
+                        <span>Tu documentación será evaluada por nuestros analistas especializados en cripto</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                        <span>Nuestros analistas especializados en cripto están <strong>evaluando tu solicitud</strong></span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                        <span>Recibirás un <strong>correo electrónico</strong> con la confirmación y los siguientes pasos</span>
+                        <span>Te contactaremos en las próximas 24-48 horas</span>
                       </li>
                     </ul>
-
-                    <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 text-sm">
-                        <strong>📧 Correo enviado a:</strong> {formData.email}
-                      </p>
-                    </div>
                   </div>
 
-                  {/* Botón de WhatsApp */}
-                  <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-6 text-white mb-6">
-                    <h4 className="font-bold text-lg mb-3 flex items-center justify-center gap-2">
-                      <MessageSquare className="w-5 h-5" />
-                      ¿Tienes alguna duda?
-                    </h4>
-                    <p className="mb-4">
-                      Escríbenos directamente a WhatsApp y un asesor especializado en cripto te atenderá
-                    </p>
-                    <button
-                      onClick={handleWhatsAppClick}
-                      className="bg-white text-purple-700 hover:bg-purple-50 font-bold py-4 px-8 rounded-lg transition-all flex items-center justify-center gap-3 mx-auto shadow-lg"
-                    >
-                      <Image
-                        src="/whatsapp.png"
-                        alt="WhatsApp"
-                        width={24}
-                        height={24}
-                        className="object-contain"
-                      />
-                      Contactar por WhatsApp
-                    </button>
-                  </div>
-
-                  <div className="flex justify-center">
-                    <button
-                      onClick={handleClose}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-8 rounded-lg transition-all"
-                    >
-                      Cerrar
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-gray-500 mt-6">
-                    Este formulario se cerrará automáticamente en 10 segundos...
-                  </p>
+                  <button
+                    onClick={handleClose}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 px-8 rounded-lg transition-all"
+                  >
+                    Cerrar
+                  </button>
                 </motion.div>
               )}
             </div>

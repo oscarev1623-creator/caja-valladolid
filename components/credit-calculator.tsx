@@ -14,10 +14,25 @@ interface AmortizationRow {
   balance: number;
 }
 
-const CreditCalculator = () => {
+// Interfaz para las props del componente
+interface CreditCalculatorProps {
+  initialMonto?: number;
+  initialPlazo?: number;
+  leadId?: string;
+  token?: string;
+  onClose?: () => void;
+}
+
+const CreditCalculator = ({ 
+  initialMonto = 50000, 
+  initialPlazo = 8,
+  leadId,
+  token,
+  onClose 
+}: CreditCalculatorProps = {}) => {
   // Estados
-  const [creditAmount, setCreditAmount] = useState(50000);
-  const [years, setYears] = useState(8);
+  const [creditAmount, setCreditAmount] = useState(initialMonto);
+  const [years, setYears] = useState(initialPlazo);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showAmortizationModal, setShowAmortizationModal] = useState(false);
@@ -26,7 +41,7 @@ const CreditCalculator = () => {
   // Resultados
   const [results, setResults] = useState({
     monthlyPayment: 0,
-    advanceAmount: 0,
+    adminFee: 0,
     totalInterest: 0
   });
 
@@ -36,30 +51,21 @@ const CreditCalculator = () => {
   // Opciones de plazo
   const yearOptions = [4, 6, 8, 10, 12, 16, 20];
 
-  // Calcular anticipo por rangos
-  const calculateAdvance = (amount: number) => {
-    if (amount >= 50000 && amount <= 200000) {
-      return 2308.23;
-    } else if (amount > 200000 && amount <= 1000000) {
-      return 6811.52;
-    } else if (amount > 1000000 && amount <= 5000000) {
-      return 9960.47;
-    } else {
-      return 0;
-    }
+  // Calcular gastos administrativos (1% del monto)
+  const calculateAdminFee = (amount: number) => {
+    return amount * 0.01; // 1% del monto
   };
 
   // Calcular préstamo
   const calculateLoan = () => {
-    const advanceAmount = calculateAdvance(creditAmount);
-    const netAmount = creditAmount - advanceAmount;
+    const adminFee = calculateAdminFee(creditAmount);
+    const netAmount = creditAmount - adminFee;
     const months = years * 12;
     
-    // Evitar división por cero si netAmount es negativo o cero
     if (netAmount <= 0) {
       setResults({
         monthlyPayment: 0,
-        advanceAmount,
+        adminFee,
         totalInterest: 0
       });
       return;
@@ -72,7 +78,7 @@ const CreditCalculator = () => {
 
     setResults({
       monthlyPayment,
-      advanceAmount,
+      adminFee,
       totalInterest
     });
   };
@@ -123,10 +129,10 @@ const CreditCalculator = () => {
     }).format(amount);
   };
 
-  // Generar tabla de amortización - CORREGIDO CON TIPO EXPLÍCITO
+  // Generar tabla de amortización
   const generateAmortizationTable = (): AmortizationRow[] => {
-    const advanceAmount = results.advanceAmount;
-    const netAmount = creditAmount - advanceAmount;
+    const adminFee = results.adminFee;
+    const netAmount = creditAmount - adminFee;
     const months = years * 12;
     const monthlyPayment = results.monthlyPayment;
     let balance = netAmount;
@@ -139,7 +145,6 @@ const CreditCalculator = () => {
       const principal = monthlyPayment - interest;
       balance -= principal;
 
-      // Mostrar todos los meses
       rows.push({
         month,
         payment: monthlyPayment,
@@ -154,8 +159,7 @@ const CreditCalculator = () => {
 
   // Función mejorada para descargar PDF
   const handleDownloadPDF = () => {
-    // Crear contenido HTML para el PDF
-    const amortizationRows = generateAmortizationTable().slice(0, 12); // Primeros 12 meses para el PDF
+    const amortizationRows = generateAmortizationTable().slice(0, 12);
     
     let htmlContent = `
       <html>
@@ -182,51 +186,50 @@ const CreditCalculator = () => {
             <p><strong>Rango de crédito:</strong> ${getCurrentRange(creditAmount)}</p>
             <p><strong>Plazo:</strong> ${years} años (${years * 12} meses)</p>
             <p><strong>Mensualidad:</strong> ${formatCurrency(results.monthlyPayment)}</p>
-            <p><strong>Anticipo (cuota fija por rango):</strong> ${formatCurrency(results.advanceAmount)}</p>
+            <p><strong>Gastos administrativos (1% del monto):</strong> ${formatCurrency(results.adminFee)}</p>
             <p><strong>Interés total:</strong> ${formatCurrency(results.totalInterest)}</p>
             <p><strong>Total a pagar:</strong> ${formatCurrency(creditAmount + results.totalInterest)}</p>
           </div>
           
           <h3>Primeros 12 meses de amortización</h3>
-          <table>
+           <table>
             <thead>
-              <tr>
+               <tr>
                 <th>Mes</th>
                 <th>Pago</th>
                 <th>Interés</th>
                 <th>Capital</th>
                 <th>Saldo</th>
-              </tr>
+               </tr>
             </thead>
             <tbody>
     `;
     
     amortizationRows.forEach(row => {
       htmlContent += `
-        <tr>
+         <tr>
           <td>${row.month}</td>
           <td>${formatCurrency(row.payment)}</td>
           <td>${formatCurrency(row.interest)}</td>
           <td>${formatCurrency(row.principal)}</td>
           <td>${formatCurrency(row.balance)}</td>
-        </tr>
+         </tr>
       `;
     });
     
     htmlContent += `
             </tbody>
-          </table>
+           </table>
           <p style="text-align: center; margin-top: 30px; color: #666;">
             Esta simulación es informativa y puede variar según condiciones finales.
           </p>
           <p style="text-align: center; margin-top: 20px; color: #059669; font-weight: bold;">
-            Paga tu anticipo en más de 20,000 OXXOs en todo México
+            Paga tus gastos administrativos en más de 20,000 OXXOs en todo México
           </p>
         </body>
       </html>
     `;
     
-    // Abrir en nueva ventana para imprimir/guardar como PDF
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(htmlContent);
@@ -237,6 +240,48 @@ const CreditCalculator = () => {
       alert('Por favor, permite las ventanas emergentes para descargar el PDF');
     }
   };
+
+  // ============================================
+  // HANDLE SUBMIT - ACTUALIZAR LEAD EXISTENTE O CREAR NUEVO
+  // ============================================
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Si hay leadId y token, actualizar lead existente
+    if (leadId && token) {
+      setIsLoading(true)
+      try {
+        const response = await fetch(`/api/leads/${leadId}/update-from-calculator`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token,
+            estimatedAmount: creditAmount,
+            plazo: years * 12,
+            creditType: 'TRADITIONAL'
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          alert('✅ Solicitud actualizada correctamente')
+          if (onClose) onClose()
+          window.location.href = '/gracias'
+        } else {
+          alert('❌ Error: ' + result.error)
+        }
+      } catch (error) {
+        console.error('Error:', error)
+        alert('❌ Error de conexión')
+      } finally {
+        setIsLoading(false)
+      }
+    } else {
+      // Crear lead nuevo (flujo normal)
+      setShowFormModal(true)
+    }
+  }
 
   return (
     <div id="calculadora" className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
@@ -399,19 +444,19 @@ const CreditCalculator = () => {
                 </div>
               </div>
 
-              {/* Anticipo - POR RANGOS */}
+              {/* Gastos administrativos */}
               <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-green-100 rounded-lg">
                     <Percent className="w-5 h-5 text-green-600" />
                   </div>
-                  <h3 className="font-semibold text-gray-700">Anticipo</h3>
+                  <h3 className="font-semibold text-gray-700">Gastos administrativos</h3>
                 </div>
                 <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {formatCurrency(results.advanceAmount)}
+                  {formatCurrency(results.adminFee)}
                 </div>
                 <div className="text-gray-500 text-sm">
-                  Cuota fija por rango de crédito
+                  1% del monto solicitado
                 </div>
               </div>
             </div>
@@ -432,7 +477,6 @@ const CreditCalculator = () => {
             {/* Alianza OXXO */}
             <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-8 mb-10 border border-amber-200 shadow-md">
               <div className="flex flex-col md:flex-row items-center gap-6">
-                {/* Logo OXXO */}
                 <div className="flex-shrink-0 bg-white p-4 rounded-xl shadow-md">
                   <img 
                     src="/oxxo.png" 
@@ -447,15 +491,14 @@ const CreditCalculator = () => {
                   />
                 </div>
                 
-                {/* Texto informativo */}
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
                     <Zap className="w-5 h-5 text-amber-600" />
-                    Paga tu anticipo en más de 20,000 OXXOs
+                    Paga tus gastos administrativos en más de 20,000 OXXOs
                   </h3>
                   
                   <p className="text-gray-700 mb-4">
-                    Gracias a nuestra alianza estratégica con <strong>OXXO</strong>, ahora puedes realizar el pago de tu anticipo de forma 
+                    Gracias a nuestra alianza estratégica con <strong>OXXO</strong>, ahora puedes realizar el pago de tus <strong>gastos administrativos</strong> de forma 
                     <strong> rápida, segura y sin complicaciones</strong> en cualquier sucursal OXXO de todo México.
                   </p>
                   
@@ -505,21 +548,31 @@ const CreditCalculator = () => {
             <div className="p-6 bg-green-50 rounded-xl border border-green-200 mb-10">
               <p className="text-gray-700 text-sm text-center">
                 <strong>Nota:</strong> La tasa de interés es fija del <strong>11% anual</strong> en pesos mexicanos (MXN). 
-                El anticipo corresponde a una <strong>cuota fija por rango de crédito</strong> que cubre gastos administrativos y de gestión. 
+                Los <strong>gastos administrativos</strong> corresponden al <strong>1% del monto solicitado</strong>.
                 <br /><br />
-                <span className="font-semibold text-amber-600">✅ Paga tu anticipo en cualquier OXXO de México.</span>
+                <span className="font-semibold text-amber-600">✅ Paga tus gastos administrativos en cualquier OXXO de México.</span>
                 Esta simulación es informativa y puede variar según condiciones finales.
               </p>
             </div>
 
-            {/* BOTÓN DE SOLICITAR CRÉDITO - AHORA USA EL MODAL PROFESIONAL */}
+            {/* BOTÓN DE SOLICITAR CRÉDITO */}
             <div className="text-center mb-12">
               <button
-                onClick={() => setShowFormModal(true)}
-                className="px-10 py-5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-xl rounded-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3 mx-auto"
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className="px-10 py-5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-xl rounded-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3 mx-auto disabled:opacity-50"
               >
-                <Send className="w-6 h-6" />
-                Solicitar crédito
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-6 h-6" />
+                    Solicitar crédito
+                  </>
+                )}
               </button>
               <p className="text-gray-500 text-sm mt-4">
                 ¿Listo para dar el siguiente paso? Solicita tu crédito con la simulación que acabas de realizar.
@@ -529,7 +582,7 @@ const CreditCalculator = () => {
         )}
       </div>
 
-      {/* MODAL DEL FORMULARIO PROFESIONAL */}
+      {/* MODAL DEL FORMULARIO (solo para leads nuevos) */}
       <ContactFormModal 
         isOpen={showFormModal} 
         onClose={() => setShowFormModal(false)} 
@@ -545,7 +598,6 @@ const CreditCalculator = () => {
             className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scaleIn"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header del modal */}
             <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 flex justify-between items-center">
               <div>
                 <h3 className="text-2xl font-bold flex items-center gap-2">
@@ -556,7 +608,7 @@ const CreditCalculator = () => {
                   {formatCurrency(creditAmount)} a {years} años • Tasa {interestRate * 12}% anual
                 </p>
                 <p className="text-green-100 text-sm mt-1">
-                  Anticipo: {formatCurrency(results.advanceAmount)} ({getCurrentRange(creditAmount)})
+                  Gastos administrativos: {formatCurrency(results.adminFee)} (1% del monto)
                 </p>
               </div>
               <button
@@ -567,17 +619,16 @@ const CreditCalculator = () => {
               </button>
             </div>
 
-            {/* Cuerpo del modal - Tabla */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 sticky top-0">
-                  <tr>
+                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mes</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago mensual</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interés</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capital</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
-                  </tr>
+                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {generateAmortizationTable().map((row: AmortizationRow) => (
@@ -593,7 +644,6 @@ const CreditCalculator = () => {
               </table>
             </div>
 
-            {/* Footer del modal */}
             <div className="bg-gray-50 p-4 border-t border-gray-200 flex justify-between items-center">
               <div className="text-sm text-gray-600">
                 <strong>Total de pagos:</strong> {years * 12} meses

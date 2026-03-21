@@ -1,5 +1,9 @@
 {
   "/page": "app/page.js",
-  "/api/admin/login/route": "app/api/admin/login/route.js",
-  "/admin/login/page": "app/admin/login/page.js"
+  "/api/admin/check-session/route": "app/api/admin/check-session/route.js",
+  "/api/leads/route": "app/api/leads/route.js",
+  "/api/leads/documents/route": "app/api/leads/documents/route.js",
+  "/api/leads/[id]/route": "app/api/leads/[id]/route.js",
+  "/admin/leads/page": "app/admin/leads/page.js",
+  "/admin/leads/[id]/page": "app/admin/leads/[id]/page.js"
 }

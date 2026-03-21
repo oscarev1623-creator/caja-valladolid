@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   X, Send, Loader2, ShieldCheck, User, Phone, Mail, DollarSign, 
@@ -11,7 +11,6 @@ import {
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 
-// 🎯 DECLARACIÓN PARA FACEBOOK PIXEL (para que TypeScript no se queje)
 declare global {
   interface Window {
     fbq: (action: string, event: string, options?: any) => void;
@@ -34,20 +33,21 @@ export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
   const [error, setError] = useState("")
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [leadId, setLeadId] = useState<string | null>(null)
+  const [leadToken, setLeadToken] = useState<string | null>(null)
   
-  // Datos personales
+  // Datos personales (etapa 1 - SIN CURP)
   const [formData, setFormData] = useState({
     nombre: "",
     telefono: "",
     email: "",
-    curp: "",
     monto: "",
     tipoCredito: "tradicional",
     contactoPreferido: "whatsapp",
     mensaje: "",
   })
   
-  // Documentos
+  // Documentos (etapa 2 - COMPLETO)
   const [documents, setDocuments] = useState({
     ineFront: null as File | null,
     ineBack: null as File | null,
@@ -56,10 +56,29 @@ export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
     estadosCuenta: null as File | null,
     otrosDocumentos: null as File | null
   })
+  
+  // Datos adicionales (etapa 2)
+  const [additionalData, setAdditionalData] = useState({
+    curp: "",
+    rfc: "",
+    ocupacion: "",
+    ingresoMensual: "",
+    tiempoEmpleo: "",
+    direccion: "",
+    comentarios: ""
+  })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleAdditionalDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setAdditionalData(prev => ({
       ...prev,
       [name]: value
     }))
@@ -104,118 +123,144 @@ export function ContactFormModal({ isOpen, onClose }: ContactFormModalProps) {
   }
 
   const validatePersonalData = () => {
-    if (!formData.nombre || !formData.telefono || !formData.email || !formData.curp) {
-      setError("Todos los campos marcados con * son obligatorios")
+    if (!formData.nombre || !formData.telefono || !formData.email) {
+      setError("Nombre, teléfono y email son requeridos")
       return false
     }
     return true
   }
 
-  const handleNextStep = () => {
+  // ============================================
+  // ETAPA 1: Crear lead con datos básicos
+  // ============================================
+  const handleSubmitStep1 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!validatePersonalData()) return
+    
+    setIsSubmitting(true)
     setError("")
-    if (step === 1 && validatePersonalData()) {
-      setStep(2)
+    setUploadProgress(20)
+    
+    try {
+      const response = await fetch('/api/leads/create-calculator-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: formData.nombre.split(' ')[0],
+          lastName: formData.nombre.split(' ').slice(1).join(' ') || '',
+          email: formData.email,
+          phone: formData.telefono,
+          estimatedAmount: formData.monto.replace(/[^0-9]/g, '') || 0,
+          creditType: formData.tipoCredito,
+          message: formData.mensaje
+        })
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setLeadId(result.leadId)
+        setLeadToken(result.token)
+        setUploadProgress(100)
+        setStep(3)
+        setSubmitted(true)
+        
+        if (typeof window !== 'undefined' && window.fbq) {
+          window.fbq('track', 'Lead')
+        }
+      } else {
+        throw new Error(result.error || 'Error al enviar la solicitud')
+      }
+      
+    } catch (err: any) {
+      console.error('❌ Error:', err)
+      setError(err.message || 'Error al enviar. Por favor intenta nuevamente.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-// ============================================
-// FUNCIÓN PARA SUBIR DOCUMENTOS (UNA SOLA VEZ)
-// ============================================
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  
-  // Validar documentos obligatorios
-  if (!validateRequiredDocuments()) {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-    return
-  }
-  
-  setIsSubmitting(true)
-  setError("")
-  setUploadProgress(20)
-  
-  try {
-    // PASO 1: Crear el lead
-    const leadResponse = await fetch('/api/formulario-externo-simple', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fullName: formData.nombre,
-        phone: formData.telefono,
-        email: formData.email,
-        monto: formData.monto,
-        tipoCredito: formData.tipoCredito,
-        contactoPreferido: formData.contactoPreferido,
-        mensaje: formData.mensaje
-      })
-    })
-
-    const leadResult = await leadResponse.json()
-    if (!leadResult.success) throw new Error(leadResult.error)
+  // ============================================
+  // ETAPA 2: Subir documentos y datos adicionales
+  // ============================================
+  const handleSubmitStep2 = async (e: React.FormEvent) => {
+    e.preventDefault()
     
-    const leadId = leadResult.leadId
-    setUploadProgress(40)
-    
-    // PASO 2: Preparar documentos
-    const documentFormData = new FormData()
-    documentFormData.append('leadId', leadId)
-    documentFormData.append('token', leadResult.token || 'temp-token')
-    
-    Object.entries(documents).forEach(([key, file]) => {
-      if (file) documentFormData.append(key, file)
-    })
-    
-    setUploadProgress(60)
-    
-    // PASO 3: Subir documentos
-    const uploadResponse = await fetch('/api/documents/upload', {
-      method: 'POST',
-      body: documentFormData
-    })
-    
-    const uploadResult = await uploadResponse.json()
-    
-if (uploadResult.success) {
-  // 📧 ENVIAR CORREO CON SENDGRID
-  try {
-    await fetch('/api/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: formData.email,
-        nombre: formData.nombre,
-        tipo: 'documentos',
-        leadId: leadId
-      })
-    })
-    console.log('✅ Correo enviado con SendGrid')
-  } catch (emailError) {
-    console.error('Error en correo:', emailError)
-  }
-  
-  // 🎯 PIXEL DE FACEBOOK - EVENTO LEAD
-  if (typeof window !== 'undefined' && window.fbq) {
-    window.fbq('track', 'Lead');
-    console.log('✅ Facebook Pixel: Lead registrado');
-  } else {
-    console.log('⚠️ Facebook Pixel no disponible');
-  }
-  
-  setUploadProgress(100)
-  setSubmitted(true)
-  setStep(3)
-} else {
-      throw new Error(uploadResult.error || 'Error al subir los documentos')
+    if (!validateRequiredDocuments()) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
     }
     
-  } catch (err: any) {
-    console.error('❌ Error:', err)
-    setError(err.message || 'Error al enviar. Por favor intenta nuevamente.')
-    setUploadProgress(0)
-  } finally {
-    setIsSubmitting(false)
+    setIsSubmitting(true)
+    setError("")
+    setUploadProgress(20)
+    
+    try {
+      // 1. Actualizar lead con datos adicionales
+      if (leadId) {
+        await fetch(`/api/leads/${leadId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            curp: additionalData.curp,
+            rfc: additionalData.rfc,
+            ocupacion: additionalData.ocupacion,
+            ingresoMensual: parseFloat(additionalData.ingresoMensual.replace(/[^0-9.-]/g, '')) || 0,
+            tiempoEmpleo: additionalData.tiempoEmpleo,
+            direccion: additionalData.direccion,
+            comentarios: additionalData.comentarios
+          })
+        })
+      }
+      
+      setUploadProgress(40)
+      
+      // 2. Subir documentos
+      const documentFormData = new FormData()
+      if (leadId) documentFormData.append('leadId', leadId)
+      if (leadToken) documentFormData.append('token', leadToken)
+      
+      Object.entries(documents).forEach(([key, file]) => {
+        if (file) documentFormData.append(key, file)
+      })
+      
+      setUploadProgress(60)
+      
+      const uploadResponse = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: documentFormData
+      })
+      
+      const uploadResult = await uploadResponse.json()
+      
+      if (uploadResult.success) {
+        setUploadProgress(100)
+        
+        // Enviar correo de confirmación de documentos
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: formData.email,
+            nombre: formData.nombre,
+            tipo: 'documentos',
+            leadId: leadId
+          })
+        })
+        
+        setStep(4) // Paso final de éxito total
+      } else {
+        throw new Error(uploadResult.error || 'Error al subir los documentos')
+      }
+      
+    } catch (err: any) {
+      console.error('❌ Error:', err)
+      setError(err.message || 'Error al enviar. Por favor intenta nuevamente.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
-}
 
   const handleClose = () => {
     onClose()
@@ -225,15 +270,25 @@ if (uploadResult.success) {
       setError("")
       setValidationErrors([])
       setUploadProgress(0)
+      setLeadId(null)
+      setLeadToken(null)
       setFormData({
         nombre: "",
         telefono: "",
         email: "",
-        curp: "",
         monto: "",
         tipoCredito: "tradicional",
         contactoPreferido: "whatsapp",
         mensaje: "",
+      })
+      setAdditionalData({
+        curp: "",
+        rfc: "",
+        ocupacion: "",
+        ingresoMensual: "",
+        tiempoEmpleo: "",
+        direccion: "",
+        comentarios: ""
       })
       setDocuments({
         ineFront: null,
@@ -248,7 +303,7 @@ if (uploadResult.success) {
 
   const handleWhatsAppClick = () => {
     const phone = "529541184165"
-    const message = encodeURIComponent("Hola, tengo una duda sobre mi solicitud de crédito")
+    const message = encodeURIComponent(`Hola, soy ${formData.nombre.split(' ')[0]} y quiero información sobre mi solicitud de crédito`)
     window.open(`https://wa.me/${phone}?text=${message}`, '_blank')
   }
 
@@ -279,9 +334,10 @@ if (uploadResult.success) {
             <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-green-100 sticky top-0 z-10">
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">
-                  {step === 1 && "Solicitud de Crédito - Paso 1"}
-                  {step === 2 && "Solicitud de Crédito - Paso 2 (Documentos)"}
-                  {step === 3 && "¡Solicitud Completada!"}
+                  {step === 1 && "Solicitud de Crédito"}
+                  {step === 2 && "Completa tu Documentación"}
+                  {step === 3 && "¡Solicitud Recibida!"}
+                  {step === 4 && "¡Documentación Completada!"}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <ShieldCheck className="w-4 h-4 text-green-600" />
@@ -294,22 +350,21 @@ if (uploadResult.success) {
             </div>
 
             {/* Progress Bar */}
-            {step < 3 && (
+            {(step === 1 || step === 2) && (
               <div className="px-6 pt-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-gray-700">Progreso</span>
-                  <span className="text-sm font-medium text-green-600">{step === 1 ? '33%' : '66%'}</span>
+                  <span className="text-sm font-medium text-green-600">{step === 1 ? '50%' : '100%'}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: step === 1 ? '33%' : '66%' }}
+                    style={{ width: step === 1 ? '50%' : '100%' }}
                   />
                 </div>
                 <div className="flex justify-between mt-2 text-xs text-gray-500">
-                  <span className={step >= 1 ? "text-green-600 font-medium" : ""}>1. Datos personales</span>
-                  <span className={step >= 2 ? "text-green-600 font-medium" : ""}>2. Documentos</span>
-                  <span className={step >= 3 ? "text-green-600 font-medium" : ""}>3. Confirmación</span>
+                  <span className={step >= 1 ? "text-green-600 font-medium" : ""}>1. Datos básicos</span>
+                  <span className={step >= 2 ? "text-green-600 font-medium" : ""}>2. Documentación</span>
                 </div>
               </div>
             )}
@@ -317,7 +372,7 @@ if (uploadResult.success) {
             {/* Content */}
             <div className="p-6">
               {/* Mensaje de error */}
-              {error && step < 3 && (
+              {error && (step === 1 || step === 2) && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -352,7 +407,7 @@ if (uploadResult.success) {
                           <span className="text-blue-600 font-bold">2</span>
                         </div>
                         <p>
-                          <strong>Etapa 2 (Con asesor):</strong> Te enviaremos un formulario completo para adjuntar documentos y evaluación formal.
+                          <strong>Etapa 2 (Opcional):</strong> Después de enviar, podrás subir tu documentación para agilizar el proceso.
                         </p>
                       </div>
                     </div>
@@ -369,7 +424,7 @@ if (uploadResult.success) {
                     </div>
                   </div>
 
-                  <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
+                  <form onSubmit={handleSubmitStep1} className="space-y-5">
                     {/* Nombre Completo */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -421,61 +476,41 @@ if (uploadResult.success) {
                       />
                     </div>
 
-                    {/* CURP */}
+                    {/* Monto Estimado */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        CURP *
+                        <DollarSign className="w-4 h-4" />
+                        Monto Estimado *
                       </label>
-                      <input
-                        type="text"
-                        name="curp"
-                        value={formData.curp}
-                        onChange={handleChange}
-                        required
-                        placeholder="GARJ800101HDFLRN09"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none uppercase"
-                        maxLength={18}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      {/* Monto Estimado */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          <DollarSign className="w-4 h-4" />
-                          Monto Estimado *
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-                          <input
-                            type="text"
-                            name="monto"
-                            value={formData.monto}
-                            onChange={handleChange}
-                            required
-                            placeholder="100,000"
-                            className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Tipo de Crédito */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Tipo de Crédito *
-                        </label>
-                        <select
-                          name="tipoCredito"
-                          value={formData.tipoCredito}
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                        <input
+                          type="text"
+                          name="monto"
+                          value={formData.monto}
                           onChange={handleChange}
                           required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                        >
-                          <option value="tradicional">11% Crédito Tradicional (MXN)</option>
-                          <option value="crypto">5.4% Crédito en Criptomonedas</option>
-                        </select>
+                          placeholder="100,000"
+                          className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                        />
                       </div>
+                    </div>
+
+                    {/* Tipo de Crédito */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tipo de Crédito *
+                      </label>
+                      <select
+                        name="tipoCredito"
+                        value={formData.tipoCredito}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      >
+                        <option value="tradicional">11% Crédito Tradicional (MXN)</option>
+                        <option value="crypto">5.4% Crédito en Criptomonedas</option>
+                      </select>
                     </div>
 
                     {/* Contacto preferido */}
@@ -536,20 +571,45 @@ if (uploadResult.success) {
                       />
                     </div>
 
-                    {/* Botón Siguiente */}
+                    {/* Barra de progreso de envío */}
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-700">Enviando solicitud...</span>
+                          <span className="text-sm font-medium text-green-600">{uploadProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botón Enviar */}
                     <button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2"
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
                     >
-                      Siguiente: Subir Documentos
-                      <ChevronRight className="w-5 h-5" />
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5" />
+                          Enviar Solicitud
+                        </>
+                      )}
                     </button>
                   </form>
                 </div>
               )}
 
-              {/* STEP 2: DOCUMENTOS */}
+              {/* STEP 2: DOCUMENTACIÓN COMPLETA */}
               {step === 2 && (
                 <div className="space-y-5">
                   {/* Resumen de datos */}
@@ -568,12 +628,12 @@ if (uploadResult.success) {
                         <p className="font-medium">{formData.email}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">CURP:</span>
-                        <p className="font-medium">{formData.curp}</p>
-                      </div>
-                      <div>
                         <span className="text-gray-500">Monto:</span>
                         <p className="font-medium">${formData.monto}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Tipo:</span>
+                        <p className="font-medium">{formData.tipoCredito === 'tradicional' ? 'Tradicional' : 'Cripto'}</p>
                       </div>
                     </div>
                   </div>
@@ -595,8 +655,79 @@ if (uploadResult.success) {
                     </div>
                   )}
 
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Documentos obligatorios */}
+                  <form onSubmit={handleSubmitStep2} className="space-y-6">
+                    {/* INFORMACIÓN ADICIONAL */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <User className="w-5 h-5 text-green-600" />
+                        Información Adicional
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">CURP *</label>
+                          <input
+                            type="text"
+                            name="curp"
+                            value={additionalData.curp}
+                            onChange={handleAdditionalDataChange}
+                            required
+                            placeholder="GARJ800101HDFLRN09"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Ocupación</label>
+                          <select
+                            name="ocupacion"
+                            value={additionalData.ocupacion}
+                            onChange={handleAdditionalDataChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          >
+                            <option value="">Selecciona una opción</option>
+                            <option value="EMPLEADO">Empleado</option>
+                            <option value="INDEPENDIENTE">Independiente</option>
+                            <option value="EMPRESARIO">Empresario</option>
+                            <option value="JUBILADO">Jubilado</option>
+                            <option value="ESTUDIANTE">Estudiante</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Ingreso Mensual</label>
+                          <input
+                            type="text"
+                            name="ingresoMensual"
+                            value={additionalData.ingresoMensual}
+                            onChange={handleAdditionalDataChange}
+                            placeholder="$15,000"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Dirección Completa</label>
+                          <input
+                            type="text"
+                            name="direccion"
+                            value={additionalData.direccion}
+                            onChange={handleAdditionalDataChange}
+                            placeholder="Calle, número, colonia, ciudad"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Comentarios</label>
+                          <textarea
+                            name="comentarios"
+                            value={additionalData.comentarios}
+                            onChange={handleAdditionalDataChange}
+                            rows={3}
+                            placeholder="Información adicional sobre tu situación..."
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DOCUMENTOS OBLIGATORIOS */}
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <Upload className="w-5 h-5 text-green-600" />
@@ -712,14 +843,13 @@ if (uploadResult.success) {
                       </div>
                     </div>
 
-                    {/* Documentos opcionales */}
+                    {/* DOCUMENTOS OPCIONALES */}
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <FileText className="w-5 h-5 text-blue-600" />
                         Documentación Adicional (Opcional)
                       </h4>
 
-                      {/* Estados de cuenta */}
                       <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 mb-4 hover:border-blue-400 transition-colors">
                         <label className="block mb-2">
                           <span className="font-medium text-gray-900">Estados de Cuenta Bancarios</span>
@@ -741,7 +871,6 @@ if (uploadResult.success) {
                         </div>
                       </div>
 
-                      {/* Otros documentos */}
                       <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-blue-400 transition-colors">
                         <label className="block mb-2">
                           <span className="font-medium text-gray-900">Otros Documentos Relevantes</span>
@@ -784,15 +913,15 @@ if (uploadResult.success) {
                     <div className="flex gap-3 pt-4">
                       <button
                         type="button"
-                        onClick={() => setStep(1)}
+                        onClick={() => setStep(3)}
                         className="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-all"
                       >
-                        ← Atrás
+                        ← Volver
                       </button>
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isSubmitting ? (
                           <>
@@ -802,7 +931,7 @@ if (uploadResult.success) {
                         ) : (
                           <>
                             <Send className="w-5 h-5" />
-                            Enviar Solicitud
+                            Enviar Documentación
                           </>
                         )}
                       </button>
@@ -811,8 +940,76 @@ if (uploadResult.success) {
                 </div>
               )}
 
-              {/* STEP 3: ÉXITO */}
-              {step === 3 && (
+{/* STEP 3: ÉXITO CON OPCIONES */}
+{step === 3 && (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    className="text-center py-6"
+  >
+    <div className="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+      <CheckCircle className="w-12 h-12 text-white" />
+    </div>
+    
+    <h3 className="text-3xl font-bold text-gray-900 mb-3">¡Hola {formData.nombre.split(' ')[0]}! 👋</h3>
+    <p className="text-xl text-gray-700 mb-2">¡Hemos recibido tu solicitud correctamente!</p>
+    
+    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 my-6 text-left shadow-sm">
+      <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+        <ShieldCheck className="w-5 h-5" />
+        ¿Qué sigue?
+      </h4>
+      
+      <ul className="space-y-3 text-gray-700">
+        <li className="flex items-start gap-2">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <span>Revisa tu correo: <strong className="text-green-700">{formData.email}</strong></span>
+        </li>
+        <li className="flex items-start gap-2">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <span>Te llegará un <strong>enlace para completar tu documentación</strong> en los próximos minutos</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <span>Nuestro equipo analizará tu información en <strong>24-48 horas</strong></span>
+        </li>
+      </ul>
+    </div>
+
+    {/* Opciones */}
+    <div className="space-y-4">
+      {/* Opción 1: WhatsApp */}
+      <button
+        onClick={handleWhatsAppClick}
+        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-md transition-all"
+      >
+        <Image src="/whatsapp.png" alt="WhatsApp" width={24} height={24} />
+        Contactar por WhatsApp con un asesor
+      </button>
+
+      {/* Opción 2: Continuar con documentación */}
+      <button
+        onClick={() => setStep(2)}
+        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 shadow-md transition-all"
+      >
+        <Upload className="w-5 h-5" />
+        Subir documentación ahora (Agiliza tu proceso)
+      </button>
+    </div>
+
+    <div className="mt-6 pt-4 border-t border-gray-200">
+      <button
+        onClick={handleClose}
+        className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-all"
+      >
+        Cerrar
+      </button>
+    </div>
+  </motion.div>
+)}
+
+              {/* STEP 4: ÉXITO TOTAL (documentación completada) */}
+              {step === 4 && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -822,77 +1019,37 @@ if (uploadResult.success) {
                     <CheckCircle className="w-12 h-12 text-green-600" />
                   </div>
                   
-                  <h3 className="text-3xl font-bold text-gray-900 mb-3">¡Felicidades!</h3>
-                  <p className="text-xl text-gray-700 mb-2">Hemos recibido tu información y documentos</p>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-3">¡Documentación Completada!</h3>
+                  <p className="text-xl text-gray-700 mb-2">Hemos recibido toda tu información</p>
                   
                   <div className="bg-green-50 border border-green-200 rounded-xl p-6 my-6 text-left">
                     <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
                       <ShieldCheck className="w-5 h-5" />
-                      Tu información está segura con nosotros
+                      ¿Qué sigue?
                     </h4>
                     
                     <ul className="space-y-3 text-gray-700">
                       <li className="flex items-start gap-2">
                         <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span>Hemos recibido tus <strong>datos personales</strong> correctamente</span>
+                        <span>Revisa tu correo: <strong>{formData.email}</strong></span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span>Tus <strong>documentos</strong> han sido subidos y almacenados de forma segura</span>
+                        <span>Tu documentación será evaluada por nuestros analistas</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span>Nuestros analistas están <strong>evaluando tu solicitud</strong></span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span>Recibirás un <strong>correo electrónico</strong> con la confirmación y los siguientes pasos</span>
+                        <span>Te contactaremos en las próximas 24-48 horas</span>
                       </li>
                     </ul>
-
-                    <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-blue-800 text-sm">
-                        <strong>📧 Correo enviado a:</strong> {formData.email}
-                      </p>
-                    </div>
                   </div>
 
-                  {/* Botón de WhatsApp */}
-                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-6 text-white mb-6">
-                    <h4 className="font-bold text-lg mb-3 flex items-center justify-center gap-2">
-                      <MessageSquare className="w-5 h-5" />
-                      ¿Tienes alguna duda?
-                    </h4>
-                    <p className="mb-4">
-                      Escríbenos directamente a WhatsApp y un asesor te atenderá personalmente
-                    </p>
-                    <button
-                      onClick={handleWhatsAppClick}
-                      className="bg-white text-green-700 hover:bg-green-50 font-bold py-4 px-8 rounded-lg transition-all flex items-center justify-center gap-3 mx-auto shadow-lg"
-                    >
-                      <Image
-                        src="/whatsapp.png"
-                        alt="WhatsApp"
-                        width={24}
-                        height={24}
-                        className="object-contain"
-                      />
-                      Contactar por WhatsApp
-                    </button>
-                  </div>
-
-                  <div className="flex justify-center">
-                    <button
-                      onClick={handleClose}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-8 rounded-lg transition-all"
-                    >
-                      Cerrar
-                    </button>
-                  </div>
-
-                  <p className="text-xs text-gray-500 mt-6">
-                    Este formulario se cerrará automáticamente en 10 segundos...
-                  </p>
+                  <button
+                    onClick={handleClose}
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-8 rounded-lg transition-all"
+                  >
+                    Cerrar
+                  </button>
                 </motion.div>
               )}
             </div>

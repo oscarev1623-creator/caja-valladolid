@@ -6,17 +6,14 @@ const prisma = new PrismaClient()
 // GET: Obtener todos los leads
 export async function GET(request: NextRequest) {
   try {
-    // Obtener parámetros de búsqueda
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || ''
     
-    // VALIDACIÓN MEJORADA: page y limit
     const pageNum = Math.max(1, parseInt(searchParams.get('page') || '1') || 1)
     const limitNum = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10') || 10))
     const skip = (pageNum - 1) * limitNum
 
-    // Construir filtros
     const where: any = {}
     
     if (search) {
@@ -31,7 +28,6 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
-    // Obtener leads y total
     const [leads, total] = await Promise.all([
       prisma.lead.findMany({
         where,
@@ -43,8 +39,7 @@ export async function GET(request: NextRequest) {
           estimatedAmount: true,
           creditType: true,
           status: true,
-          stage: true,
-          message: true,        // ← AGREGADO: campo mensaje
+          message: true,
           createdAt: true,
           assignedTo: {
             select: { id: true, name: true, email: true }
@@ -86,7 +81,6 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
 
-    // Validar datos requeridos
     if (!data.fullName || !data.email || !data.phone) {
       return NextResponse.json(
         { 
@@ -97,11 +91,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // VALIDACIÓN MEJORADA: estimatedAmount
     const estimatedAmount = data.estimatedAmount ? 
       (parseFloat(data.estimatedAmount) || 0) : 0
 
-    // Crear lead (SIN STAGE)
     const lead = await prisma.lead.create({
       data: {
         fullName: data.fullName,
@@ -129,7 +121,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Error creando lead:', error)
     
-    // Error de duplicado (si agregamos constraint único)
     if (error.code === 'P2002') {
       return NextResponse.json(
         { 

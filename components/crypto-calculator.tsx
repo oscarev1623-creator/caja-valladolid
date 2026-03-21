@@ -5,11 +5,26 @@ import { Calculator, Bitcoin, DollarSign, Percent, Download, Zap, Shield, Trendi
 import Image from "next/image";
 import { CryptoContactFormModal } from "./crypto-contact-form-modal";
 
-const CryptoCreditCalculator = () => {
+// Interfaz para las props del componente
+interface CryptoCreditCalculatorProps {
+  initialMonto?: number;
+  initialPlazo?: number;
+  leadId?: string;
+  token?: string;
+  onClose?: () => void;
+}
+
+const CryptoCreditCalculator = ({ 
+  initialMonto = 10000, 
+  initialPlazo = 12,
+  leadId,
+  token,
+  onClose 
+}: CryptoCreditCalculatorProps = {}) => {
   // Estados
-  const [creditAmount, setCreditAmount] = useState(10000);
+  const [creditAmount, setCreditAmount] = useState(initialMonto);
   const [selectedCrypto, setSelectedCrypto] = useState('BTC');
-  const [years, setYears] = useState(12);
+  const [years, setYears] = useState(initialPlazo);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   
@@ -19,7 +34,7 @@ const CryptoCreditCalculator = () => {
   // Resultados
   const [results, setResults] = useState({
     monthlyPayment: 0,
-    advanceAmount: 0,
+    adminFee: 0,
     totalInterest: 0,
     netAmount: 0
   });
@@ -30,7 +45,7 @@ const CryptoCreditCalculator = () => {
   // Opciones de plazo
   const yearOptions = [6, 12, 18, 24, 36, 48];
 
-  // Criptomonedas disponibles para crédito - CON LOGOS - ORDEN PERSONALIZADO
+  // Criptomonedas disponibles para crédito
   const cryptocurrencies = [
     { 
       id: 'BTC', 
@@ -79,9 +94,9 @@ const CryptoCreditCalculator = () => {
     }
   ];
 
-  // Calcular anticipo al 10% del monto
-  const calculateAdvance = (amount: number) => {
-    return amount * 0.10;
+  // Calcular gastos administrativos (1% del monto)
+  const calculateAdminFee = (amount: number) => {
+    return amount * 0.01; // 1% del monto
   };
 
   // Convertir a criptomoneda seleccionada (simulado)
@@ -99,8 +114,8 @@ const CryptoCreditCalculator = () => {
 
   // Calcular préstamo
   const calculateLoan = () => {
-    const advanceAmount = calculateAdvance(creditAmount);
-    const netAmount = creditAmount - advanceAmount;
+    const adminFee = calculateAdminFee(creditAmount);
+    const netAmount = creditAmount - adminFee;
     const months = years;
     
     const monthlyPayment = (netAmount * interestRate * Math.pow(1 + interestRate, months)) / 
@@ -110,7 +125,7 @@ const CryptoCreditCalculator = () => {
 
     setResults({
       monthlyPayment,
-      advanceAmount,
+      adminFee,
       totalInterest,
       netAmount
     });
@@ -139,10 +154,48 @@ const CryptoCreditCalculator = () => {
     }, 1200);
   };
 
-  // FUNCIÓN PARA ABRIR EL FORMULARIO
-  const handleOpenForm = () => {
-    setIsLeadFormOpen(true);
-  };
+  // ============================================
+  // HANDLE SUBMIT - ACTUALIZAR LEAD EXISTENTE O CREAR NUEVO
+  // ============================================
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Si hay leadId y token, actualizar lead existente
+    if (leadId && token) {
+      setIsLoading(true)
+      try {
+        const response = await fetch(`/api/leads/${leadId}/update-from-calculator`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token,
+            estimatedAmount: creditAmount,
+            plazo: years,
+            creditType: 'CRYPTO',
+            selectedCrypto: selectedCrypto
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (result.success) {
+          alert('✅ Solicitud actualizada correctamente')
+          if (onClose) onClose()
+          window.location.href = '/gracias'
+        } else {
+          alert('❌ Error: ' + result.error)
+        }
+      } catch (error) {
+        console.error('Error:', error)
+        alert('❌ Error de conexión')
+      } finally {
+        setIsLoading(false)
+      }
+    } else {
+      // Crear lead nuevo (flujo normal)
+      setIsLeadFormOpen(true)
+    }
+  }
 
   // Formatear moneda en USDT
   const formatCurrency = (amount: number) => {
@@ -169,7 +222,7 @@ const CryptoCreditCalculator = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header CON LOGO DE BITCOIN */}
+        {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-4 mb-6">
             <div className="p-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-xl">
@@ -193,7 +246,6 @@ const CryptoCreditCalculator = () => {
             </div>
           </div>
           
-          {/* Badge destacado */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-sm font-semibold mb-4 shadow-lg">
             <div className="relative w-5 h-5">
               <Image
@@ -270,7 +322,7 @@ const CryptoCreditCalculator = () => {
               </div>
             </div>
 
-            {/* Selección de criptomoneda CON LOGOS */}
+            {/* Selección de criptomoneda */}
             <div className="mb-10">
               <div className="flex items-center gap-3 mb-6">
                 <Bitcoin className="w-5 h-5 text-gray-600" />
@@ -418,19 +470,19 @@ const CryptoCreditCalculator = () => {
                 </div>
               </div>
 
-              {/* Anticipo - 10% */}
+              {/* Gastos administrativos */}
               <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-green-100 rounded-lg">
                     <Percent className="w-5 h-5 text-green-600" />
                   </div>
-                  <h3 className="font-semibold text-gray-700">Anticipo</h3>
+                  <h3 className="font-semibold text-gray-700">Gastos administrativos</h3>
                 </div>
                 <div className="text-2xl font-bold text-gray-900 mb-2">
-                  {formatCrypto(results.advanceAmount)}
+                  {formatCrypto(results.adminFee)}
                 </div>
                 <div className="text-gray-500 text-sm">
-                  10% del monto total
+                  1% del monto solicitado
                 </div>
               </div>
 
@@ -456,7 +508,7 @@ const CryptoCreditCalculator = () => {
               <div className="flex flex-col md:flex-row md:items-center justify-between">
                 <div>
                   <h3 className="text-xl font-semibold mb-2">Monto neto a recibir</h3>
-                  <p className="text-green-100">Después de descontar el anticipo del 10%</p>
+                  <p className="text-green-100">Después de descontar gastos administrativos</p>
                 </div>
                 <div className="text-4xl md:text-5xl font-bold mt-4 md:mt-0">
                   {formatCrypto(results.netAmount)}
@@ -464,14 +516,24 @@ const CryptoCreditCalculator = () => {
               </div>
             </div>
 
-            {/* SOLO BOTÓN DE SOLICITAR CRÉDITO */}
+            {/* BOTÓN DE SOLICITAR CRÉDITO */}
             <div className="text-center mb-12">
               <button
-                onClick={handleOpenForm}
-                className="px-10 py-5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-xl rounded-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3 mx-auto"
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className="px-10 py-5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-xl rounded-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3 mx-auto disabled:opacity-50"
               >
-                <Send className="w-6 h-6" />
-                Solicitar crédito
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-6 h-6" />
+                    Solicitar crédito
+                  </>
+                )}
               </button>
               <p className="text-gray-500 text-sm mt-4">
                 ¿Listo para dar el siguiente paso? Solicita tu crédito con la simulación que acabas de realizar.
@@ -504,36 +566,40 @@ const CryptoCreditCalculator = () => {
               </div>
             </div>
 
-            {/* Información del anticipo */}
+            {/* Información de gastos administrativos */}
             <div className="p-6 bg-green-50 rounded-xl border border-green-200 mb-8">
               <div className="flex items-start gap-3">
                 <div className="p-2 bg-green-100 rounded-lg">
                   <Shield className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">Sobre el anticipo del 10%</h4>
+                  <h4 className="font-semibold text-gray-800 mb-2">Sobre los gastos administrativos</h4>
                   <p className="text-sm text-gray-700 mb-3">
-                    El anticipo es un pago inicial del 10% del monto solicitado que:
+                    Los gastos administrativos corresponden al <strong>1% del monto solicitado</strong> y cubren:
                   </p>
                   <ul className="text-sm text-gray-700 space-y-2">
                     <li className="flex items-start gap-2">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
-                      <span>Asegura tu solicitud y reserva el monto del crédito elegido</span>
+                      <span>Costos de apertura y trámites legales</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
-                      <span>Cubre costos de apertura y trámites legales asociados</span>
+                      <span>Evaluación crediticia y análisis de documentos</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
-                      <span>Se descuenta del total del crédito, no es un cargo adicional</span>
+                      <span>Gestión del contrato digital y seguimiento</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
+                      <span>Pago en cualquier OXXO del país</span>
                     </li>
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* Comparativa de tasas CON LOGOS */}
+            {/* Comparativa de tasas */}
             <div className="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
               <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">
                 Comparativa de tasas de interés
@@ -591,7 +657,7 @@ const CryptoCreditCalculator = () => {
         )}
       </div>
       
-      {/* MODAL DE PRE-EVALUACIÓN - AHORA CON LAS PROPS CORRECTAS */}
+      {/* MODAL DE PRE-EVALUACIÓN */}
       <CryptoContactFormModal 
         isOpen={isLeadFormOpen} 
         onClose={() => setIsLeadFormOpen(false)}
@@ -600,7 +666,6 @@ const CryptoCreditCalculator = () => {
         monto={creditAmount}
       />
 
-      {/* Estilos CSS */}
       <style jsx>{`
         @keyframes fadeInUp {
           from {

@@ -8,7 +8,7 @@ import {
   Clock, AlertCircle, Edit, Trash2, Download,
   Link, Copy, Eye, Upload, RefreshCw,
   Send, MessageCircle, Check, Loader2, 
-  Bitcoin, FileSignature
+  Bitcoin, FileSignature, Calculator 
 } from 'lucide-react'
 
 // Interfaces para tipado
@@ -42,7 +42,6 @@ interface Lead {
   uniqueToken?: string
   notes?: Note[]
   documents?: Document[]
-  // ✅ NUEVOS CAMPOS
   curp?: string
   rfc?: string
   ocupacion?: string
@@ -56,26 +55,26 @@ export default function LeadDetailPage() {
   const router = useRouter()
   const params = useParams()
   
-  // Manejo seguro de params.id
   const leadId = params?.id as string | undefined
   
   const [loading, setLoading] = useState(true)
   const [lead, setLead] = useState<Lead | null>(null)
   const [error, setError] = useState('')
   
-  // Estados para generación de link
   const [generating, setGenerating] = useState(false)
   const [generatedLink, setGeneratedLink] = useState('')
   const [copied, setCopied] = useState(false)
   const [showShareOptions, setShowShareOptions] = useState(false)
+
+ const [calculatorLink, setCalculatorLink] = useState('')
+ const [generatingLink, setGeneratingLink] = useState(false)
+ const [linkCopied, setLinkCopied] = useState(false)
   
-  // Estados para documentos
   const [documents, setDocuments] = useState<Document[]>([])
   const [loadingDocs, setLoadingDocs] = useState(false)
   const [sendingCriptoEmail, setSendingCriptoEmail] = useState<string | null>(null)
 
   useEffect(() => {
-    // Redirigir si no hay ID
     if (!leadId) {
       router.push('/admin/leads')
       return
@@ -125,7 +124,6 @@ export default function LeadDetailPage() {
     }
   }, [leadId])
 
-  // Función para generar link con animación de carga
   const generateLink = async () => {
     try {
       setGenerating(true)
@@ -158,7 +156,6 @@ export default function LeadDetailPage() {
     }
   }
 
-  // Función para enviar correo cripto
   const handleSendCriptoApprovalEmail = async (leadId: string) => {
     if (!confirm('¿Enviar correo de aprobación CRIPTO a este cliente?')) return
     
@@ -185,7 +182,6 @@ export default function LeadDetailPage() {
     }
   }
 
-  // Función para copiar al portapapeles
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(generatedLink)
@@ -196,7 +192,6 @@ export default function LeadDetailPage() {
     }
   }
 
-  // Función para enviar por WhatsApp
   const sendByWhatsApp = () => {
     if (!lead) return
     
@@ -211,7 +206,6 @@ export default function LeadDetailPage() {
     window.open(`https://wa.me/${lead?.phone?.replace(/\D/g, '')}?text=${message}`, '_blank')
   }
 
-  // Función para enviar por email
   const sendByEmail = () => {
     if (!lead) return
     
@@ -231,7 +225,6 @@ export default function LeadDetailPage() {
     window.open(`mailto:${lead?.email}?subject=${subject}&body=${body}`, '_blank')
   }
 
-  // Función para generar nuevo enlace
   const generateNewLink = () => {
     if (confirm('¿Generar nuevo enlace? El anterior dejará de funcionar inmediatamente.')) {
       setGeneratedLink('')
@@ -240,7 +233,6 @@ export default function LeadDetailPage() {
     }
   }
 
-  // Función para cargar documentos
   const fetchDocuments = async () => {
     try {
       setLoadingDocs(true)
@@ -259,12 +251,10 @@ export default function LeadDetailPage() {
     }
   }
 
-  // Función para ver documento
   const viewDocument = (fileUrl: string) => {
     window.open(fileUrl, '_blank')
   }
 
-  // Función para descargar documento
   const downloadDocument = (fileUrl: string, filename: string) => {
     const link = document.createElement('a')
     link.href = fileUrl
@@ -273,6 +263,86 @@ export default function LeadDetailPage() {
     link.click()
     document.body.removeChild(link)
   }
+
+// Generar enlace para la calculadora
+const generateCalculatorLink = async () => {
+  if (!lead) return
+  
+  setGeneratingLink(true)
+  
+  try {
+    const response = await fetch('/api/leads/generate-calculator-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        leadId: lead.id,
+        baseUrl: window.location.origin
+      }),
+      credentials: 'include'
+    })
+    
+    const data = await response.json()
+    
+    if (data.success) {
+      setCalculatorLink(data.data.url)
+    } else {
+      alert('❌ Error: ' + data.error)
+    }
+  } catch (error) {
+    console.error('Error:', error)
+    alert('❌ Error al generar enlace')
+  } finally {
+    setGeneratingLink(false)
+  }
+}
+
+// Copiar enlace
+const copyCalculatorLink = async () => {
+  try {
+    await navigator.clipboard.writeText(calculatorLink)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  } catch (error) {
+    alert('❌ Error al copiar')
+  }
+}
+
+// Enviar por WhatsApp
+const sendCalculatorByWhatsApp = () => {
+  if (!lead) return
+  
+  const message = encodeURIComponent(
+    `Hola ${lead.fullName},\n\n` +
+    `Completa tu solicitud de crédito aquí:\n\n` +
+    `${calculatorLink}\n\n` +
+    `El enlace es válido por 30 días.\n\n` +
+    `Saludos,\nEquipo Caja Valladolid`
+  )
+  window.open(`https://wa.me/${lead.phone?.replace(/\D/g, '')}?text=${message}`, '_blank')
+}
+
+// Enviar por email
+const sendCalculatorByEmail = () => {
+  if (!lead) return
+  
+  const subject = encodeURIComponent('Completa tu solicitud de crédito - Caja Valladolid')
+  const body = encodeURIComponent(
+    `Hola ${lead.fullName},\n\n` +
+    `Completa tu solicitud de crédito aquí:\n\n` +
+    `${calculatorLink}\n\n` +
+    `El enlace es válido por 30 días.\n\n` +
+    `Saludos,\nEquipo Caja Valladolid`
+  )
+  window.open(`mailto:${lead.email}?subject=${subject}&body=${body}`, '_blank')
+}
+
+// Generar nuevo enlace
+const generateNewCalculatorLink = () => {
+  if (confirm('¿Generar nuevo enlace? El anterior dejará de funcionar inmediatamente.')) {
+    setCalculatorLink('')
+    generateCalculatorLink()
+  }
+}
 
   const handleDelete = async () => {
     if (!leadId) return
@@ -296,9 +366,6 @@ export default function LeadDetailPage() {
     }
   }
 
-  // ============================================
-  // FUNCIÓN DE CAMBIO DE ESTADO CON CORREO DE APROBACIÓN
-  // ============================================
   const handleStatusChange = async (newStatus: string) => {
     if (!lead || !leadId) return
     
@@ -317,7 +384,6 @@ export default function LeadDetailPage() {
       if (data.success) {
         setLead({ ...lead, status: newStatus })
         
-        // ✅ SI SE APROBÓ, ENVIAR CORREO DE APROBACIÓN
         if (newStatus === 'APPROVED') {
           try {
             const emailResponse = await fetch('/api/send-email', {
@@ -355,7 +421,6 @@ export default function LeadDetailPage() {
     }
   }
 
-  // Función para reenviar correo de aprobación manualmente
   const handleResendApprovalEmail = async () => {
     if (!lead) return
     
@@ -418,7 +483,6 @@ export default function LeadDetailPage() {
     return config[status] || config['PENDING']
   }
 
-  // Validar que tenemos leadId antes de continuar
   if (!leadId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -553,42 +617,46 @@ export default function LeadDetailPage() {
           </div>
         </div>
 
-        {/* ============================================ */}
-        {/* SECCIÓN NUEVA: INFORMACIÓN ADICIONAL */}
-        {/* ============================================ */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <User className="w-5 h-5 text-green-600" />
-            Información Adicional
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">CURP</p>
-              <p className="font-medium text-gray-900">{lead.curp || '—'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">RFC</p>
-              <p className="font-medium text-gray-900">{lead.rfc || '—'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Ocupación</p>
-              <p className="font-medium text-gray-900">{lead.ocupacion || '—'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Ingreso Mensual</p>
-              <p className="font-medium text-gray-900">{lead.ingresoMensual ? formatCurrency(lead.ingresoMensual) : '—'}</p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-sm text-gray-600 mb-1">Dirección</p>
-              <p className="font-medium text-gray-900">{lead.direccion || '—'}</p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-sm text-gray-600 mb-1">Comentarios</p>
-              <p className="font-medium text-gray-900">{lead.comentarios || '—'}</p>
-            </div>
-          </div>
-        </div>
+{/* INFORMACIÓN ADICIONAL */}
+<div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+  <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+    <User className="w-5 h-5 text-green-600" />
+    Información del Cliente
+  </h2>
+  
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {/* Mensaje del cliente - ocupa toda la fila */}
+    <div className="col-span-2">
+      <p className="text-sm text-gray-600 mb-1">📝 Mensaje del cliente</p>
+      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <p className="text-gray-800 whitespace-pre-wrap">
+          {lead.message || '—'}
+        </p>
+      </div>
+    </div>
+    
+    <div>
+      <p className="text-sm text-gray-600 mb-1">CURP</p>
+      <p className="font-medium text-gray-900">{lead.curp || '—'}</p>
+    </div>
+    <div>
+      <p className="text-sm text-gray-600 mb-1">Ocupación</p>
+      <p className="font-medium text-gray-900">{lead.ocupacion || '—'}</p>
+    </div>
+    <div>
+      <p className="text-sm text-gray-600 mb-1">Ingreso Mensual</p>
+      <p className="font-medium text-gray-900">{lead.ingresoMensual ? formatCurrency(lead.ingresoMensual) : '—'}</p>
+    </div>
+    <div className="col-span-2">
+      <p className="text-sm text-gray-600 mb-1">Dirección</p>
+      <p className="font-medium text-gray-900">{lead.direccion || '—'}</p>
+    </div>
+    <div className="col-span-2">
+      <p className="text-sm text-gray-600 mb-1">Comentarios adicionales</p>
+      <p className="font-medium text-gray-900">{lead.comentarios || '—'}</p>
+    </div>
+  </div>
+</div>
 
         {/* SECCIÓN DE GENERACIÓN DE LINK */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
@@ -625,7 +693,6 @@ export default function LeadDetailPage() {
               </button>
             ) : (
               <div className="space-y-6 animate-fadeIn">
-                {/* Link generado */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border-2 border-blue-200">
                   <p className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
@@ -663,7 +730,6 @@ export default function LeadDetailPage() {
                     </div>
                   </div>
 
-                  {/* Opciones de envío */}
                   <div className="space-y-4">
                     <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
                       <Send className="w-4 h-4" />
@@ -712,7 +778,126 @@ export default function LeadDetailPage() {
             )}
           </div>
         </div>
+        
+{/* SECCIÓN DE GENERACIÓN DE LINK PARA CALCULADORA */}
+<div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
+  <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4">
+    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+      <Calculator className="w-5 h-5" />
+      📊 Enlace para Completar Solicitud
+    </h2>
+  </div>
+  
+  <div className="p-6">
+    <p className="text-gray-600 mb-6">
+      Genera un enlace para que el cliente pueda simular y enviar su solicitud con los montos que elijas.
+      Al enviar, se actualizará automáticamente este lead.
+    </p>
 
+    {!calculatorLink ? (
+      <button
+        onClick={generateCalculatorLink}
+        disabled={generatingLink}
+        className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 disabled:opacity-50 flex items-center justify-center gap-3 shadow-lg text-lg font-medium transition-all transform hover:scale-105"
+      >
+        {generatingLink ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            Generando enlace...
+          </>
+        ) : (
+          <>
+            <Calculator className="w-5 h-5" />
+            🔗 Generar Enlace para Cliente
+          </>
+        )}
+      </button>
+    ) : (
+      <div className="space-y-6 animate-fadeIn">
+        <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl border-2 border-orange-200">
+          <p className="text-sm font-semibold text-orange-900 mb-3 flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            ✅ Enlace generado exitosamente
+          </p>
+          
+          <div className="bg-white p-4 rounded-lg border border-orange-200 mb-6">
+            <div className="flex flex-col md:flex-row gap-3">
+              <input
+                type="text"
+                value={calculatorLink}
+                readOnly
+                className="flex-1 p-3 border rounded-lg bg-gray-50 font-mono text-sm"
+              />
+              <button
+                onClick={copyCalculatorLink}
+                className={`px-6 py-3 rounded-lg flex items-center justify-center gap-2 font-medium transition-all min-w-[120px] ${
+                  linkCopied 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-orange-600 text-white hover:bg-orange-700'
+                }`}
+              >
+                {linkCopied ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    ¡Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copiar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <Send className="w-4 h-4" />
+              Enviar enlace al cliente:
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={sendCalculatorByWhatsApp}
+                className="flex items-center justify-center gap-3 p-4 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span className="font-medium">Enviar por WhatsApp</span>
+              </button>
+              
+              <button
+                onClick={sendCalculatorByEmail}
+                className="flex items-center justify-center gap-3 p-4 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+              >
+                <Mail className="w-5 h-5" />
+                <span className="font-medium">Enviar por Email</span>
+              </button>
+            </div>
+
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-xs text-gray-500 mb-2">📱 Vista previa del mensaje:</p>
+              <p className="text-sm text-gray-700">
+                Hola {lead.fullName}, completa tu solicitud de crédito aquí: {calculatorLink}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
+            <span>⏰ Expira: {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
+            <button
+              onClick={generateNewCalculatorLink}
+              className="text-orange-600 hover:text-orange-800 flex items-center gap-1 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Generar nuevo enlace
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
         {/* SECCIÓN DE DOCUMENTOS SUBIDOS */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
@@ -843,7 +1028,6 @@ export default function LeadDetailPage() {
             </button>
           </div>
 
-          {/* BOTÓN PARA REENVIAR CORREO DE APROBACIÓN (SOLO SI ESTÁ APROBADO) */}
           {lead.status === 'APPROVED' && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -862,7 +1046,6 @@ export default function LeadDetailPage() {
             </div>
           )}
 
-          {/* BOTONES ESPECÍFICOS PARA CRÉDITOS CRIPTO */}
           {lead.creditType === 'CRYPTO' && lead.status === 'APPROVED' && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">

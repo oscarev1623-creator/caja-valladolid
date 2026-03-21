@@ -1,4 +1,3 @@
-// app/formulario-documentos/[token]/page.tsx
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -16,9 +15,7 @@ interface Lead {
   creditType?: string
   createdAt: string
   documentsSubmitted?: boolean
-  // ✅ NUEVOS CAMPOS
   curp?: string
-  rfc?: string
   ocupacion?: string
   ingresoMensual?: number
   tiempoEmpleo?: string
@@ -28,7 +25,6 @@ interface Lead {
 
 interface FormData {
   curp: string
-  rfc: string
   ocupacion: string
   ingresoMensual: string
   tiempoEmpleo: string
@@ -50,7 +46,6 @@ export default function DocumentosPage() {
   const params = useParams()
   const router = useRouter()
   
-  // Manejo seguro de params.token
   const token = params?.token as string | undefined
   
   const [loading, setLoading] = useState(true)
@@ -61,7 +56,6 @@ export default function DocumentosPage() {
   
   const [formData, setFormData] = useState<FormData>({
     curp: '',
-    rfc: '',
     ocupacion: '',
     ingresoMensual: '',
     tiempoEmpleo: '',
@@ -80,7 +74,6 @@ export default function DocumentosPage() {
   })
   
   useEffect(() => {
-    // Redirigir si no hay token
     if (!token) {
       setError('Token no válido')
       setLoading(false)
@@ -100,7 +93,6 @@ export default function DocumentosPage() {
       if (data.success) {
         setLead(data.lead)
         
-        // Si ya envió documentos, redirigir
         if (data.lead.documentsSubmitted) {
           router.push(`/gracias`)
         }
@@ -135,7 +127,6 @@ export default function DocumentosPage() {
   }
   
   const handleFileChange = (field: keyof Documents, file: File | null) => {
-    // Limpiar error anterior
     setFileError(null)
     
     if (!file) {
@@ -143,7 +134,6 @@ export default function DocumentosPage() {
       return
     }
     
-    // Validar archivo usando la función de utilidades
     const validation = validateFile(file)
     
     if (!validation.valid) {
@@ -152,13 +142,11 @@ export default function DocumentosPage() {
       return
     }
     
-    // Si pasa validación, actualizar
     setDocuments(prev => ({
       ...prev,
       [field]: file
     }))
     
-    // Limpiar errores de validación cuando se sube un documento
     setValidationErrors(prev => 
       prev.filter(error => {
         const fieldMap = {
@@ -174,93 +162,89 @@ export default function DocumentosPage() {
     console.log(`✅ Archivo válido: ${file.name} (${formatFileSize(file.size)})`)
   }
   
-// Dentro de handleSubmit, después de subir documentos
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  
-  if (!token) {
-    alert('Error: Token no válido')
-    return
-  }
-  
-  if (!lead) {
-    alert('Error: Información del lead no disponible')
-    return
-  }
-  
-  if (!validateRequiredDocuments()) {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-    return
-  }
-  
-  try {
-    setLoading(true)
-    setFileError(null)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     
-    const submitFormData = new FormData()
+    if (!token) {
+      alert('Error: Token no válido')
+      return
+    }
     
-    // Agregar información del formulario
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value) submitFormData.append(key, value)
-    })
+    if (!lead) {
+      alert('Error: Información del lead no disponible')
+      return
+    }
     
-    // Agregar documentos
-    Object.entries(documents).forEach(([key, file]) => {
-      if (file) submitFormData.append(key, file)
-    })
+    if (!validateRequiredDocuments()) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     
-    submitFormData.append('token', token)
-    submitFormData.append('leadId', lead.id)
-    submitFormData.append('userId', 'client')
-    
-    // Enviar a la API de documentos
-    const response = await fetch('/api/documents/upload', {
-      method: 'POST',
-      body: submitFormData
-    })
-    
-    const result = await response.json()
-    
-    if (result.success) {
-      // ✅ ACTUALIZAR LEAD CON DATOS DEL FORMULARIO
-      const updateResponse = await fetch(`/api/leads/${lead.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          curp: formData.curp,
-          rfc: formData.rfc,
-          ocupacion: formData.ocupacion,
-          ingresoMensual: parseFloat(formData.ingresoMensual.replace(/[^0-9.-]/g, '')) || 0,
-          tiempoEmpleo: formData.tiempoEmpleo,
-          direccion: formData.direccion,
-          comentarios: formData.comentarios
-        })
+    try {
+      setLoading(true)
+      setFileError(null)
+      
+      const submitFormData = new FormData()
+      
+      // Agregar información del formulario
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value) submitFormData.append(key, value)
       })
       
-      if (!updateResponse.ok) {
-        console.error('Error actualizando lead:', await updateResponse.text())
+      // Agregar documentos
+      Object.entries(documents).forEach(([key, file]) => {
+        if (file) submitFormData.append(key, file)
+      })
+      
+      submitFormData.append('token', token)
+      submitFormData.append('leadId', lead.id)
+      submitFormData.append('userId', 'client')
+      
+      const response = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: submitFormData
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        // ✅ ACTUALIZAR LEAD CON DATOS DEL FORMULARIO (SIN RFC)
+        const updateResponse = await fetch(`/api/leads/${lead.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            curp: formData.curp,
+            ocupacion: formData.ocupacion,
+            ingresoMensual: parseFloat(formData.ingresoMensual.replace(/[^0-9.-]/g, '')) || 0,
+            tiempoEmpleo: formData.tiempoEmpleo,
+            direccion: formData.direccion,
+            comentarios: formData.comentarios
+          })
+        })
+        
+        if (!updateResponse.ok) {
+          console.error('Error actualizando lead:', await updateResponse.text())
+        }
+        
+        alert(`✅ ${result.message}`)
+        router.push(`/gracias`)
+      } else {
+        alert(`❌ Error: ${result.error}`)
       }
       
-      alert(`✅ ${result.message}`)
-      router.push(`/gracias`)
-    } else {
-      alert(`❌ Error: ${result.error}`)
+    } catch (error: any) {
+      console.error('Error:', error)
+      
+      if (error.message.includes('413') || error.message.includes('demasiado grande')) {
+        alert('❌ El archivo es demasiado grande. Máximo 4.5 MB por archivo.')
+      } else {
+        alert(`❌ ${error.message || 'Error al enviar el formulario'}`)
+      }
+    } finally {
+      setLoading(false)
     }
-    
-  } catch (error: any) {
-    console.error('Error:', error)
-    
-    if (error.message.includes('413') || error.message.includes('demasiado grande')) {
-      alert('❌ El archivo es demasiado grande. Máximo 4.5 MB por archivo.')
-    } else {
-      alert(`❌ ${error.message || 'Error al enviar el formulario'}`)
-    }
-  } finally {
-    setLoading(false)
   }
-}
   
-  // Mostrar pantalla de error si no hay token
   if (!token && !loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 p-4">
@@ -315,14 +299,12 @@ const handleSubmit = async (e: React.FormEvent) => {
         {/* Header */}
         <div className="text-center mb-8 pt-8">
           <div className="inline-flex items-center justify-center w-32 h-32 mb-6">
-            {/* Logo de Caja Valladolid */}
             <img 
               src="/logotipo.png" 
               alt="Caja Valladolid" 
               className="w-full h-full object-contain"
               onError={(e) => {
                 console.error('Error cargando logo:', e);
-                // Fallback si el logo no se carga
                 e.currentTarget.style.display = 'none';
                 const parent = e.currentTarget.parentElement;
                 if (parent) {
@@ -456,19 +438,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                   onChange={(e) => setFormData({...formData, curp: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                   placeholder="Ej: GARJ800101HDFLRN09"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  RFC
-                </label>
-                <input
-                  type="text"
-                  value={formData.rfc}
-                  onChange={(e) => setFormData({...formData, rfc: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  placeholder="Ej: GARJ800101XXX"
                 />
               </div>
               
