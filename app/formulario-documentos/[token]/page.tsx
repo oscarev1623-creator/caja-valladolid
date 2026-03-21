@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Upload, FileText, User, CheckCircle, AlertCircle } from 'lucide-react'
+import { validateFile, ALLOWED_EXTENSIONS, formatFileSize } from '@/lib/file-utils'
 
 // Interfaces para tipado
 interface Lead {
@@ -47,6 +48,7 @@ export default function DocumentosPage() {
   const [loading, setLoading] = useState(true)
   const [lead, setLead] = useState<Lead | null>(null)
   const [error, setError] = useState('')
+  const [fileError, setFileError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   
   const [formData, setFormData] = useState<FormData>({
@@ -125,6 +127,24 @@ export default function DocumentosPage() {
   }
   
   const handleFileChange = (field: keyof Documents, file: File | null) => {
+    // Limpiar error anterior
+    setFileError(null)
+    
+    if (!file) {
+      setDocuments(prev => ({ ...prev, [field]: null }))
+      return
+    }
+    
+    // Validar archivo usando la función de utilidades
+    const validation = validateFile(file)
+    
+    if (!validation.valid) {
+      setFileError(validation.message || 'Archivo no válido')
+      alert(`❌ ${validation.message}`)
+      return
+    }
+    
+    // Si pasa validación, actualizar
     setDocuments(prev => ({
       ...prev,
       [field]: file
@@ -142,6 +162,8 @@ export default function DocumentosPage() {
         return error !== fieldMap[field as keyof typeof fieldMap]
       })
     )
+    
+    console.log(`✅ Archivo válido: ${file.name} (${formatFileSize(file.size)})`)
   }
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -160,13 +182,13 @@ export default function DocumentosPage() {
     
     // Validar documentos obligatorios
     if (!validateRequiredDocuments()) {
-      // Hacer scroll hacia arriba para mostrar los errores
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
     
     try {
       setLoading(true)
+      setFileError(null)
       
       // Crear FormData
       const submitFormData = new FormData()
@@ -192,19 +214,40 @@ export default function DocumentosPage() {
         body: submitFormData
       })
       
-      const result = await response.json()
+      // Mejor manejo de la respuesta
+      const contentType = response.headers.get('content-type')
+      let result
       
-      if (result.success) {
-        alert(`✅ ${result.message}\nSe subieron ${result.documentsCount} documentos.`)
-        // Redirigir a página de agradecimiento
-        router.push(`/gracias`)
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json()
       } else {
-        alert(`❌ Error: ${result.error}`)
+        const text = await response.text()
+        console.error('Respuesta no JSON:', text)
+        throw new Error('Error inesperado del servidor')
       }
       
-    } catch (error) {
+      if (!response.ok) {
+        throw new Error(result.error || `Error ${response.status}`)
+      }
+      
+      if (result.success) {
+        alert(`✅ ${result.message}`)
+        router.push(`/gracias`)
+      } else {
+        throw new Error(result.error || 'Error desconocido')
+      }
+      
+    } catch (error: any) {
       console.error('Error:', error)
-      alert('❌ Error enviando formulario. Por favor intenta de nuevo.')
+      
+      // Mensajes amigables según el error
+      if (error.message.includes('413') || error.message.includes('demasiado grande')) {
+        alert('❌ El archivo es demasiado grande. Por favor, comprime la imagen o usa un archivo más pequeño (máximo 4.5 MB por archivo).')
+      } else if (error.message.includes('token')) {
+        alert('❌ La sesión ha expirado. Por favor recarga la página.')
+      } else {
+        alert(`❌ ${error.message || 'Error al enviar el formulario'}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -295,6 +338,29 @@ export default function DocumentosPage() {
             Formulario de Documentación para Crédito
           </p>
         </div>
+        
+        {/* Requisitos de archivos */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            Requisitos para archivos:
+          </h3>
+          <ul className="text-sm text-blue-700 space-y-1">
+            <li>• Tamaño máximo: <strong>4.5 MB por archivo</strong></li>
+            <li>• Formatos permitidos: <strong>{ALLOWED_EXTENSIONS.join(', ')}</strong></li>
+            <li>• Si tus fotos son muy grandes, puedes comprimirlas o tomar fotos con menor resolución</li>
+          </ul>
+        </div>
+
+        {/* Mostrar error de archivo si existe */}
+        {fileError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-red-600 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {fileError}
+            </p>
+          </div>
+        )}
         
         {/* Información del cliente */}
         {lead && (
@@ -500,7 +566,7 @@ export default function DocumentosPage() {
                   />
                   {documents.ineFront && (
                     <p className="mt-2 text-sm text-green-600">
-                      ✅ Archivo seleccionado: {documents.ineFront.name}
+                      ✅ Archivo seleccionado: {documents.ineFront.name} ({formatFileSize(documents.ineFront.size)})
                     </p>
                   )}
                 </div>
@@ -526,7 +592,7 @@ export default function DocumentosPage() {
                   />
                   {documents.ineBack && (
                     <p className="mt-2 text-sm text-green-600">
-                      ✅ Archivo seleccionado: {documents.ineBack.name}
+                      ✅ Archivo seleccionado: {documents.ineBack.name} ({formatFileSize(documents.ineBack.size)})
                     </p>
                   )}
                 </div>
@@ -552,7 +618,7 @@ export default function DocumentosPage() {
                   />
                   {documents.comprobanteDomicilio && (
                     <p className="mt-2 text-sm text-green-600">
-                      ✅ Archivo seleccionado: {documents.comprobanteDomicilio.name}
+                      ✅ Archivo seleccionado: {documents.comprobanteDomicilio.name} ({formatFileSize(documents.comprobanteDomicilio.size)})
                     </p>
                   )}
                 </div>
@@ -578,7 +644,7 @@ export default function DocumentosPage() {
                   />
                   {documents.constanciaLaboral && (
                     <p className="mt-2 text-sm text-green-600">
-                      ✅ Archivo seleccionado: {documents.constanciaLaboral.name}
+                      ✅ Archivo seleccionado: {documents.constanciaLaboral.name} ({formatFileSize(documents.constanciaLaboral.size)})
                     </p>
                   )}
                 </div>
@@ -608,7 +674,7 @@ export default function DocumentosPage() {
                   />
                   {documents.estadosCuenta && (
                     <p className="mt-2 text-sm text-blue-600">
-                      ✅ Archivo seleccionado: {documents.estadosCuenta.name}
+                      ✅ Archivo seleccionado: {documents.estadosCuenta.name} ({formatFileSize(documents.estadosCuenta.size)})
                     </p>
                   )}
                 </div>
@@ -629,7 +695,7 @@ export default function DocumentosPage() {
                   />
                   {documents.otrosDocumentos && (
                     <p className="mt-2 text-sm text-blue-600">
-                      ✅ Archivo seleccionado: {documents.otrosDocumentos.name}
+                      ✅ Archivo seleccionado: {documents.otrosDocumentos.name} ({formatFileSize(documents.otrosDocumentos.size)})
                     </p>
                   )}
                 </div>

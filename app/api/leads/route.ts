@@ -35,7 +35,17 @@ export async function GET(request: NextRequest) {
     const [leads, total] = await Promise.all([
       prisma.lead.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          estimatedAmount: true,
+          creditType: true,
+          status: true,
+          stage: true,
+          message: true,        // ← AGREGADO: campo mensaje
+          createdAt: true,
           assignedTo: {
             select: { id: true, name: true, email: true }
           }
