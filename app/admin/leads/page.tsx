@@ -456,30 +456,34 @@ export default function LeadsPage() {
     <>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-4 text-left">
-                <button
-                  onClick={toggleSelectAll}
-                  className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-green-600 transition-colors"
-                >
-                  {selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 ? (
-                    <CheckSquare className="w-5 h-5 text-green-600" />
-                  ) : (
-                    <Square className="w-5 h-5 text-gray-400" />
-                  )}
-                  SEL
-                </button>
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CLIENTE</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CONTACTO</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MENSAJE</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MONTO</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ESTADO</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">FECHA</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ACCIONES</th>
-            </tr>
-          </thead>
+<thead className="bg-gray-50">
+  <tr>
+    <th className="px-6 py-4 text-left">
+      <button
+        onClick={toggleSelectAll}
+        className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-green-600 transition-colors"
+      >
+        {selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 ? (
+          <CheckSquare className="w-5 h-5 text-green-600" />
+        ) : (
+          <Square className="w-5 h-5 text-gray-400" />
+        )}
+        SEL
+      </button>
+    </th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CLIENTE</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CONTACTO</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MENSAJE</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CURP</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">RFC</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">OCUPACIÓN</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">INGRESO</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MONTO</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ESTADO</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">FECHA</th>
+    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ACCIONES</th>
+  </tr>
+</thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {filteredLeads.map((lead) => {
               const statusConfig = getStatusConfig(lead.status)
@@ -542,13 +546,21 @@ export default function LeadsPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="max-w-xs">
-                      <p className="text-sm text-gray-700 truncate" title={lead.message || ''}>
-                        {lead.message || '—'}
-                      </p>
-                    </div>
-                  </td>
+<td className="px-6 py-4">
+  <div className="max-w-xs">
+    <p className="text-sm text-gray-700 truncate" title={lead.message || ''}>
+      {lead.message || '—'}
+    </p>
+  </div>
+</td>
+
+{/* NUEVAS CELDAS */}
+<td className="px-6 py-4 text-sm text-gray-700">{lead.curp || '—'}</td>
+<td className="px-6 py-4 text-sm text-gray-700">{lead.rfc || '—'}</td>
+<td className="px-6 py-4 text-sm text-gray-700">{lead.ocupacion || '—'}</td>
+<td className="px-6 py-4 text-sm text-gray-700">
+  {lead.ingresoMensual ? formatCurrency(lead.ingresoMensual) : '—'}
+</td>
                   <td className="px-6 py-4">
                     <div className="font-bold text-gray-900">{formatCurrency(lead?.estimatedAmount || 0)}</div>
                     <div className="text-xs text-gray-500 mt-1">

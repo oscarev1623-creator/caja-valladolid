@@ -42,6 +42,14 @@ interface Lead {
   uniqueToken?: string
   notes?: Note[]
   documents?: Document[]
+  // ✅ NUEVOS CAMPOS
+  curp?: string
+  rfc?: string
+  ocupacion?: string
+  ingresoMensual?: number
+  tiempoEmpleo?: string
+  direccion?: string
+  comentarios?: string
 }
 
 export default function LeadDetailPage() {
@@ -541,6 +549,43 @@ export default function LeadDetailPage() {
                   {lead.documentsSubmitted ? '✅ Documentos completos' : '⏳ Pendiente de documentos'}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================ */}
+        {/* SECCIÓN NUEVA: INFORMACIÓN ADICIONAL */}
+        {/* ============================================ */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <User className="w-5 h-5 text-green-600" />
+            Información Adicional
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">CURP</p>
+              <p className="font-medium text-gray-900">{lead.curp || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">RFC</p>
+              <p className="font-medium text-gray-900">{lead.rfc || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Ocupación</p>
+              <p className="font-medium text-gray-900">{lead.ocupacion || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Ingreso Mensual</p>
+              <p className="font-medium text-gray-900">{lead.ingresoMensual ? formatCurrency(lead.ingresoMensual) : '—'}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-sm text-gray-600 mb-1">Dirección</p>
+              <p className="font-medium text-gray-900">{lead.direccion || '—'}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-sm text-gray-600 mb-1">Comentarios</p>
+              <p className="font-medium text-gray-900">{lead.comentarios || '—'}</p>
             </div>
           </div>
         </div>

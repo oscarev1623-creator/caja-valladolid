@@ -57,6 +57,12 @@ model Lead {
   emailSentAt        DateTime?
   whatsappContacted  Boolean    @default(false)
   whatsappNumber     String?
+  rfc                String?
+  ocupacion          String?
+  ingresoMensual     Float?
+  tiempoEmpleo       String?
+  direccion          String?
+  comentarios        String?
   documents          Document[]
   assignedTo         User?      @relation(fields: [assignedToId], references: [id])
   notes              Note[]

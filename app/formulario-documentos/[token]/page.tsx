@@ -16,6 +16,14 @@ interface Lead {
   creditType?: string
   createdAt: string
   documentsSubmitted?: boolean
+  // ✅ NUEVOS CAMPOS
+  curp?: string
+  rfc?: string
+  ocupacion?: string
+  ingresoMensual?: number
+  tiempoEmpleo?: string
+  direccion?: string
+  comentarios?: string
 }
 
 interface FormData {
@@ -166,92 +174,91 @@ export default function DocumentosPage() {
     console.log(`✅ Archivo válido: ${file.name} (${formatFileSize(file.size)})`)
   }
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Validar que exista token y lead
-    if (!token) {
-      alert('Error: Token no válido')
-      return
-    }
-    
-    if (!lead) {
-      alert('Error: Información del lead no disponible')
-      return
-    }
-    
-    // Validar documentos obligatorios
-    if (!validateRequiredDocuments()) {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
-    
-    try {
-      setLoading(true)
-      setFileError(null)
-      
-      // Crear FormData
-      const submitFormData = new FormData()
-      
-      // Agregar información del formulario
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value) submitFormData.append(key, value)
-      })
-      
-      // Agregar documentos
-      Object.entries(documents).forEach(([key, file]) => {
-        if (file) submitFormData.append(key, file)
-      })
-      
-      // Agregar IDs
-      submitFormData.append('token', token)
-      submitFormData.append('leadId', lead.id)
-      submitFormData.append('userId', 'client')
-      
-      // Enviar a la API
-      const response = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: submitFormData
-      })
-      
-      // Mejor manejo de la respuesta
-      const contentType = response.headers.get('content-type')
-      let result
-      
-      if (contentType && contentType.includes('application/json')) {
-        result = await response.json()
-      } else {
-        const text = await response.text()
-        console.error('Respuesta no JSON:', text)
-        throw new Error('Error inesperado del servidor')
-      }
-      
-      if (!response.ok) {
-        throw new Error(result.error || `Error ${response.status}`)
-      }
-      
-      if (result.success) {
-        alert(`✅ ${result.message}`)
-        router.push(`/gracias`)
-      } else {
-        throw new Error(result.error || 'Error desconocido')
-      }
-      
-    } catch (error: any) {
-      console.error('Error:', error)
-      
-      // Mensajes amigables según el error
-      if (error.message.includes('413') || error.message.includes('demasiado grande')) {
-        alert('❌ El archivo es demasiado grande. Por favor, comprime la imagen o usa un archivo más pequeño (máximo 4.5 MB por archivo).')
-      } else if (error.message.includes('token')) {
-        alert('❌ La sesión ha expirado. Por favor recarga la página.')
-      } else {
-        alert(`❌ ${error.message || 'Error al enviar el formulario'}`)
-      }
-    } finally {
-      setLoading(false)
-    }
+// Dentro de handleSubmit, después de subir documentos
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  
+  if (!token) {
+    alert('Error: Token no válido')
+    return
   }
+  
+  if (!lead) {
+    alert('Error: Información del lead no disponible')
+    return
+  }
+  
+  if (!validateRequiredDocuments()) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    return
+  }
+  
+  try {
+    setLoading(true)
+    setFileError(null)
+    
+    const submitFormData = new FormData()
+    
+    // Agregar información del formulario
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value) submitFormData.append(key, value)
+    })
+    
+    // Agregar documentos
+    Object.entries(documents).forEach(([key, file]) => {
+      if (file) submitFormData.append(key, file)
+    })
+    
+    submitFormData.append('token', token)
+    submitFormData.append('leadId', lead.id)
+    submitFormData.append('userId', 'client')
+    
+    // Enviar a la API de documentos
+    const response = await fetch('/api/documents/upload', {
+      method: 'POST',
+      body: submitFormData
+    })
+    
+    const result = await response.json()
+    
+    if (result.success) {
+      // ✅ ACTUALIZAR LEAD CON DATOS DEL FORMULARIO
+      const updateResponse = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          curp: formData.curp,
+          rfc: formData.rfc,
+          ocupacion: formData.ocupacion,
+          ingresoMensual: parseFloat(formData.ingresoMensual.replace(/[^0-9.-]/g, '')) || 0,
+          tiempoEmpleo: formData.tiempoEmpleo,
+          direccion: formData.direccion,
+          comentarios: formData.comentarios
+        })
+      })
+      
+      if (!updateResponse.ok) {
+        console.error('Error actualizando lead:', await updateResponse.text())
+      }
+      
+      alert(`✅ ${result.message}`)
+      router.push(`/gracias`)
+    } else {
+      alert(`❌ Error: ${result.error}`)
+    }
+    
+  } catch (error: any) {
+    console.error('Error:', error)
+    
+    if (error.message.includes('413') || error.message.includes('demasiado grande')) {
+      alert('❌ El archivo es demasiado grande. Máximo 4.5 MB por archivo.')
+    } else {
+      alert(`❌ ${error.message || 'Error al enviar el formulario'}`)
+    }
+  } finally {
+    setLoading(false)
+  }
+}
   
   // Mostrar pantalla de error si no hay token
   if (!token && !loading) {

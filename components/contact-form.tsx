@@ -1,9 +1,20 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Mail, Send, Phone, MapPin, Clock, CheckCircle, AlertCircle, MessageCircle } from "lucide-react"
+
+// ✅ Agregar esta función para el tracking del Pixel
+const trackFacebookEvent = (eventName: string, params?: Record<string, any>) => {
+  if (typeof window !== 'undefined' && (window as any).fbq) {
+    (window as any).fbq('track', eventName, params)
+    console.log(`📊 Pixel FB: ${eventName}`, params)
+  } else {
+    console.warn('⚠️ Facebook Pixel no disponible')
+  }
+}
 
 export function ContactForm() {
   const [formData, setFormData] = useState({
@@ -47,16 +58,13 @@ export function ContactForm() {
         setSubmitStatus("success")
         setSubmitMessage("¡Mensaje enviado con éxito!")
 
-        // 🔥 Pixel de Facebook - Evento de conversión
-        if (typeof window !== "undefined" && (window as any).fbq) {
-          (window as any).fbq('track', 'Lead', {
-            content_name: 'Contacto',
-            content_category: 'Formulario',
-            value: 1,
-            currency: 'MXN'
-          })
-          console.log("✅ Pixel FB: Evento Lead registrado")
-        }
+        // 🔥 PIXEL DE FACEBOOK - EVENTO LEAD
+        trackFacebookEvent('Lead', {
+          content_name: 'Contacto',
+          content_category: 'Formulario de contacto',
+          value: 1,
+          currency: 'MXN'
+        })
 
         // Limpiar formulario
         setFormData({ firstName: "", lastName: "", email: "", phone: "", message: "" })
@@ -80,7 +88,7 @@ export function ContactForm() {
     )
   }
 
-  const whatsappNumber = "529541184165" // Número del asesor
+  const whatsappNumber = "529541184165"
 
   return (
     <section id="contacto" className="py-20 px-6 bg-gradient-to-br from-gray-50 to-white">
