@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import CreditCalculator from '@/components/credit-calculator'
-import CryptoCreditCalculator from '@/components/crypto-credit-calculator'
+import CreditCalculatorSimple from '@/components/credit-calculator-simple'
+import CryptoCalculatorSimple from '@/components/crypto-calculator-simple'
 
 export default function CompletarSolicitudPage() {
   const params = useParams()
@@ -49,7 +49,7 @@ export default function CompletarSolicitudPage() {
     )
   }
 
-  if (error || !lead) {
+  if (error || !lead || !token) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center max-w-md">
@@ -66,22 +66,27 @@ export default function CompletarSolicitudPage() {
     )
   }
 
-  // Renderizar la calculadora con los valores del lead
+  // Calcular plazo en años para tradicional
+  const plazoEnAnios = lead.creditType === 'TRADITIONAL' && lead.plazo 
+    ? Math.floor(lead.plazo / 12) 
+    : 8
+
   return (
     <div className="min-h-screen bg-gray-50">
       {lead.creditType === 'CRYPTO' ? (
-        <CryptoCreditCalculator 
-          initialMonto={lead.estimatedAmount || 50000}
+        <CryptoCalculatorSimple 
+          initialMonto={lead.estimatedAmount || 10000}
           initialPlazo={lead.plazo || 12}
           leadId={lead.id}
-          token={token}
+          token={token}  // ← Ahora seguro que existe
+          selectedCrypto={lead.selectedCrypto || 'USDT'}
         />
       ) : (
-        <CreditCalculator 
+        <CreditCalculatorSimple 
           initialMonto={lead.estimatedAmount || 50000}
-          initialPlazo={lead.plazo ? lead.plazo / 12 : 8}
+          initialPlazo={plazoEnAnios}
           leadId={lead.id}
-          token={token}
+          token={token}  // ← Ahora seguro que existe
         />
       )}
     </div>

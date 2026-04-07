@@ -23,15 +23,15 @@ export async function GET(request: NextRequest) {
         }
       },
       select: {
-        id: true,
-        fullName: true,
-        email: true,
-        phone: true,
-        estimatedAmount: true,
-        creditType: true,
-        plazo: true,
-        selectedCrypto: true
-      }
+  id: true,
+  fullName: true,
+  email: true,
+  phone: true,
+  estimatedAmount: true,
+  creditType: true,
+  plazo: true,
+  selectedCrypto: true   // ← ESTO ES IMPORTANTE
+}
     })
 
     if (!lead) {

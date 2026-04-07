@@ -1,12 +1,14 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react"
+import { MessageCircle, X, Send, Bot, User, Loader2, MessageSquare } from "lucide-react"
+import Image from "next/image"
 
 interface Message {
   id: string
   text: string
   sender: "user" | "bot"
+  showWhatsApp?: boolean
 }
 
 export function Chatbot() {
@@ -14,8 +16,9 @@ export function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "¡Hola! 👋 Soy FinBot de Caja Valladolid. Estoy aquí para ayudarte con tus dudas sobre créditos, tasas, requisitos y más. ¿En qué puedo ayudarte hoy?",
+      text: "¡Hola! 👋 Soy FinBot de Caja Valladolid. Estoy aquí para ayudarte con tus dudas sobre créditos, tasas, requisitos y más. ¿En qué puedo ayudarte hoy?\n\n💡 **Tip:** Si prefieres hablar con un asesor, puedes contactarnos por WhatsApp al final del chat.",
       sender: "bot",
+      showWhatsApp: false,
     },
   ])
   const [inputValue, setInputValue] = useState("")
@@ -46,7 +49,18 @@ export function Chatbot() {
     }
   }
 
-  // Base de conocimientos del chatbot - ACTUALIZADO con tasa 11%
+  // Función para agregar mensaje con botón de WhatsApp
+  const addWhatsAppMessage = (text: string) => {
+    const whatsAppMessage: Message = {
+      id: (Date.now() + 2).toString(),
+      text: text + "\n\n📱 **¿Prefieres atención personalizada?**\nNuestros asesores están disponibles para ayudarte.",
+      sender: "bot",
+      showWhatsApp: true,
+    }
+    setMessages(prev => [...prev, whatsAppMessage])
+  }
+
+  // Base de conocimientos del chatbot
   const knowledgeBase = [
     {
       keywords: ['tasa', 'interés', 'interes', 'porcentaje', 'intereses'],
@@ -118,17 +132,10 @@ El monto máximo depende de tu capacidad de pago. Con un ingreso mensual de $15,
     },
     {
       keywords: ['contacto', 'whatsapp', 'teléfono', 'llamar', 'asesor', 'hablar', 'persona', 'comunicarme'],
-      response: `📞 ¿Quieres hablar con un humano? ¡Excelente decisión!
+      response: `📞 ¡Claro! Nuestros asesores están listos para ayudarte.
 
-Nuestros asesores están disponibles:
-• Vía telefónica: 01 985 123 4567 (Lun-Vie 9am-6pm)
-• Por WhatsApp: +52 985 123 4567 (respuesta inmediata)
-• Email: contacto@cajavalladolid.com
-
-También puedes dejar tu número aquí y te llamamos:
-https://cajavalladolid.com/contacto
-
-¿Qué medio prefieres para que te contacten?`
+Puedes contactarnos directamente por WhatsApp:`,
+      showWhatsApp: true
     },
     {
       keywords: ['tiempo', 'demora', 'cuánto tarda', 'aprobación', 'respuesta', 'espera'],
@@ -314,6 +321,7 @@ Puedes preguntarme sobre:
       id: Date.now().toString(),
       text: inputValue,
       sender: "user",
+      showWhatsApp: false,
     }
 
     setMessages(prev => [...prev, userMessage])
@@ -328,10 +336,12 @@ Puedes preguntarme sobre:
     setTimeout(() => {
       const userText = inputValue.toLowerCase()
       let botResponse = defaultResponse
+      let showWhatsApp = false
 
       for (const item of knowledgeBase) {
         if (item.keywords.some(keyword => userText.includes(keyword))) {
           botResponse = item.response
+          showWhatsApp = item.showWhatsApp || false
           break
         }
       }
@@ -340,12 +350,37 @@ Puedes preguntarme sobre:
         id: (Date.now() + 1).toString(),
         text: botResponse,
         sender: "bot",
+        showWhatsApp,
       }
 
       setMessages(prev => [...prev, botMessage])
       setIsLoading(false)
     }, 1000)
   }
+
+  // Botón de WhatsApp
+  const WhatsAppButton = () => (
+    <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+          <Image src="/whatsapp.png" alt="WhatsApp" width={20} height={20} />
+        </div>
+        <span className="font-semibold text-green-700">Atención personalizada</span>
+      </div>
+      <p className="text-sm text-gray-600 mb-3">
+        Nuestros asesores están disponibles para ayudarte con tu solicitud.
+      </p>
+      <a
+        href="https://wa.me/529541184165?text=Hola%2C%20vengo%20del%20chatbot%20de%20Caja%20Valladolid%20y%20necesito%20información%20sobre%20un%20crédito"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition-all"
+      >
+        <MessageSquare className="w-4 h-4" />
+        Contactar por WhatsApp
+      </a>
+    </div>
+  )
 
   // Categorías de preguntas rápidas
   const quickCategories = [
@@ -393,30 +428,33 @@ Puedes preguntarme sobre:
           <div className="flex-1 overflow-y-auto p-3 bg-gray-50">
             <div className="space-y-3">
               {messages.map((message) => (
-                <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] rounded-lg p-3 ${
-                    message.sender === "user" 
-                      ? "bg-green-600 text-white rounded-br-none" 
-                      : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
-                  }`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      {message.sender === "bot" ? (
-                        <>
-                          <Bot className="w-3 h-3 text-green-600" />
-                          <span className="text-xs font-medium text-green-700">FinBot</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-xs font-medium text-white/90">Tú</span>
-                        </>
-                      )}
-                    </div>
-                    <div className="text-sm whitespace-pre-wrap">
-                      {message.text.split('\n').map((line, i) => (
-                        <p key={i} className={i > 0 ? 'mt-2' : ''}>{line}</p>
-                      ))}
+                <div key={message.id}>
+                  <div className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[85%] rounded-lg p-3 ${
+                      message.sender === "user" 
+                        ? "bg-green-600 text-white rounded-br-none" 
+                        : "bg-white text-gray-800 border border-gray-200 rounded-bl-none"
+                    }`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        {message.sender === "bot" ? (
+                          <>
+                            <Bot className="w-3 h-3 text-green-600" />
+                            <span className="text-xs font-medium text-green-700">FinBot</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-xs font-medium text-white/90">Tú</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-sm whitespace-pre-wrap">
+                        {message.text.split('\n').map((line, i) => (
+                          <p key={i} className={i > 0 ? 'mt-2' : ''}>{line}</p>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                  {message.showWhatsApp && <WhatsAppButton />}
                 </div>
               ))}
               
@@ -435,7 +473,7 @@ Puedes preguntarme sobre:
             </div>
           </div>
 
-          {/* Preguntas rápidas en grid */}
+          {/* Preguntas rápidas */}
           <div className="p-3 border-t border-gray-200 bg-white max-h-48 overflow-y-auto">
             <p className="text-xs text-gray-500 mb-2">Preguntas frecuentes:</p>
             <div className="grid grid-cols-2 gap-2">
@@ -484,8 +522,14 @@ Puedes preguntarme sobre:
 
             {/* Mensaje de contacto personalizado */}
             <p className="text-xs text-gray-500 text-center mt-3 italic border-t pt-2">
-              ¿Necesitas atención personalizada? 
-              <br />Deja tu teléfono o email en el formulario y un asesor te contactará.
+              💬 ¿Necesitas atención personalizada? 
+              <br />Haz clic en el botón de WhatsApp que aparece en las respuestas o 
+              <button 
+                onClick={() => window.open('https://wa.me/529541184165?text=Hola%2C%20vengo%20del%20chatbot%20de%20Caja%20Valladolid%20y%20necesito%20información%20sobre%20un%20crédito', '_blank')}
+                className="text-green-600 font-medium hover:underline ml-1"
+              >
+                contáctanos aquí
+              </button>
             </p>
           </div>
         </div>

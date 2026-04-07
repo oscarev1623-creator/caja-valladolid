@@ -11,7 +11,6 @@ export async function POST(
     const { id } = await params
     const { token, estimatedAmount, plazo, creditType, selectedCrypto } = await request.json()
 
-    // Verificar que el token coincide
     const lead = await prisma.lead.findFirst({
       where: {
         id,
@@ -29,7 +28,6 @@ export async function POST(
       )
     }
 
-    // Actualizar el lead
     const updatedLead = await prisma.lead.update({
       where: { id },
       data: {

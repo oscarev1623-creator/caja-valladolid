@@ -49,6 +49,7 @@ interface Lead {
   tiempoEmpleo?: string
   direccion?: string
   comentarios?: string
+  message?: string   
 }
 
 export default function LeadDetailPage() {

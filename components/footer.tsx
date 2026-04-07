@@ -1,9 +1,14 @@
 "use client"
 
-import { MessageSquare } from "lucide-react"
+import { MessageCircle } from "lucide-react"
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
+
+  const openVirtualOffice = () => {
+    // Disparar el evento para abrir el chat
+    window.dispatchEvent(new CustomEvent('openChat'))
+  }
 
   return (
     <footer className="bg-[var(--secondary)] text-[var(--secondary-foreground)] py-12 px-6">
@@ -65,21 +70,19 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contac */}
+          {/* Contacto */}
           <div>
             <h4 className="font-semibold mb-4">Contacto</h4>
             <div className="space-y-3">
-              <a
-                href="https://wa.me/529541184165"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm opacity-90 hover:text-[var(--primary)] transition-colors"
+              <button
+                onClick={openVirtualOffice}
+                className="flex items-center gap-2 text-sm opacity-90 hover:text-[var(--primary)] transition-colors cursor-pointer w-full text-left"
               >
-                <MessageSquare className="w-5 h-5 text-[var(--primary)]" />
-                WhatsApp
-              </a>
+                <MessageCircle className="w-5 h-5 text-[var(--primary)]" />
+                Oficina Virtual
+              </button>
               <a
-                href="https://webapps.condusef.gob.mx/SIPRES_N/jsp/home_publico.jsp?idins=4930"
+                href="https://webapps.condusef.gob.mx/SIPRES/jsp/home_publico.jsp?idins=4930"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm opacity-90 hover:text-[var(--primary)] transition-colors block"

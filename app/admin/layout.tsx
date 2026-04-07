@@ -72,9 +72,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems: NavItem[] = [
     { name: 'Dashboard', href: '/admin/dashboard' },
     { name: 'Leads', href: '/admin/leads' },
+    { name: 'Conversaciones', href: '/admin/chat' }, 
     { name: 'Tickets', href: '/admin/tickets' },
     { name: 'Documentos', href: '/admin/documents' },
     { name: 'Mensajes', href: '/admin/messages' },
+    { name: 'Asesores', href: '/admin/agents' },  // 👈 CORREGIDO (sin icon)
     { name: 'Administradores', href: '/admin/users' },
   ]
 
@@ -169,18 +171,18 @@ function getIcon(name: string): string {
   const icons: Record<string, string> = {
     'Dashboard': '📊',
     'Leads': '👥',
+    'Conversaciones': '💬',
     'Tickets': '🎫',
     'Documentos': '📄',
-    'Mensajes': '💬',
+    'Mensajes': '✉️',
+    'Asesores': '👥',
     'Administradores': '👤',
   }
   return icons[name] || '📋'
 }
 
 function getPageTitle(pathname: string, navItems: NavItem[]): string {
-  // Asegurarse de que pathname es un string válido
   if (!pathname) return 'Dashboard'
-  
   const item = navItems.find(item => pathname === item.href)
   return item ? item.name : 'Dashboard'
 }

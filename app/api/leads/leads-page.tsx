@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { 
   Search, Plus, Filter, Download, 
   Edit, Eye, Trash2, User, Phone, Mail,
-  ChevronLeft, ChevronRight, AlertCircle
+  ChevronLeft, ChevronRight, AlertCircle,
+  MessageCircle  // 👈 NUEVO ÍCONO
 } from 'lucide-react'
 
 interface Lead {
@@ -22,6 +23,7 @@ interface Lead {
     id: string
     name: string
     email: string
+    color: true
   }
 }
 
@@ -108,7 +110,7 @@ export default function LeadsPage() {
       const data = await response.json()
 
       if (data.success) {
-        fetchLeads() // Recargar lista
+        fetchLeads()
       } else {
         alert(data.error || 'Error al eliminar')
       }
@@ -117,12 +119,16 @@ export default function LeadsPage() {
     }
   }
 
-  // Formatear fecha
+  // Abrir chat con el cliente
+  const openChatWithLead = (lead: Lead) => {
+    // Buscar si ya existe una conversación con este email
+    router.push(`/admin/chat?leadId=${lead.id}&email=${encodeURIComponent(lead.email)}&name=${encodeURIComponent(lead.fullName)}&phone=${encodeURIComponent(lead.phone)}`)
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-MX')
   }
 
-  // Formatear moneda
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -130,29 +136,27 @@ export default function LeadsPage() {
     }).format(amount)
   }
 
-  // Obtener color según status
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'PENDING_CONTACT': return { bg: '#fef3c7', text: '#92400e' }
-    case 'CONTACTED': return { bg: '#dbeafe', text: '#1e40af' }
-    case 'IN_PROCESS': return { bg: '#e0e7ff', text: '#3730a3' }
-    case 'APPROVED': return { bg: '#d1fae5', text: '#065f46' }
-    case 'REJECTED': return { bg: '#fee2e2', text: '#991b1b' }
-    default: return { bg: '#f3f4f6', text: '#374151' }
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING_CONTACT': return { bg: '#fef3c7', text: '#92400e' }
+      case 'CONTACTED': return { bg: '#dbeafe', text: '#1e40af' }
+      case 'IN_PROCESS': return { bg: '#e0e7ff', text: '#3730a3' }
+      case 'APPROVED': return { bg: '#d1fae5', text: '#065f46' }
+      case 'REJECTED': return { bg: '#fee2e2', text: '#991b1b' }
+      default: return { bg: '#f3f4f6', text: '#374151' }
+    }
   }
-}
 
-  // Obtener texto de status en español
-const getStatusText = (status: string) => {
-  const statusMap: Record<string, string> = {
-    'PENDING_CONTACT': 'Pendiente Contacto',
-    'CONTACTED': 'Contactado', 
-    'IN_PROCESS': 'En Proceso',
-    'APPROVED': 'Aprobado',
-    'REJECTED': 'Rechazado'
+  const getStatusText = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'PENDING_CONTACT': 'Pendiente Contacto',
+      'CONTACTED': 'Contactado', 
+      'IN_PROCESS': 'En Proceso',
+      'APPROVED': 'Aprobado',
+      'REJECTED': 'Rechazado'
+    }
+    return statusMap[status] || status
   }
-  return statusMap[status] || status
-}
 
   if (loading && leads.length === 0) {
     return (
@@ -179,19 +183,27 @@ const getStatusText = (status: string) => {
                 Total: {totalLeads} leads • Página {page} de {totalPages}
               </p>
             </div>
-            <button
-              onClick={() => router.push('/admin/leads/new')}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Nuevo Lead
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => router.push('/admin/chat')}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Ver todas las conversaciones
+              </button>
+              <button
+                onClick={() => router.push('/admin/leads/new')}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Nuevo Lead
+              </button>
+            </div>
           </div>
 
           {/* Filtros y búsqueda */}
           <div className="bg-white rounded-xl shadow p-4 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Búsqueda */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -204,30 +216,28 @@ const getStatusText = (status: string) => {
                 />
               </div>
 
-              {/* Filtro por status */}
               <div>
-<select
-  value={statusFilter}
-  onChange={(e) => setStatusFilter(e.target.value)}
-  style={{
-    width: '100%',
-    padding: '12px 16px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '16px',
-    background: 'white'
-  }}
->
-  <option value="">Todos los estados</option>
-  <option value="PENDING_CONTACT">Pendiente Contacto</option>
-  <option value="CONTACTED">Contactado</option>
-  <option value="IN_PROCESS">En Proceso</option>
-  <option value="APPROVED">Aprobado</option>
-  <option value="REJECTED">Rechazado</option>
-</select>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    background: 'white'
+                  }}
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="PENDING_CONTACT">Pendiente Contacto</option>
+                  <option value="CONTACTED">Contactado</option>
+                  <option value="IN_PROCESS">En Proceso</option>
+                  <option value="APPROVED">Aprobado</option>
+                  <option value="REJECTED">Rechazado</option>
+                </select>
               </div>
 
-              {/* Botones de acción */}
               <div className="flex gap-2">
                 <button
                   onClick={fetchLeads}
@@ -241,6 +251,7 @@ const getStatusText = (status: string) => {
                     setSearch('')
                     setStatusFilter('')
                     setPage(1)
+                    fetchLeads()
                   }}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
                 >
@@ -252,7 +263,6 @@ const getStatusText = (status: string) => {
           </div>
         </div>
 
-        {/* Mensaje de error */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center gap-2 text-red-700">
@@ -312,7 +322,6 @@ const getStatusText = (status: string) => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {leads.map((lead) => (
                       <tr key={lead.id} className="hover:bg-gray-50">
-                        {/* Nombre */}
                         <td className="px-6 py-4">
                           <div className="flex items-center">
                             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
@@ -327,7 +336,6 @@ const getStatusText = (status: string) => {
                           </div>
                         </td>
 
-                        {/* Contacto */}
                         <td className="px-6 py-4">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 text-sm">
@@ -341,31 +349,35 @@ const getStatusText = (status: string) => {
                           </div>
                         </td>
 
-                        {/* Monto */}
                         <td className="px-6 py-4">
                           <div className="font-semibold text-gray-900">
                             {formatCurrency(lead.estimatedAmount)}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {lead.stage.replace('_', ' ')}
+                            {lead.stage?.replace('_', ' ') || 'Sin etapa'}
                           </div>
                         </td>
 
-                        {/* Estado */}
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(lead.status)}`}>
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium`} style={{ backgroundColor: getStatusColor(lead.status).bg, color: getStatusColor(lead.status).text }}>
                             {getStatusText(lead.status)}
                           </span>
                         </td>
 
-                        {/* Fecha */}
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {formatDate(lead.createdAt)}
                         </td>
 
-                        {/* Acciones */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
+                            {/* Botón CHAT - NUEVO */}
+                            <button
+                              onClick={() => openChatWithLead(lead)}
+                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                              title="Abrir chat con este cliente"
+                            >
+                              <MessageCircle className="w-5 h-5" />
+                            </button>
                             <button
                               onClick={() => router.push(`/admin/leads/${lead.id}`)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -477,7 +489,7 @@ const getStatusText = (status: string) => {
               <div>
                 <p className="text-sm text-gray-600">Pendientes</p>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {leads.filter(l => l.status === 'PENDING').length}
+                  {leads.filter(l => l.status === 'PENDING_CONTACT' || l.status === 'PENDING').length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">

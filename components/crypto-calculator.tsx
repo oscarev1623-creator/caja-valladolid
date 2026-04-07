@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Calculator, Bitcoin, DollarSign, Percent, Download, Zap, Shield, TrendingDown, MessageSquare, UserCheck, Loader2, Send } from 'lucide-react';
 import Image from "next/image";
 import { CryptoContactFormModal } from "./crypto-contact-form-modal";
+import { CryptoPrices } from './CryptoPrices';
 
 // Interfaz para las props del componente
 interface CryptoCreditCalculatorProps {
@@ -34,9 +35,7 @@ const CryptoCreditCalculator = ({
   // Resultados
   const [results, setResults] = useState({
     monthlyPayment: 0,
-    adminFee: 0,
-    totalInterest: 0,
-    netAmount: 0
+    totalInterest: 0
   });
 
   // Constantes
@@ -94,11 +93,6 @@ const CryptoCreditCalculator = ({
     }
   ];
 
-  // Calcular gastos administrativos (1% del monto)
-  const calculateAdminFee = (amount: number) => {
-    return amount * 0.01; // 1% del monto
-  };
-
   // Convertir a criptomoneda seleccionada (simulado)
   const convertToCrypto = (amountUSD: number, crypto: string) => {
     const rates: Record<string, number> = {
@@ -112,10 +106,9 @@ const CryptoCreditCalculator = ({
     return amountUSD * (rates[crypto] || 1);
   };
 
-  // Calcular préstamo
+  // Calcular préstamo (sin anticipo)
   const calculateLoan = () => {
-    const adminFee = calculateAdminFee(creditAmount);
-    const netAmount = creditAmount - adminFee;
+    const netAmount = creditAmount;
     const months = years;
     
     const monthlyPayment = (netAmount * interestRate * Math.pow(1 + interestRate, months)) / 
@@ -125,9 +118,7 @@ const CryptoCreditCalculator = ({
 
     setResults({
       monthlyPayment,
-      adminFee,
-      totalInterest,
-      netAmount
+      totalInterest
     });
   };
 
@@ -436,8 +427,8 @@ const CryptoCreditCalculator = ({
               </p>
             </div>
 
-            {/* Tarjetas de resultados */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            {/* Tarjetas de resultados - SOLO 2 TARJETAS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
               {/* Monto solicitado */}
               <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
@@ -469,49 +460,17 @@ const CryptoCreditCalculator = ({
                   Pago mensual fijo
                 </div>
               </div>
-
-              {/* Gastos administrativos */}
-              <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Percent className="w-5 h-5 text-green-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-700">Gastos administrativos</h3>
-                </div>
-                <div className="text-2xl font-bold text-gray-900 mb-2">
-                  {formatCrypto(results.adminFee)}
-                </div>
-                <div className="text-gray-500 text-sm">
-                  1% del monto solicitado
-                </div>
-              </div>
-
-              {/* Interés total */}
-              <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <TrendingDown className="w-5 h-5 text-green-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-700">Interés total</h3>
-                </div>
-                <div className="text-2xl font-bold text-gray-900 mb-2">
-                  {formatCrypto(results.totalInterest)}
-                </div>
-                <div className="text-gray-500 text-sm">
-                  Tasa 5.4% anual
-                </div>
-              </div>
             </div>
 
-            {/* Resumen adicional */}
+            {/* Interés total */}
             <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl p-6 md:p-8 mb-10">
               <div className="flex flex-col md:flex-row md:items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-semibold mb-2">Monto neto a recibir</h3>
-                  <p className="text-green-100">Después de descontar gastos administrativos</p>
+                  <h3 className="text-xl font-semibold mb-2">Interés total</h3>
+                  <p className="text-green-100">Costo total del crédito a lo largo del plazo (tasa 5.4% anual)</p>
                 </div>
                 <div className="text-4xl md:text-5xl font-bold mt-4 md:mt-0">
-                  {formatCrypto(results.netAmount)}
+                  {formatCrypto(results.totalInterest)}
                 </div>
               </div>
             </div>
@@ -566,40 +525,7 @@ const CryptoCreditCalculator = ({
               </div>
             </div>
 
-            {/* Información de gastos administrativos */}
-            <div className="p-6 bg-green-50 rounded-xl border border-green-200 mb-8">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Shield className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">Sobre los gastos administrativos</h4>
-                  <p className="text-sm text-gray-700 mb-3">
-                    Los gastos administrativos corresponden al <strong>1% del monto solicitado</strong> y cubren:
-                  </p>
-                  <ul className="text-sm text-gray-700 space-y-2">
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
-                      <span>Costos de apertura y trámites legales</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
-                      <span>Evaluación crediticia y análisis de documentos</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
-                      <span>Gestión del contrato digital y seguimiento</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5"></div>
-                      <span>Pago en cualquier OXXO del país</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Comparativa de tasas */}
+            {/* Comparativa de tasas simplificada */}
             <div className="p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
               <h3 className="text-xl font-bold text-gray-900 mb-6 text-center">
                 Comparativa de tasas de interés
@@ -655,6 +581,11 @@ const CryptoCreditCalculator = ({
             </div>
           </div>
         )}
+
+        {/* ============================================ */}
+        {/* PRECIOS DE CRIPTOMONEDAS EN VIVO */}
+        {/* ============================================ */}
+        <CryptoPrices />
       </div>
       
       {/* MODAL DE PRE-EVALUACIÓN */}

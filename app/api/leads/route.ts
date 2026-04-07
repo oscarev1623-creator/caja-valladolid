@@ -3,7 +3,45 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// GET: Obtener todos los leads
+// Función para obtener el asesor con MENOS leads asignados
+async function getBestAgent() {
+  console.log('🔍 Buscando el mejor asesor...')
+  
+  // Obtener asesores activos
+  const agents = await prisma.user.findMany({
+    where: {
+      role: 'AGENT',
+      isActive: true
+    }
+  })
+
+  console.log(`📊 Asesores encontrados: ${agents.length}`)
+
+  if (agents.length === 0) {
+    const admin = await prisma.user.findFirst({
+      where: { role: 'ADMIN' }
+    })
+    return admin
+  }
+
+  // Contar cuántos LEADS tiene asignado cada asesor
+  const agentsWithLoad = await Promise.all(agents.map(async (agent) => {
+    const leadCount = await prisma.lead.count({
+      where: { assignedToId: agent.id }
+    })
+    console.log(`   📋 ${agent.name} tiene ${leadCount} leads asignados`)
+    return { ...agent, currentLoad: leadCount }
+  }))
+
+  // Ordenar por menor cantidad de leads
+  agentsWithLoad.sort((a, b) => a.currentLoad - b.currentLoad)
+  
+  const selected = agentsWithLoad[0]
+  console.log(`✅ Asesor seleccionado: ${selected.name} (${selected.currentLoad} leads)`)
+  
+  return selected
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
@@ -42,7 +80,12 @@ export async function GET(request: NextRequest) {
           message: true,
           createdAt: true,
           assignedTo: {
-            select: { id: true, name: true, email: true }
+            select: { 
+              id: true, 
+              name: true, 
+              email: true,
+              color: true
+            }
           }
         },
         orderBy: { createdAt: 'desc' },
@@ -68,15 +111,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false,
-        error: 'Error interno del servidor', 
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: 'Error interno del servidor'
       },
       { status: 500 }
     )
   }
 }
 
-// POST: Crear nuevo lead
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
@@ -94,6 +135,10 @@ export async function POST(request: NextRequest) {
     const estimatedAmount = data.estimatedAmount ? 
       (parseFloat(data.estimatedAmount) || 0) : 0
 
+    // Asignar el asesor con MENOS leads
+    const bestAgent = await getBestAgent()
+    const assignedToId = bestAgent?.id || null
+
     const lead = await prisma.lead.create({
       data: {
         fullName: data.fullName,
@@ -102,15 +147,22 @@ export async function POST(request: NextRequest) {
         estimatedAmount: estimatedAmount,
         creditType: data.creditType || 'TRADITIONAL',
         message: data.message || '',
-        status: data.status || 'PENDING',
-        assignedToId: data.assignedToId || null
+        status: data.status || 'PENDING_CONTACT',
+        assignedToId: assignedToId
       },
       include: {
         assignedTo: {
-          select: { id: true, name: true, email: true }
+          select: { 
+            id: true, 
+            name: true, 
+            email: true,
+            color: true
+          }
         }
       }
     })
+
+    console.log(`✅ Lead creado y asignado a: ${lead.assignedTo?.name || 'Sin asesor'}`)
 
     return NextResponse.json({
       success: true,
@@ -134,8 +186,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false,
-        error: 'Error interno del servidor', 
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: 'Error interno del servidor'
       },
       { status: 500 }
     )

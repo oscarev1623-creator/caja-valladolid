@@ -8,9 +8,8 @@ import {
   DollarSign, Clock, Eye, Edit, Trash2, Search,
   Download, Upload, FileText, CheckCircle, XCircle,
   AlertTriangle, UserCheck, Send, Mail as MailIcon,
-  FileSignature, CreditCard, Coins
+  FileSignature, CreditCard, Coins, MessageCircle, UserCog, Palette, X
 } from 'lucide-react'
-import StatusManager from './StatusManager'
 
 interface Lead {
   id: string
@@ -27,8 +26,22 @@ interface Lead {
     id: string
     name: string
     email: string
+    color?: string
   }
 }
+
+const COLOR_PRESETS = [
+  { name: 'Azul', bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-800', dot: 'bg-blue-500', value: 'blue' },
+  { name: 'Rosa', bg: 'bg-pink-50', border: 'border-pink-300', text: 'text-pink-800', dot: 'bg-pink-500', value: 'pink' },
+  { name: 'Verde', bg: 'bg-green-50', border: 'border-green-300', text: 'text-green-800', dot: 'bg-green-500', value: 'green' },
+  { name: 'Morado', bg: 'bg-purple-50', border: 'border-purple-300', text: 'text-purple-800', dot: 'bg-purple-500', value: 'purple' },
+  { name: 'Naranja', bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-800', dot: 'bg-orange-500', value: 'orange' },
+  { name: 'Amarillo', bg: 'bg-yellow-50', border: 'border-yellow-300', text: 'text-yellow-800', dot: 'bg-yellow-500', value: 'yellow' },
+  { name: 'Gris', bg: 'bg-gray-50', border: 'border-gray-300', text: 'text-gray-800', dot: 'bg-gray-500', value: 'gray' },
+  { name: 'Rojo', bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-800', dot: 'bg-red-500', value: 'red' },
+  { name: 'Cian', bg: 'bg-cyan-50', border: 'border-cyan-300', text: 'text-cyan-800', dot: 'bg-cyan-500', value: 'cyan' },
+  { name: 'Lima', bg: 'bg-lime-50', border: 'border-lime-300', text: 'text-lime-800', dot: 'bg-lime-500', value: 'lime' }
+]
 
 const CATEGORIES = [
   { id: 'all', name: 'Todos', icon: '📋', color: '#6b7280', bg: '#f3f4f6', filter: () => true },
@@ -38,6 +51,14 @@ const CATEGORIES = [
   { id: 'review', name: 'En Revisión', icon: '🔍', color: '#6366f1', bg: '#e0e7ff', filter: (lead: Lead) => lead.status === 'UNDER_REVIEW' },
   { id: 'approved', name: 'Aprobados', icon: '✅', color: '#10b981', bg: '#d1fae5', filter: (lead: Lead) => lead.status === 'APPROVED' },
   { id: 'rejected', name: 'Rechazados', icon: '❌', color: '#ef4444', bg: '#fee2e2', filter: (lead: Lead) => lead.status === 'REJECTED' }
+]
+
+const QUICK_STATUS_OPTIONS = [
+  { value: 'PENDING', label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'CONTACTED', label: 'Contactado', color: 'bg-blue-100 text-blue-800' },
+  { value: 'UNDER_REVIEW', label: 'En Revisión', color: 'bg-purple-100 text-purple-800' },
+  { value: 'APPROVED', label: 'Aprobado', color: 'bg-green-100 text-green-800' },
+  { value: 'REJECTED', label: 'Rechazado', color: 'bg-red-100 text-red-800' }
 ]
 
 export default function LeadsPage() {
@@ -55,18 +76,105 @@ export default function LeadsPage() {
   const [totalLeads, setTotalLeads] = useState(0)
   const [activeCategory, setActiveCategory] = useState('all')
   const [sendingEmail, setSendingEmail] = useState<string | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [showColorPicker, setShowColorPicker] = useState<string | null>(null)
+  const [leadColors, setLeadColors] = useState<Record<string, string>>({})
+  
+  // NUEVO: Filtro por asesor
+  const [selectedAgentFilter, setSelectedAgentFilter] = useState<string>('all')
+  const [agents, setAgents] = useState<any[]>([])
 
+  function getAgentColor(color: string | undefined) {
+    const colors: Record<string, string> = {
+      blue: '#3b82f6',
+      green: '#10b981',
+      purple: '#8b5cf6',
+      pink: '#ec4899',
+      orange: '#f97316',
+      yellow: '#eab308',
+      red: '#ef4444',
+      cyan: '#06b6d4',
+      lime: '#84cc16'
+    }
+    return colors[color || 'green'] || '#10b981'
+  }
+
+  // Cargar asesores para el filtro
   useEffect(() => {
-    console.log('🔄 LeadsPage MOUNTED')
-    console.log('📍 URL:', window.location.pathname)
-    console.log('🍪 Cookies:', document.cookie)
+    fetchAgents()
   }, [])
+
+  const fetchAgents = async () => {
+    try {
+      const res = await fetch('/api/admin/agents')
+      const data = await res.json()
+      if (data.success) {
+        setAgents(data.agents)
+      }
+    } catch (error) {
+      console.error('Error fetching agents:', error)
+    }
+  }
+
+  // Cargar colores guardados
+  useEffect(() => {
+    const saved = localStorage.getItem('lead_colors')
+    if (saved) {
+      setLeadColors(JSON.parse(saved))
+    }
+  }, [])
+
+  // Guardar color de un lead específico
+  const saveLeadColor = (leadId: string, colorValue: string) => {
+    const newColors = { ...leadColors, [leadId]: colorValue }
+    setLeadColors(newColors)
+    localStorage.setItem('lead_colors', JSON.stringify(newColors))
+    setShowColorPicker(null)
+  }
+
+  // Quitar color de un lead
+  const removeLeadColor = (leadId: string) => {
+    const newColors = { ...leadColors }
+    delete newColors[leadId]
+    setLeadColors(newColors)
+    localStorage.setItem('lead_colors', JSON.stringify(newColors))
+    setShowColorPicker(null)
+  }
+
+  // Resetear todos los colores
+  const resetAllColors = () => {
+    if (confirm('⚠️ Esta acción solo reseteará los colores visuales de los leads en tu pantalla. Los leads y toda su información permanecerán intactos. ¿Deseas continuar?')) {
+      setLeadColors({})
+      localStorage.removeItem('lead_colors')
+      setShowColorPicker(null)
+      alert('✅ Colores reseteados correctamente. Los leads siguen siendo los mismos.')
+    }
+  }
+
+  // Obtener estilo según el color asignado al lead
+  const getLeadStyle = (leadId: string) => {
+    const colorValue = leadColors[leadId]
+    const preset = COLOR_PRESETS.find(c => c.value === colorValue)
+    return preset || COLOR_PRESETS[0]
+  }
+
+  const getUniqueAssignees = () => {
+    const assignees = new Map<string, { name: string; email: string }>()
+    allLeads.forEach(lead => {
+      if (lead.assignedTo && !assignees.has(lead.assignedTo.email)) {
+        assignees.set(lead.assignedTo.email, {
+          name: lead.assignedTo.name,
+          email: lead.assignedTo.email
+        })
+      }
+    })
+    return Array.from(assignees.values())
+  }
 
   const fetchLeads = async () => {
     try {
       setLoading(true)
       setError('')
-      console.log('🔄 fetchLeads...')
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -79,15 +187,12 @@ export default function LeadsPage() {
         credentials: 'include'
       })
 
-      console.log('📥 Status:', response.status)
-
       if (response.status === 401 || response.status === 403) {
         console.log('🚫 Acceso denegado')
         return
       }
 
       const data = await response.json()
-      console.log('📊 Data:', data)
 
       if (data.success) {
         setAllLeads(data.data)
@@ -109,6 +214,7 @@ export default function LeadsPage() {
     fetchLeads()
   }, [page, statusFilter])
 
+  // Aplicar filtros (incluyendo el de asesor)
   useEffect(() => {
     if (allLeads.length === 0) {
       setFilteredLeads([])
@@ -129,8 +235,12 @@ export default function LeadsPage() {
         return name.includes(searchLower) || email.includes(searchLower) || phone.includes(searchLower)
       })
     }
+    // NUEVO: Filtro por asesor
+    if (selectedAgentFilter !== 'all') {
+      filtered = filtered.filter(lead => lead.assignedTo?.id === selectedAgentFilter)
+    }
     setFilteredLeads(filtered)
-  }, [allLeads, activeCategory, search])
+  }, [allLeads, activeCategory, search, selectedAgentFilter])
 
   const toggleSelectLead = (leadId: string) => {
     setSelectedLeads(prev =>
@@ -162,6 +272,28 @@ export default function LeadsPage() {
       }
     } catch (error) {
       alert('Error de conexión')
+    }
+  }
+
+  const handleQuickStatusChange = async (leadId: string, newStatus: string) => {
+    setUpdatingStatus(leadId)
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+        credentials: 'include'
+      })
+      const data = await response.json()
+      if (data.success) {
+        fetchLeads()
+      } else {
+        alert('Error al actualizar estado')
+      }
+    } catch (error) {
+      alert('Error de conexión')
+    } finally {
+      setUpdatingStatus(null)
     }
   }
 
@@ -233,6 +365,8 @@ export default function LeadsPage() {
     return !['APPROVED', 'REJECTED'].includes(lead.status)
   }
 
+  const assignees = getUniqueAssignees()
+
   if (loading && allLeads.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50">
@@ -248,448 +382,449 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header con gradiente */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-xl p-8 mb-8 text-white">
-          <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6">
+      <div className="max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl shadow-xl p-6 md:p-8 mb-6 text-white">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-4xl font-bold mb-2">Gestión de Leads</h1>
-              <p className="text-green-100 text-lg">
+              <h1 className="text-2xl md:text-4xl font-bold">Gestión de Leads</h1>
+              <p className="text-green-100 text-sm md:text-lg">
                 {totalLeads} leads registrados • {selectedLeads.length} seleccionados
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={fetchLeads}
-                className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg flex items-center gap-2 backdrop-blur-sm transition-all"
+                className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-all"
               >
                 <RefreshCw className="w-4 h-4" />
                 Actualizar
               </button>
               <button
                 onClick={() => router.push('/admin/leads/new')}
-                className="bg-white text-green-600 px-6 py-2 rounded-lg hover:bg-green-50 transition-all flex items-center gap-2 font-semibold shadow-lg"
+                className="bg-white text-green-600 px-4 py-2 rounded-lg hover:bg-green-50 transition-all flex items-center gap-2 font-semibold shadow-lg text-sm"
               >
-                <span className="text-xl">+</span>
+                <span className="text-lg">+</span>
                 Nuevo Lead
               </button>
             </div>
           </div>
         </div>
 
-        {/* Categorías */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <span className="w-1 h-6 bg-green-500 rounded-full"></span>
-            Categorías
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            {CATEGORIES.map((category) => {
-              const count = getCategoryCount(category.id)
-              const isActive = activeCategory === category.id
+        {/* NUEVO: Filtro por asesor */}
+        <div className="bg-white rounded-xl shadow p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filtrar por asesor:</span>
+            </div>
+            {selectedAgentFilter !== 'all' && (
+              <button
+                onClick={() => setSelectedAgentFilter('all')}
+                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                Limpiar filtro
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedAgentFilter('all')}
+              className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                selectedAgentFilter === 'all'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <div className="flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                Todos ({allLeads.length})
+              </div>
+            </button>
+            {agents.map((agent) => {
+              const agentLeads = allLeads.filter(l => l.assignedTo?.id === agent.id)
               return (
                 <button
-                  key={category.id}
-                  onClick={() => setActiveCategory(category.id)}
-                  className={`group relative overflow-hidden rounded-xl p-5 transition-all duration-300 ${
-                    isActive 
-                      ? 'bg-white shadow-xl scale-105 ring-2 ring-green-500 ring-offset-2' 
-                      : 'bg-white/80 hover:bg-white hover:shadow-lg hover:scale-102'
+                  key={agent.id}
+                  onClick={() => setSelectedAgentFilter(agent.id)}
+                  className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+                    selectedAgentFilter === agent.id
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br opacity-10 rounded-bl-full"
-                       style={{ backgroundColor: category.color }}></div>
-                  <div className="relative z-10">
-                    <div className="text-3xl mb-3 transform group-hover:scale-110 transition-transform">
-                      {category.icon}
-                    </div>
-                    <p className="font-semibold text-gray-800 text-sm">{category.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">{count} {count === 1 ? 'lead' : 'leads'}</p>
-                  </div>
-                  {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
-                  )}
+                  {agent.name} ({agentLeads.length})
                 </button>
               )
             })}
           </div>
         </div>
 
-        {/* Gestión Masiva */}
-        {selectedLeads.length > 0 && (
-          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border border-blue-200 rounded-2xl p-6 mb-8 shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <UserCheck className="w-7 h-7 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Gestión Masiva</h3>
-                  <p className="text-gray-600">
-                    {selectedLeads.length} {selectedLeads.length === 1 ? 'lead seleccionado' : 'leads seleccionados'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setSelectedLeads([])}
-                  className="px-4 py-2 bg-white text-gray-700 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
-                >
-                  Limpiar selección
-                </button>
-                <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-xl font-medium shadow-sm">
-                  {selectedLeads.length} seleccionados
-                </div>
-              </div>
-            </div>
-            <div className="border-t border-blue-200 mt-4 pt-4">
-              <StatusManager
-                leadIds={selectedLeads}
-                currentStatus={filteredLeads.length > 0 && selectedLeads.length > 0 
-                  ? filteredLeads.find(l => selectedLeads.includes(l.id))?.status 
-                  : undefined}
-                onStatusChange={async (apiAction, notes) => {
-                  setActionLoading(true)
-                  try {
-                    const response = await fetch('/api/leads/batch', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ leadIds: selectedLeads, action: apiAction, notes: notes || '' }),
-                      credentials: 'include'
-                    })
-                    const data = await response.json()
-                    if (data.success) {
-                      alert(`✅ ${data.message}`)
-                      await fetchLeads()
-                      setSelectedLeads([])
-                    } else {
-                      alert(`❌ Error: ${data.error}`)
-                    }
-                  } catch (error) {
-                    console.error('Error:', error)
-                    alert('❌ Error al procesar el cambio de estado')
-                  } finally {
-                    setActionLoading(false)
-                  }
-                }}
-                disabled={actionLoading}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Filtros */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Filtros compactos */}
+        <div className="bg-white rounded-xl shadow p-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Buscar por nombre, email o teléfono..."
+                placeholder="Buscar..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
+                onKeyDown={(e) => e.key === 'Enter' && fetchLeads()}
+                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
               />
             </div>
-            <div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
-              >
-                <option value="">Todos los estados</option>
-                <option value="PENDING">Pendiente</option>
-                <option value="CONTACTED">Contactado</option>
-                <option value="UNDER_REVIEW">En Revisión</option>
-                <option value="APPROVED">Aprobado</option>
-                <option value="REJECTED">Rechazado</option>
-              </select>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={fetchLeads}
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-3 rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center gap-2 font-semibold shadow-md"
-              >
-                <Filter className="w-4 h-4" />
-                Filtrar
-              </button>
-              <button
-                onClick={() => { setSearch(''); setStatusFilter(''); setActiveCategory('all'); setPage(1); }}
-                className="flex-1 bg-gray-100 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-200 transition-all"
-              >
-                Limpiar
-              </button>
-            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+            >
+              <option value="">Todos los estados</option>
+              <option value="PENDING">Pendiente</option>
+              <option value="CONTACTED">Contactado</option>
+              <option value="UNDER_REVIEW">En Revisión</option>
+              <option value="APPROVED">Aprobado</option>
+              <option value="REJECTED">Rechazado</option>
+            </select>
+            <button
+              onClick={fetchLeads}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2"
+            >
+              <Filter className="w-4 h-4" />
+              Filtrar
+            </button>
+            <button
+              onClick={() => { setSearch(''); setStatusFilter(''); setActiveCategory('all'); setPage(1); fetchLeads(); }}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm"
+            >
+              Limpiar
+            </button>
           </div>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-xl mb-6 flex items-center gap-3 shadow-md">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <p className="flex-1">{error}</p>
-          </div>
-        )}
-
-        {/* Tabla de Leads - SOLO COLUMNAS PRINCIPALES */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+        {/* Tabla */}
+        <div className="bg-white rounded-xl shadow overflow-hidden">
           {filteredLeads.length === 0 ? (
-            <div className="py-20 text-center">
-              <div className="text-7xl mb-4 opacity-20">📋</div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">No hay leads</h3>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                {search || statusFilter 
-                  ? 'No se encontraron resultados con los filtros seleccionados'
-                  : 'Comienza creando tu primer lead para verlo aquí'}
+            <div className="py-16 text-center">
+              <div className="text-6xl mb-4 opacity-20">📋</div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No hay leads</h3>
+              <p className="text-gray-600 mb-6 text-sm">
+                {search || statusFilter || selectedAgentFilter !== 'all' ? 'No se encontraron resultados' : 'Comienza creando tu primer lead'}
               </p>
               <button
                 onClick={() => router.push('/admin/leads/new')}
-                className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 font-semibold shadow-lg inline-flex items-center gap-2"
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
               >
-                <span className="text-xl">+</span>
-                Crear Primer Lead
+                + Crear Primer Lead
               </button>
             </div>
           ) : (
             <>
-<div className="overflow-x-auto rounded-lg">
-  <table className="min-w-[800px] md:min-w-full divide-y divide-gray-200">
-    <thead className="bg-gray-50">
-      <tr>
-        <th className="px-3 py-4 text-left w-12">
-          <button
-            onClick={toggleSelectAll}
-            className="flex items-center gap-2 text-gray-700 font-semibold text-sm hover:text-green-600 transition-colors"
-          >
-            {selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 ? (
-              <CheckSquare className="w-5 h-5 text-green-600" />
-            ) : (
-              <Square className="w-5 h-5 text-gray-400" />
-            )}
-            SEL
-          </button>
-        </th>
-        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CLIENTE</th>
-        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">CONTACTO</th>
-        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MENSAJE</th>
-        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">MONTO</th>
-        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ESTADO</th>
-        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">FECHA</th>
-        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ACCIONES</th>
-      </tr>
-    </thead>
-    <tbody className="bg-white divide-y divide-gray-100">
-      {filteredLeads.map((lead) => {
-        const statusConfig = getStatusConfig(lead.status)
-        const StatusIcon = statusConfig.icon
-        const isSelected = selectedLeads.includes(lead.id)
-        const isSelectableLead = isSelectable(lead)
-        
-        return (
-          <tr 
-            key={lead.id} 
-            className={`group transition-all ${
-              isSelected ? 'bg-green-50/50' : 'hover:bg-gray-50/80'
-            }`}
-          >
-            <td className="px-3 py-4">
-              <div
-                onClick={() => isSelectableLead && toggleSelectLead(lead.id)}
-                className={`flex items-center justify-center cursor-pointer ${
-                  !isSelectableLead ? 'cursor-not-allowed opacity-40' : ''
-                }`}
-                title={!isSelectableLead ? 'Lead ya procesado' : isSelected ? 'Deseleccionar' : 'Seleccionar'}
-              >
-                {isSelected ? (
-                  <CheckSquare className="w-5 h-5 text-green-600" />
-                ) : (
-                  <Square className="w-5 h-5 text-gray-300 group-hover:text-gray-400" />
-                )}
+              {/* Versión Desktop - Tabla SIN columna de colores y más compacta */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-3 text-left w-8">
+                        <button onClick={toggleSelectAll} className="flex items-center">
+                          {selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 ? (
+                            <CheckSquare className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <Square className="w-4 h-4 text-gray-400" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="px-3 py-3 text-left font-semibold text-gray-600 text-xs uppercase">Cliente</th>
+                      <th className="px-3 py-3 text-left font-semibold text-gray-600 text-xs uppercase">Contacto</th>
+                      <th className="px-3 py-3 text-left font-semibold text-gray-600 text-xs uppercase">Monto</th>
+                      <th className="px-3 py-3 text-left font-semibold text-gray-600 text-xs uppercase">Estado</th>
+                      <th className="px-3 py-3 text-left font-semibold text-gray-600 text-xs uppercase">Fecha</th>
+                      <th className="px-3 py-3 text-left font-semibold text-gray-600 text-xs uppercase">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredLeads.map((lead) => {
+                      const statusConfig = getStatusConfig(lead.status)
+                      const StatusIcon = statusConfig.icon
+                      const isSelected = selectedLeads.includes(lead.id)
+                      const isSelectableLead = isSelectable(lead)
+                      
+                      return (
+                        <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-3 py-3">
+                            <div
+                              onClick={() => isSelectableLead && toggleSelectLead(lead.id)}
+                              className={`cursor-pointer ${!isSelectableLead ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            >
+                              {isSelected ? (
+                                <CheckSquare className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <Square className="w-4 h-4 text-gray-300" />
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-800 font-semibold text-sm">
+                                {lead.fullName.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900 text-sm">{lead.fullName}</p>
+                                <p className="text-xs text-gray-500 capitalize">{lead.creditType === 'TRADITIONAL' ? 'Tradicional' : 'Cripto'}</p>
+                                {lead.assignedTo && (
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <div 
+                                      className="w-2 h-2 rounded-full" 
+                                      style={{ backgroundColor: getAgentColor(lead.assignedTo.color) }}
+                                    />
+                                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                                      <UserCog className="w-3 h-3" />
+                                      {lead.assignedTo.name}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1 text-xs">
+                                <Mail className="w-3 h-3 text-gray-400" />
+                                <span className="text-gray-700 truncate max-w-[140px]">{lead.email}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-xs">
+                                <Phone className="w-3 h-3 text-gray-400" />
+                                <span className="text-gray-600">{lead.phone}</span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  router.push(`/admin/chat?leadId=${lead.id}&email=${encodeURIComponent(lead.email)}&name=${encodeURIComponent(lead.fullName)}&phone=${encodeURIComponent(lead.phone)}`)
+                                }}
+                                className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700"
+                              >
+                                <MessageCircle className="w-3 h-3" />
+                                <span>Chat</span>
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="font-semibold text-gray-900 text-sm whitespace-nowrap">
+                              {formatCurrency(lead.estimatedAmount)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {lead.stage?.replace('_', ' ') || 'Sin etapa'}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: statusConfig.bg }}>
+                                  <StatusIcon className="w-3 h-3" style={{ color: statusConfig.text }} />
+                                </div>
+                                <span className="text-xs font-medium" style={{ color: statusConfig.text }}>
+                                  {statusConfig.label}
+                                </span>
+                              </div>
+                              {isSelectableLead && (
+                                <select
+                                  value={lead.status}
+                                  onChange={(e) => handleQuickStatusChange(lead.id, e.target.value)}
+                                  disabled={updatingStatus === lead.id}
+                                  className="text-xs px-2 py-0.5 rounded border border-gray-200 bg-white focus:ring-1 focus:ring-green-500"
+                                >
+                                  {QUICK_STATUS_OPTIONS.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
+                            {formatDate(lead.createdAt)}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => router.push(`/admin/leads/${lead.id}`)}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                title="Ver detalles"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => router.push(`/admin/leads/${lead.id}/edit`)}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
+                                title="Editar"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(lead.id)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            {lead.status === 'APPROVED' && (
+                              <div className="flex gap-1 mt-2">
+                                <button
+                                  onClick={() => handleSendApprovalEmail(lead.id)}
+                                  disabled={sendingEmail === lead.id}
+                                  className="flex-1 p-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                                >
+                                  {sendingEmail === lead.id ? '...' : 'Correo'}
+                                </button>
+                                <button
+                                  onClick={() => window.open(`/api/contratos/tradicional/${lead.id}`, '_blank')}
+                                  className="flex-1 p-1 bg-blue-100 text-blue-700 rounded text-xs"
+                                >
+                                  Contrato
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </td>
-            <td className="px-4 py-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-semibold text-sm shadow-sm ${
-                  isSelectableLead ? 'bg-gradient-to-br from-green-100 to-emerald-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {lead?.fullName ? lead.fullName.charAt(0) : '?'}
-                </div>
-                <div>
-                  <p className={`font-semibold text-gray-900 ${!isSelectableLead && 'opacity-60'}`}>
-                    {lead?.fullName || 'Nombre no disponible'}
-                  </p>
-                  <p className="text-xs text-gray-500 capitalize">
-                    {lead?.creditType === 'TRADITIONAL' ? 'Crédito Tradicional' : 'Crédito Cripto'}
-                  </p>
-                </div>
-              </div>
-            </td>
-            <td className="px-4 py-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-gray-700 truncate max-w-[160px]">
-                    {lead?.email || 'Sin email'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-gray-600">
-                    {lead?.phone || 'Sin teléfono'}
-                  </span>
-                </div>
-              </div>
-            </td>
-            <td className="px-4 py-4">
-              <div className="max-w-[180px]">
-                <p className="text-sm text-gray-700 truncate" title={lead.message || ''}>
-                  {lead.message || '—'}
-                </p>
-              </div>
-            </td>
-            <td className="px-4 py-4">
-              <div className="font-bold text-gray-900 whitespace-nowrap">
-                {formatCurrency(lead?.estimatedAmount || 0)}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {lead?.stage ? String(lead.stage).replace('_', ' ') : 'Sin etapa'}
-              </div>
-            </td>
-            <td className="px-4 py-4">
-              <div className="flex items-center gap-2 whitespace-nowrap">
-                <div 
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: statusConfig.bg }}
-                >
-                  <StatusIcon className="w-4 h-4" style={{ color: statusConfig.text }} />
-                </div>
-                <span className="text-sm font-medium" style={{ color: statusConfig.text }}>
-                  {statusConfig.label}
-                </span>
-              </div>
-            </td>
-            <td className="px-4 py-4 whitespace-nowrap">
-              <div className="flex items-center gap-1 text-gray-600">
-                <Calendar className="w-3.5 h-3.5" />
-                <span className="text-sm">{formatDate(lead?.createdAt || '')}</span>
-              </div>
-            </td>
-            <td className="px-4 py-4">
-              <div className="flex gap-1">
-                <button
-                  onClick={() => router.push(`/admin/leads/${lead.id}`)}
-                  className="p-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-                  title="Ver detalles"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => router.push(`/admin/leads/${lead.id}/edit`)}
-                  className="p-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
-                  title="Editar"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(lead.id)}
-                  className="p-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                  title="Eliminar"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-              
-              {lead.status === 'APPROVED' && (
-                <div className="flex gap-1 mt-2 pt-1 border-t border-gray-100">
-                  <button
-                    onClick={() => handleSendApprovalEmail(lead.id)}
-                    disabled={sendingEmail === lead.id}
-                    className="flex-1 p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-xs flex items-center justify-center gap-1"
-                    title="Enviar correo de aprobación"
-                  >
-                    {sendingEmail === lead.id ? (
-                      <div className="w-3 h-3 border-2 border-green-700 border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <MailIcon className="w-3 h-3" />
-                    )}
-                    <span>Correo</span>
-                  </button>
+
+              {/* Versión Móvil */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {filteredLeads.map((lead) => {
+                  const statusConfig = getStatusConfig(lead.status)
+                  const StatusIcon = statusConfig.icon
                   
-                  <button
-                    onClick={() => window.open(`/api/contratos/tradicional/${lead.id}`, '_blank')}
-                    className="flex-1 p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-xs flex items-center justify-center gap-1"
-                    title="Contrato tradicional"
-                  >
-                    <FileSignature className="w-3 h-3" />
-                    <span>Tradicional</span>
-                  </button>
-                  
-                  {lead.creditType === 'CRYPTO' && (
-                    <button
-                      onClick={() => window.open(`/api/contratos/cripto/${lead.id}`, '_blank')}
-                      className="flex-1 p-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-xs flex items-center justify-center gap-1"
-                      title="Contrato cripto"
-                    >
-                      <Coins className="w-3 h-3" />
-                      <span>Cripto</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </td>
-          </tr>
-        )
-      })}
-    </tbody>
-  </table>
-</div>
+                  return (
+                    <div key={lead.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-800 font-semibold">
+                            {lead.fullName.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{lead.fullName}</p>
+                            <p className="text-xs text-gray-500">{lead.creditType === 'TRADITIONAL' ? 'Tradicional' : 'Cripto'}</p>
+                            {lead.assignedTo && (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <div 
+                                  className="w-2 h-2 rounded-full" 
+                                  style={{ backgroundColor: getAgentColor(lead.assignedTo.color) }}
+                                />
+                                <p className="text-xs text-gray-400 flex items-center gap-1">
+                                  <UserCog className="w-3 h-3" />
+                                  {lead.assignedTo.name}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => toggleSelectLead(lead.id)}
+                          className="p-1"
+                        >
+                          {selectedLeads.includes(lead.id) ? (
+                            <CheckSquare className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-700">{lead.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-600">{lead.phone}</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            router.push(`/admin/chat?leadId=${lead.id}&email=${encodeURIComponent(lead.email)}&name=${encodeURIComponent(lead.fullName)}&phone=${encodeURIComponent(lead.phone)}`)
+                          }}
+                          className="flex items-center gap-1 text-purple-600"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          Chat
+                        </button>
+                        <div className="flex justify-between items-center pt-2">
+                          <div>
+                            <p className="text-xs text-gray-500">Monto</p>
+                            <p className="font-semibold text-gray-900">{formatCurrency(lead.estimatedAmount)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Estado</p>
+                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: statusConfig.bg, color: statusConfig.text }}>
+                              <StatusIcon className="w-3 h-3" />
+                              {statusConfig.label}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Fecha</p>
+                            <p className="text-sm">{formatDate(lead.createdAt)}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => router.push(`/admin/leads/${lead.id}`)}
+                            className="flex-1 p-2 text-blue-600 bg-blue-50 rounded-lg text-center text-sm"
+                          >
+                            Ver detalles
+                          </button>
+                          <button
+                            onClick={() => handleDelete(lead.id)}
+                            className="p-2 text-red-600 bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {lead.status === 'APPROVED' && (
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => handleSendApprovalEmail(lead.id)}
+                              disabled={sendingEmail === lead.id}
+                              className="flex-1 p-2 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
+                            >
+                              {sendingEmail === lead.id ? 'Enviando...' : 'Enviar Correo'}
+                            </button>
+                            <button
+                              onClick={() => window.open(`/api/contratos/tradicional/${lead.id}`, '_blank')}
+                              className="flex-1 p-2 bg-blue-100 text-blue-700 rounded text-sm"
+                            >
+                              Contrato
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
 
               {/* Paginación */}
-              <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50/50">
-                <div className="text-gray-600 text-sm">
-                  Mostrando <span className="font-semibold text-gray-900">1</span> a{' '}
-                  <span className="font-semibold text-gray-900">{filteredLeads.length}</span> de{' '}
-                  <span className="font-semibold text-gray-900">{totalLeads}</span> leads
+              <div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3 bg-gray-50 text-sm">
+                <div className="text-gray-600 text-xs">
+                  Mostrando {(page - 1) * 50 + 1} a {Math.min(page * 50, totalLeads)} de {totalLeads}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                      page === 1 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 shadow-sm'
-                    }`}
+                    className="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-100 text-sm"
                   >
                     ← Anterior
                   </button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const pageNum = i + 1
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => setPage(pageNum)}
-                          className={`w-9 h-9 rounded-xl text-sm font-medium transition-all ${
-                            page === pageNum 
-                              ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md' 
-                              : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 border border-gray-200'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <span className="px-3 py-1 bg-green-600 text-white rounded-lg text-sm">Pág. {page}</span>
                   <button
                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                      page === totalPages 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 shadow-sm'
-                    }`}
+                    className="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-100 text-sm"
                   >
                     Siguiente →
                   </button>
@@ -700,61 +835,22 @@ export default function LeadsPage() {
         </div>
 
         {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-gray-600 text-sm mb-1">Total Leads</p>
-                <p className="text-3xl font-bold text-gray-900">{totalLeads}</p>
-                <p className="text-xs text-gray-500 mt-2">+{Math.floor(totalLeads * 0.15)} este mes</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Users className="w-7 h-7 text-white" />
-              </div>
-            </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+          <div className="bg-white rounded-xl p-3 shadow">
+            <p className="text-xs text-gray-500">Total</p>
+            <p className="text-xl font-bold text-gray-900">{totalLeads}</p>
           </div>
-          
-          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-gray-600 text-sm mb-1">Seleccionados</p>
-                <p className="text-3xl font-bold text-blue-600">{selectedLeads.length}</p>
-                <p className="text-xs text-gray-500 mt-2">Para acciones masivas</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <CheckSquare className="w-7 h-7 text-white" />
-              </div>
-            </div>
+          <div className="bg-white rounded-xl p-3 shadow">
+            <p className="text-xs text-gray-500">Pendientes</p>
+            <p className="text-xl font-bold text-yellow-600">{allLeads.filter(l => l.status === 'PENDING').length}</p>
           </div>
-          
-          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-gray-600 text-sm mb-1">Aprobados</p>
-                <p className="text-3xl font-bold text-green-600">
-                  {allLeads.filter(l => l.status === 'APPROVED').length}
-                </p>
-                <p className="text-xs text-gray-500 mt-2">Tasa de aprobación: {Math.round((allLeads.filter(l => l.status === 'APPROVED').length / allLeads.length) * 100) || 0}%</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <CheckCircle className="w-7 h-7 text-white" />
-              </div>
-            </div>
+          <div className="bg-white rounded-xl p-3 shadow">
+            <p className="text-xs text-gray-500">Aprobados</p>
+            <p className="text-xl font-bold text-green-600">{allLeads.filter(l => l.status === 'APPROVED').length}</p>
           </div>
-          
-          <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all border border-gray-100">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-gray-600 text-sm mb-1">Monto Total</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(allLeads.reduce((sum, lead) => sum + (lead?.estimatedAmount || 0), 0))}
-                </p>
-                <p className="text-xs text-gray-500 mt-2">Créditos solicitados</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <DollarSign className="w-7 h-7 text-white" />
-              </div>
-            </div>
+          <div className="bg-white rounded-xl p-3 shadow">
+            <p className="text-xs text-gray-500">Monto Total</p>
+            <p className="text-sm font-bold text-gray-900 truncate">{formatCurrency(allLeads.reduce((sum, l) => sum + l.estimatedAmount, 0))}</p>
           </div>
         </div>
       </div>

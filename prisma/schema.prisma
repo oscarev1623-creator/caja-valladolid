@@ -8,19 +8,22 @@ datasource db {
 }
 
 model User {
-  id              String       @id @default(cuid())
-  email           String       @unique
-  password        String
-  name            String
-  role            String       @default("ADMIN")
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  documents       Document[]
-  leadsAssigned   Lead[]
-  notes           Note[]
-  ticketsAssigned Ticket[]
-  ticketsCreated  Ticket[]     @relation("TicketCreator")
-  ticketNotes     TicketNote[]
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  password           String
+  name               String
+  role               String              @default("AGENT")  // ADMIN, AGENT
+  isActive           Boolean             @default(true)     // Activo/Inactivo
+  color              String?             @default("green")  // Color del asesor
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  documents          Document[]
+  leadsAssigned      Lead[]
+  notes              Note[]
+  ticketsAssigned    Ticket[]
+  ticketsCreated     Ticket[]            @relation("TicketCreator")
+  ticketNotes        TicketNote[]
+  chatConversations  ChatConversation[]
 }
 
 model Lead {
@@ -104,7 +107,7 @@ model Ticket {
   uniqueToken  String       @unique
   linkUrl      String
   assignedToId String?
-  createdById  String? // ← CAMBIAR A OPCIONAL (agregar ?)
+  createdById  String?
   sentAt       DateTime?
   expiresAt    DateTime
   accessedAt   DateTime?
@@ -112,7 +115,7 @@ model Ticket {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   assignedTo   User?        @relation(fields: [assignedToId], references: [id])
-  createdBy    User?        @relation("TicketCreator", fields: [createdById], references: [id]) // ← CAMBIAR A OPCIONAL
+  createdBy    User?        @relation("TicketCreator", fields: [createdById], references: [id])
   lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
   notes        TicketNote[]
 }
@@ -158,4 +161,31 @@ model Message {
   @@index([status])
   @@index([createdAt])
   @@index([email])
+}
+
+model ChatConversation {
+  id              String          @id @default(cuid())
+  userEmail       String
+  userName        String?
+  userPhone       String?
+  status          String          @default("active")
+  assignedToId    String?
+  assignedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  messages        ChatMessage[]
+  assignedTo      User?           @relation(fields: [assignedToId], references: [id])
+}
+
+model ChatMessage {
+  id             String          @id @default(cuid())
+  conversationId String
+  senderType     String          // 'user', 'agent', 'system'
+  message        String?
+  fileUrl        String?
+  fileType       String?
+  fileName       String?
+  isRead         Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 }

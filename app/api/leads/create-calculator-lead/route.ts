@@ -8,6 +8,35 @@ const prisma = new PrismaClient()
 // Configurar SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || '')
 
+// Función para obtener el asesor con menos leads asignados
+async function getBestAgent() {
+  console.log('🔍 ====================')
+  console.log('🔍 Buscando el mejor asesor para el lead...')
+  
+  const agents = await prisma.user.findMany({
+    where: {
+      role: 'AGENT',
+      isActive: true
+    }
+  })
+
+  const agentsWithLoad = await Promise.all(agents.map(async (agent) => {
+    const leadCount = await prisma.lead.count({
+      where: { assignedToId: agent.id }
+    })
+    console.log(`   📋 ${agent.name} tiene ${leadCount} leads asignados`)
+    return { ...agent, currentLoad: leadCount }
+  }))
+
+  agentsWithLoad.sort((a, b) => a.currentLoad - b.currentLoad)
+  
+  const selected = agentsWithLoad[0]
+  console.log(`✅ Asesor seleccionado: ${selected.name} (${selected.currentLoad} leads)`)
+  console.log('🔍 ====================')
+  
+  return selected
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { firstName, lastName, email, phone, estimatedAmount, creditType, message } = await request.json()
@@ -29,7 +58,11 @@ export async function POST(request: NextRequest) {
 
     const mappedCreditType = creditType === 'crypto' ? 'CRYPTO' : 'TRADITIONAL'
 
-    // Crear el lead
+    // Asignar asesor automáticamente
+    const bestAgent = await getBestAgent()
+    const assignedToId = bestAgent?.id || null
+
+    // Crear el lead con asesor asignado
     const lead = await prisma.lead.create({
       data: {
         fullName,
@@ -43,11 +76,17 @@ export async function POST(request: NextRequest) {
         uniqueToken,
         tokenExpiresAt: expiresAt,
         status: 'PENDING_DOCUMENTS',
-        source: 'CALCULATOR'
+        source: 'CALCULATOR',
+        assignedToId: assignedToId
+      },
+      include: {
+        assignedTo: {
+          select: { id: true, name: true, email: true, color: true }
+        }
       }
     })
 
-    console.log('✅ Lead creado:', lead.id)
+    console.log(`✅ Lead creado con asesor: ${lead.assignedTo?.name || 'Sin asesor'}`)
 
     // Crear ticket para el enlace de documentos
     const ticketNumber = `TKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -73,45 +112,61 @@ export async function POST(request: NextRequest) {
     console.log('📧 Enviando correo con SendGrid...')
     console.log('📧 Email destino:', email)
 
-    const whatsappNumber = "529541184165"
-    const whatsappLink = `https://wa.me/${whatsappNumber}?text=Hola%2C%20soy%20${firstName}%20${lastName}%20y%20quiero%20información%20sobre%20mi%20solicitud`
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://www.cajavalladolid.com'
 
     const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #0d9488, #0f766e); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="color: white; margin: 0;">Caja Valladolid</h1>
-          <p style="color: #e6fffa; margin: 10px 0 0;">Tu aliado financiero de confianza</p>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Confirmación de solicitud</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <img src="${baseUrl}/logotipo.png" alt="Caja Valladolid" style="height: 60px; margin-bottom: 10px;" />
+          <h1 style="color: #059669; margin: 0;">Caja Valladolid</h1>
+          <p style="color: #065f46;">Tu aliado financiero de confianza</p>
         </div>
-        
-        <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
-          <h2 style="color: #1e293b; margin-top: 0;">¡Hola ${firstName}! 👋</h2>
-          
-          <p style="color: #334155; line-height: 1.6;">¡Gracias por confiar en nosotros! Hemos recibido tu solicitud de crédito por <strong>$${parseFloat(estimatedAmount).toLocaleString('es-MX')}</strong>.</p>
-          
-          <div style="background: #f0fdf4; border-left: 4px solid #059669; padding: 20px; margin: 25px 0; border-radius: 8px;">
-            <p style="color: #065f46; margin: 0 0 10px; font-weight: bold;">📎 ¿Quieres agilizar tu proceso?</p>
-            <p style="color: #065f46; margin: 0;">Sube tus documentos aquí:</p>
-            <a href="${documentLink}" style="display: inline-block; background: #0d9488; color: white; padding: 12px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; margin: 15px 0 10px;">
+
+        <div style="background-color: #f0fdf4; border-left: 4px solid #059669; padding: 20px; margin-bottom: 30px;">
+          <h2 style="color: #059669; margin-top: 0;">¡Hola ${firstName} ${lastName}! 👋</h2>
+          <p style="font-size: 16px;">Hemos recibido exitosamente tu solicitud de crédito por <strong>$${parseFloat(estimatedAmount).toLocaleString('es-MX')}</strong>.</p>
+        </div>
+
+        <div style="background-color: #f0fdf4; border-left: 4px solid #059669; padding: 20px; margin-bottom: 30px;">
+          <h3 style="color: #065f46;">📎 ¿Quieres agilizar tu proceso?</h3>
+          <p>Sube tus documentos aquí:</p>
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="${documentLink}" style="background: linear-gradient(135deg, #059669, #047857); color: white; padding: 12px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">
               📄 Subir documentación
             </a>
           </div>
-          
-          <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
-            <p style="color: #1e40af; margin-bottom: 15px;">¿Prefieres hablar con un asesor?</p>
-            <a href="${whatsappLink}" style="display: inline-block; background: #25D366; color: white; padding: 12px 30px; text-decoration: none; border-radius: 50px; font-weight: bold;">
-              💬 Contactar por WhatsApp
+        </div>
+
+        <div style="background-color: #eff6ff; border: 1px solid #dbeafe; border-radius: 10px; padding: 20px; margin-bottom: 30px;">
+          <h3 style="color: #1e40af; margin-top: 0;">💬 Oficina Virtual</h3>
+          <p>Puedes chatear directamente con tu asesor en nuestra Oficina Virtual:</p>
+          <div style="text-align: center; margin: 20px 0;">
+            <a href="${baseUrl}" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; padding: 12px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">
+              💬 Abrir Oficina Virtual
             </a>
           </div>
-          
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0 20px;">
-          
-          <p style="font-size: 12px; color: #64748b; text-align: center;">
-            Caja Popular San Bernardino de Siena Valladolid<br>
-            Registro Oficial: 29198 • CONDUSEF ID: 4930<br>
-            <span style="font-size: 10px;">Este es un correo automático, por favor no responder.</span>
+        </div>
+
+        <div style="background-color: #fef3c7; border-radius: 10px; padding: 16px; text-align: center;">
+          <p style="color: #92400e; margin: 0; font-size: 14px;">
+            ⏳ <strong>Próximos pasos:</strong> Un asesor evaluará tu solicitud en <strong>24-48 horas</strong>
           </p>
         </div>
-      </div>
+
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px; text-align: center; font-size: 12px; color: #6b7280;">
+          <p>Caja Popular San Bernardino de Siena Valladolid</p>
+          <p>Registro Oficial: 29198 • CONDUSEF ID: 4930</p>
+          <p>Este es un correo automático, por favor no responder.</p>
+        </div>
+      </body>
+      </html>
     `
 
     try {
@@ -127,7 +182,6 @@ export async function POST(request: NextRequest) {
       
     } catch (emailError) {
       console.error('❌ Error enviando correo con SendGrid:', emailError)
-      // No lanzamos error para que la solicitud no falle
     }
 
     return NextResponse.json({

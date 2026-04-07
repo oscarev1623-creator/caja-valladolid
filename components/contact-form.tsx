@@ -4,9 +4,8 @@ import type React from "react"
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mail, Send, Phone, MapPin, Clock, CheckCircle, AlertCircle, MessageCircle } from "lucide-react"
+import { Mail, Send, CheckCircle, AlertCircle, MessageCircle } from "lucide-react"
 
-// ✅ Agregar esta función para el tracking del Pixel
 const trackFacebookEvent = (eventName: string, params?: Record<string, any>) => {
   if (typeof window !== 'undefined' && (window as any).fbq) {
     (window as any).fbq('track', eventName, params)
@@ -29,6 +28,71 @@ export function ContactForm() {
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle")
   const [submitMessage, setSubmitMessage] = useState("")
   const [submittedName, setSubmittedName] = useState("")
+  const [chatOpened, setChatOpened] = useState(false)
+
+  const openVirtualOffice = async () => {
+    if (chatOpened) return
+    
+    setChatOpened(true)
+    
+    window.dispatchEvent(new CustomEvent('openChat'))
+    
+    try {
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim()
+      
+      console.log('📝 Abriendo chat con:', { 
+        email: formData.email, 
+        name: fullName, 
+        phone: formData.phone 
+      })
+      
+      const findRes = await fetch(`/api/chat/find-by-email?email=${encodeURIComponent(formData.email)}&name=${encodeURIComponent(fullName)}&phone=${encodeURIComponent(formData.phone)}`)
+      const findData = await findRes.json()
+      
+      let conversationId = findData.conversationId
+      
+      if (!conversationId) {
+        const createRes = await fetch('/api/chat/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: fullName,
+            email: formData.email,
+            phone: formData.phone
+          })
+        })
+        const createData = await createRes.json()
+        
+        if (createData.success) {
+          conversationId = createData.conversationId
+          
+          await fetch('/api/chat/assign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conversationId })
+          })
+          
+          const systemMessage = `📋 Consulta general: ${formData.message || 'Sin mensaje adicional'}`
+          
+          await fetch('/api/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId,
+              message: systemMessage,
+              senderType: 'system'
+            })
+          })
+        }
+      }
+      
+      localStorage.setItem('chat_conversation_id', conversationId)
+      window.dispatchEvent(new CustomEvent('reloadConversation'))
+      
+    } catch (error) {
+      console.error('Error opening virtual office:', error)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,18 +101,17 @@ export function ContactForm() {
     setSubmitMessage("")
 
     try {
-      const dataToSend = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        message: formData.message
-      }
-
-      const response = await fetch('/api/contacto-simple', {
+      const response = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dataToSend)
+        body: JSON.stringify({
+          fullName: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          phone: formData.phone,
+          estimatedAmount: 0,
+          creditType: 'TRADITIONAL',
+          message: formData.message
+        })
       })
 
       const result = await response.json()
@@ -58,7 +121,6 @@ export function ContactForm() {
         setSubmitStatus("success")
         setSubmitMessage("¡Mensaje enviado con éxito!")
 
-        // 🔥 PIXEL DE FACEBOOK - EVENTO LEAD
         trackFacebookEvent('Lead', {
           content_name: 'Contacto',
           content_category: 'Formulario de contacto',
@@ -66,8 +128,9 @@ export function ContactForm() {
           currency: 'MXN'
         })
 
-        // Limpiar formulario
-        setFormData({ firstName: "", lastName: "", email: "", phone: "", message: "" })
+        // NO borrar formData aquí para que el chat pueda usar los datos
+        // setFormData({ firstName: "", lastName: "", email: "", phone: "", message: "" })
+        
       } else {
         setSubmitStatus("error")
         setSubmitMessage(result.error || "Error al enviar el mensaje")
@@ -80,19 +143,9 @@ export function ContactForm() {
     }
   }
 
-  // Generar mensaje pre-llenado para WhatsApp
-  const getWhatsAppMessage = () => {
-    const name = submittedName || formData.firstName
-    return encodeURIComponent(
-      `Hola, soy ${name}. Me contacté a través del formulario de la página web. Me gustaría obtener más información sobre los créditos.`
-    )
-  }
-
-  const whatsappNumber = "529541184165"
-
   return (
     <section id="contacto" className="py-20 px-6 bg-gradient-to-br from-gray-50 to-white">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -109,239 +162,160 @@ export function ContactForm() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Información de contacto */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            viewport={{ once: true }}
-            className="lg:col-span-1"
-          >
-            <div className="bg-white rounded-2xl shadow-lg p-6 h-full border border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Información de contacto</h3>
-              
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Teléfono</p>
-                    <a href="tel:529541184165" className="text-gray-600 hover:text-green-600 transition-colors">
-                      +52 (954) 118 4165
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Email</p>
-                    <a href="mailto:contacto@cajavalladolid.com" className="text-gray-600 hover:text-green-600 transition-colors">
-                      contacto@cajavalladolid.com
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Dirección</p>
-                    <p className="text-gray-600">Valladolid, Yucatán, México</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Clock className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">Horario de atención</p>
-                    <p className="text-gray-600">Lunes a Viernes: 9:00 AM - 6:00 PM</p>
-                    <p className="text-gray-600">Sábados: 9:00 AM - 2:00 PM</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* WhatsApp directo */}
-              <div className="mt-8 pt-6 border-t border-gray-100">
-                <a
-                  href={`https://wa.me/${whatsappNumber}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-3 w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold py-3 px-4 rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-md"
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          viewport={{ once: true }}
+        >
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+            <AnimatePresence mode="wait">
+              {submitStatus === "success" ? (
+                <motion.div
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="text-center py-8"
                 >
-                  <MessageCircle className="w-5 h-5" />
-                  Escríbenos por WhatsApp
-                </a>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Formulario */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
-            className="lg:col-span-2"
-          >
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-              <AnimatePresence mode="wait">
-                {submitStatus === "success" ? (
-                  <motion.div
-                    key="success"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="text-center py-8"
-                  >
-                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <CheckCircle className="w-10 h-10 text-green-600" />
-                    </div>
-                    
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                      ¡Hola {submittedName}! 👋
-                    </h3>
-                    
-                    <p className="text-gray-600 mb-6 text-lg">
-                      Nos da mucho gusto recibir tu mensaje. Para tener más información acerca de nuestros créditos, no dudes en escribirnos.
+                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle className="w-10 h-10 text-green-600" />
+                  </div>
+                  
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                    ¡Hola {submittedName}! 👋
+                  </h3>
+                  
+                  <p className="text-gray-600 mb-6 text-lg">
+                    Nos da mucho gusto recibir tu mensaje. Ahora puedes chatear directamente con un asesor en nuestra oficina virtual.
+                  </p>
+                  
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 mb-6 border border-green-100">
+                    <p className="text-green-800 font-medium mb-4">
+                      📧 Hemos recibido tu información. Tu conversación quedará guardada y podrás volver cuando quieras.
                     </p>
-                    
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 mb-6 border border-green-100">
-                      <p className="text-green-800 font-medium mb-4">
-                        📧 Hemos recibido tu información. Nuestro equipo se pondrá en contacto contigo.
-                      </p>
-                      <p className="text-green-700">
-                        ¿Quieres agilizar el proceso? Escríbenos directamente por WhatsApp:
-                      </p>
-                    </div>
-                    
-                    <a
-                      href={`https://wa.me/${whatsappNumber}?text=${getWhatsAppMessage()}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold py-4 px-8 rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg text-lg"
-                    >
-                      <MessageCircle className="w-6 h-6" />
-                      Hablar con un asesor
-                    </a>
-                  </motion.div>
-                ) : (
-                  <motion.form
-                    key="form"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onSubmit={handleSubmit}
-                    className="space-y-6"
+                    <p className="text-green-700">
+                      Haz clic en el botón de abajo para abrir nuestra oficina virtual y hablar con un asesor.
+                    </p>
+                  </div>
+                  
+                  <button
+                    onClick={openVirtualOffice}
+                    className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold py-4 px-8 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg text-lg"
                   >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Nombre <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.firstName}
-                          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-gray-50 text-gray-900 transition-all"
-                          placeholder="Tu nombre"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Apellido <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.lastName}
-                          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-gray-50 text-gray-900 transition-all"
-                          placeholder="Tu apellido"
-                        />
-                      </div>
-                    </div>
-
+                    <MessageCircle className="w-6 h-6" />
+                    Abrir Oficina Virtual
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.form
+                  key="form"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onSubmit={handleSubmit}
+                  className="space-y-6"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Correo Electrónico <span className="text-red-500">*</span>
+                        Nombre <span className="text-red-500">*</span>
                       </label>
                       <input
-                        type="email"
+                        type="text"
                         required
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        value={formData.firstName}
+                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-gray-50 text-gray-900 transition-all"
-                        placeholder="tu@email.com"
+                        placeholder="Tu nombre"
                       />
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Teléfono <span className="text-red-500">*</span>
+                        Apellido <span className="text-red-500">*</span>
                       </label>
                       <input
-                        type="tel"
+                        type="text"
                         required
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        value={formData.lastName}
+                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-gray-50 text-gray-900 transition-all"
-                        placeholder="555 123 4567"
+                        placeholder="Tu apellido"
                       />
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Mensaje <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        required
-                        rows={4}
-                        value={formData.message}
-                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-gray-50 text-gray-900 transition-all resize-none"
-                        placeholder="¿En qué podemos ayudarte?"
-                      />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Correo Electrónico <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-gray-50 text-gray-900 transition-all"
+                      placeholder="tu@email.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Teléfono <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-gray-50 text-gray-900 transition-all"
+                      placeholder="555 123 4567"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mensaje <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      required
+                      rows={4}
+                      value={formData.message}
+                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-gray-50 text-gray-900 transition-all resize-none"
+                      placeholder="¿En qué podemos ayudarte?"
+                    />
+                  </div>
+
+                  {submitStatus === "error" && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500" />
+                      <p className="text-red-600 text-sm">{submitMessage}</p>
                     </div>
+                  )}
 
-                    {submitStatus === "error" && (
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-500" />
-                        <p className="text-red-600 text-sm">{submitMessage}</p>
-                      </div>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-md text-lg"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5" />
+                        Enviar Mensaje
+                      </>
                     )}
-
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-md text-lg"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Enviando...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-5 h-5" />
-                          Enviar Mensaje
-                        </>
-                      )}
-                    </button>
-                  </motion.form>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        </div>
+                  </button>
+                </motion.form>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
       </div>
     </section>
   )

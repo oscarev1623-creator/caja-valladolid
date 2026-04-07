@@ -54,7 +54,7 @@ export function AboutUs() {
               
               {/* Botón CONDUSEF */}
               <a
-                href="https://webapps.condusef.gob.mx/SIPRES_N/jsp/home_publico.jsp?idins=4930"
+                href="https://webapps.condusef.gob.mx/SIPRES/jsp/home_publico.jsp?idins=4930"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 group mb-4"

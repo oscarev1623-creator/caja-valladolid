@@ -1,7 +1,7 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
-import Script from "next/script" // 👈 IMPORTAR SCRIPT
+import Script from "next/script"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -39,12 +39,8 @@ export const metadata: Metadata = {
     follow: true,
   },
   icons: {
-    icon: [
-      { url: "/logotipo.png", type: "image/png" },
-      { url: "/icon-light-32x32.png", media: "(prefers-color-scheme: light)" },
-      { url: "/icon-dark-32x32.png", media: "(prefers-color-scheme: dark)" },
-    ],
-    apple: "/apple-icon.png",
+    icon: "/icon-light-32x32.png",  // 👈 CAMBIADO: usar solo el PNG
+    apple: "/icon-light-32x32.png", // 👈 CAMBIADO: usar solo el PNG
   },
 }
 
@@ -67,7 +63,6 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
-        {/* PIXEL DE FACEBOOK */}
         <Script
           id="facebook-pixel"
           strategy="afterInteractive"
@@ -86,7 +81,6 @@ export default function RootLayout({
             `
           }}
         />
-        {/* Fallback para navegadores sin JavaScript */}
         <noscript>
           <img 
             height="1" 

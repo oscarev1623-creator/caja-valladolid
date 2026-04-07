@@ -83,36 +83,40 @@ export default function FAQ() {
       icon: <Percent className="w-5 h-5" />
     },
     {
-      question: "¿Por qué debo pagar un anticipo y en qué se utiliza?",
+      question: "¿Qué son los gastos administrativos y en qué se utilizan?",
       answer: (
         <div className="space-y-4">
           <p className="mb-4">
-            El anticipo es un <strong>pago inicial requerido</strong> que cumple varios propósitos fundamentales para garantizar la seguridad y formalidad de tu operación:
+            Los <strong>gastos administrativos</strong> son un cargo único que cubre los costos de apertura y gestión de tu crédito. 
+            Estos gastos se detallan en tu contrato y se explican claramente durante el proceso de solicitud:
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">🔒 Para Tu Seguridad</h4>
+              <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">📋 ¿Qué cubren?</h4>
               <ul className="text-sm space-y-1">
-                <li>• Reserva el monto aprobado exclusivamente para ti</li>
-                <li>• Inicia los trámites legales y contratos</li>
-                <li>• Garantiza que el crédito no será asignado a otra persona</li>
+                <li>• Estudio y análisis crediticio</li>
+                <li>• Gestión de documentos y verificación</li>
+                <li>• Elaboración de contrato digital</li>
+                <li>• Seguimiento durante la vigencia del crédito</li>
               </ul>
             </div>
             
             <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-              <h4 className="font-semibold text-green-700 dark:text-green-300 mb-2">💰 Destino del Anticipo</h4>
+              <h4 className="font-semibold text-green-700 dark:text-green-300 mb-2">💰 ¿Cómo se calculan?</h4>
               <ul className="text-sm space-y-1">
-                <li>• 70% se descuenta directamente del total del crédito</li>
-                <li>• 30% cubre gastos administrativos y de gestión</li>
-                <li>• Todo está detallado en tu contrato y estado de cuenta</li>
+                <li>• Crédito tradicional: según rango del monto</li>
+                <li>• Crédito cripto: 1% del monto solicitado</li>
+                <li>• Se pagan una sola vez al inicio</li>
+                <li>• Se descuentan del total del crédito</li>
               </ul>
             </div>
           </div>
           
           <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
             <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-              💡 <strong>Importante:</strong> El anticipo NO es una comisión adicional. Es parte del monto total del crédito que pagas por adelantado, lo que reduce tus pagos mensuales posteriores.
+              💡 <strong>Importante:</strong> Los gastos administrativos NO son un costo adicional. Se descuentan del monto total del crédito, 
+              por lo que no afectan tu capacidad de pago mensual.
             </p>
           </div>
         </div>
@@ -128,7 +132,7 @@ export default function FAQ() {
               <h4 className="font-semibold text-green-700 mb-3">Crédito Tradicional</h4>
               <ul className="text-sm space-y-2">
                 <li>• Tasa: 11% anual</li>
-                <li>• Anticipo: 20%</li>
+                <li>• Gastos administrativos por rango</li>
                 <li>• Recibes: Tarjeta física Mastercard/Visa</li>
                 <li>• Uso: Cajeros, comercios, transferencias</li>
               </ul>
@@ -138,57 +142,10 @@ export default function FAQ() {
               <h4 className="font-semibold text-purple-700 mb-3">Crédito Cripto</h4>
               <ul className="text-sm space-y-2">
                 <li>• Tasa: 5.4% anual</li>
-                <li>• Anticipo: 10%</li>
+                <li>• Gastos administrativos: 1% del monto</li>
                 <li>• Recibes: Wallet digital / Exchange</li>
                 <li>• Uso: Transferencias, conversión, trading</li>
               </ul>
-            </div>
-          </div>
-        </div>
-      ),
-      icon: <Bitcoin className="w-5 h-5" />
-    },
-    {
-      question: "¿El anticipo para créditos cripto es diferente?",
-      answer: (
-        <div className="space-y-4">
-          <div className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 p-4 rounded-lg border border-purple-500/20">
-            <p className="font-medium text-[var(--foreground)] mb-3">
-              Para créditos en criptomonedas, el anticipo es del <strong>10% del monto total</strong> (en lugar del 20% de los créditos tradicionales). 
-              Esta diferencia se debe a las ventajas del ecosistema digital:
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
-                <h4 className="font-semibold text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-2">
-                  <span className="text-lg">💰</span>
-                  ¿Cuánto es?
-                </h4>
-                <p className="text-sm">
-                  <strong>10% del monto solicitado</strong>. Por ejemplo, para un crédito de $50,000 MXN, 
-                  el anticipo sería de $5,000 MXN (o su equivalente en criptomoneda).
-                </p>
-              </div>
-              
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg">
-                <h4 className="font-semibold text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-2">
-                  <span className="text-lg">📊</span>
-                  Destino
-                </h4>
-                <ul className="text-sm space-y-1">
-                  <li>• 70% se descuenta del capital</li>
-                  <li>• 30% cubre gastos administrativos</li>
-                  <li>• No es un costo adicional</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
-              <p className="text-sm text-purple-800 dark:text-purple-300 flex items-start gap-2">
-                <span className="text-lg">💎</span>
-                <span><strong>Ventaja exclusiva cripto:</strong> Si pagas el anticipo en la misma criptomoneda del crédito, 
-                obtienes un <strong>5% de descuento adicional</strong> en tus primeras 3 mensualidades.</span>
-              </p>
             </div>
           </div>
         </div>
@@ -573,7 +530,7 @@ export default function FAQ() {
             <div className="mt-4 p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
               <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300 flex items-start gap-2">
                 <span className="text-xl">📦</span>
-                <span><strong>Proceso de entrega:</strong> Una vez aprobado tu crédito y recibido el anticipo, emitimos tu tarjeta personalizada. Recibirás un número de guía para rastrear tu envío. En caso de no estar en domicilio, podrás recogerla en la sucursal de paquetería más cercana presentando tu identificación oficial.</span>
+                <span><strong>Proceso de entrega:</strong> Una vez aprobado tu crédito, emitimos tu tarjeta personalizada. Recibirás un número de guía para rastrear tu envío. En caso de no estar en domicilio, podrás recogerla en la sucursal de paquetería más cercana presentando tu identificación oficial.</span>
               </p>
             </div>
           </div>

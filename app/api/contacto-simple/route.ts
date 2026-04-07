@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import nodemailer from 'nodemailer'
+import sgMail from '@sendgrid/mail'
 
 const prisma = new PrismaClient()
 
-// Configurar transporter de email
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-})
+// Configurar SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || '')
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     const fullName = `${data.firstName} ${data.lastName || ''}`.trim()
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://www.cajavalladolid.com'
     
     // Guardar en base de datos
     const lead = await prisma.lead.create({
@@ -49,67 +42,67 @@ export async function POST(request: NextRequest) {
     console.log('✅ Lead guardado:', lead.id)
 
     // ============================================
-    // 📧 ENVIAR CORREO DE CONFIRMACIÓN AL CLIENTE
+    // 📧 ENVIAR CORREO DE CONFIRMACIÓN AL CLIENTE (SendGrid)
     // ============================================
     try {
-      const whatsappNumber = "529541184165"
-      const whatsappMessage = encodeURIComponent(
-        `Hola, soy ${data.firstName}. Me contacté a través del formulario de la página web. Me gustaría obtener más información sobre los créditos.`
-      )
-      const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`
-
-      await transporter.sendMail({
-        from: `"Caja Valladolid" <${process.env.SMTP_USER}>`,
+      const msg = {
         to: data.email,
+        from: 'contacto@cajavalladolid.com',
         subject: `✨ Hola ${data.firstName}, hemos recibido tu mensaje`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #0d9488, #0f766e); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-              <h1 style="color: white; margin: 0; font-size: 28px;">Caja Valladolid</h1>
-              <p style="color: #e6fffa; margin: 10px 0 0;">Tu aliado financiero de confianza</p>
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Confirmación de contacto</title>
+          </head>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <img src="${baseUrl}/logotipo.png" alt="Caja Valladolid" style="height: 60px; margin-bottom: 10px;" />
+              <h1 style="color: #059669; margin: 0;">Caja Valladolid</h1>
+              <p style="color: #065f46;">Tu aliado financiero de confianza</p>
             </div>
-            
-            <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
-              <h2 style="color: #1e293b; margin-top: 0;">¡Hola ${data.firstName}! 👋</h2>
-              
-              <p style="color: #334155; line-height: 1.6;">Hemos recibido tu mensaje correctamente. Nuestro equipo se pondrá en contacto contigo en las próximas 24 horas.</p>
-              
-              <div style="background: #f0fdf4; border-left: 4px solid #059669; padding: 20px; margin: 25px 0; border-radius: 8px;">
-                <p style="color: #065f46; margin: 0 0 10px; font-weight: bold;">📋 ¿Quieres agilizar el proceso?</p>
-                <p style="color: #065f46; margin: 0;">Escríbenos directamente por WhatsApp para atención personalizada:</p>
-                
-                <a href="${whatsappLink}" 
-                   style="display: inline-block; background: #25D366; color: white; padding: 12px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; margin: 20px 0 10px;">
-                  💬 Contactar por WhatsApp
+
+            <div style="background-color: #f0fdf4; border-left: 4px solid #059669; padding: 20px; margin-bottom: 30px;">
+              <h2 style="color: #059669; margin-top: 0;">¡Hola ${data.firstName}! 👋</h2>
+              <p style="font-size: 16px;">Hemos recibido tu mensaje correctamente.</p>
+            </div>
+
+            <div style="background-color: #eff6ff; border: 1px solid #dbeafe; border-radius: 10px; padding: 20px; margin-bottom: 30px;">
+              <h3 style="color: #1e40af; margin-top: 0;">💬 Oficina Virtual</h3>
+              <p>Puedes chatear directamente con tu asesor en nuestra Oficina Virtual:</p>
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="${baseUrl}" style="background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; padding: 12px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">
+                  💬 Abrir Oficina Virtual
                 </a>
               </div>
-              
-              <p style="color: #334155;">Mientras tanto, si tienes más preguntas, no dudes en escribirnos.</p>
-              
-              <hr style="border: none; border-top: 2px solid #e2e8f0; margin: 30px 0 20px;">
-              
-              <p style="font-size: 12px; color: #64748b; text-align: center;">
-                Caja Popular San Bernardino de Siena Valladolid<br>
-                Registro Oficial: 29198 • CONDUSEF ID: 4930<br>
-                <span style="font-size: 10px;">Este es un correo automático, por favor no responder.</span>
-              </p>
             </div>
-          </div>
+
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center; font-size: 12px; color: #6b7280;">
+              <p>Caja Popular San Bernardino de Siena Valladolid</p>
+              <p>Registro Oficial: 29198 • CONDUSEF ID: 4930</p>
+              <p>Este es un correo automático, por favor no responder.</p>
+            </div>
+          </body>
+          </html>
         `
-      })
+      }
+
+      await sgMail.send(msg)
       console.log('✅ Correo de confirmación enviado a:', data.email)
+      
     } catch (emailError) {
       console.error('❌ Error enviando correo de confirmación:', emailError)
-      // No fallamos la petición si el correo falla
     }
 
     // ============================================
     // 📧 ENVIAR CORREO AL ADMIN (NOTIFICACIÓN)
     // ============================================
     try {
-      await transporter.sendMail({
-        from: `"Formulario Web" <${process.env.SMTP_USER}>`,
+      const adminMsg = {
         to: 'contacto@cajavalladolid.com',
+        from: 'contacto@cajavalladolid.com',
         subject: `📩 Nuevo mensaje de ${fullName}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px;">
@@ -139,19 +132,21 @@ export async function POST(request: NextRequest) {
             </table>
             
             <div style="margin-top: 20px; padding: 15px; background: #f0fdf4; border-radius: 8px;">
-              <a href="https://wa.me/${data.phone}" style="color: #059669;">💬 Contactar por WhatsApp</a>
+              <a href="${baseUrl}/admin/chat?leadId=${lead.id}&email=${encodeURIComponent(data.email)}&name=${encodeURIComponent(fullName)}&phone=${encodeURIComponent(data.phone)}" style="color: #059669;">
+                💬 Abrir conversación en Oficina Virtual
+              </a>
             </div>
           </div>
         `
-      })
+      }
+
+      await sgMail.send(adminMsg)
       console.log('✅ Correo de notificación enviado al admin')
+      
     } catch (emailError) {
       console.error('❌ Error enviando correo al admin:', emailError)
     }
 
-    // ============================================
-    // 📊 RESPUESTA EXITOSA
-    // ============================================
     return NextResponse.json({
       success: true,
       leadId: lead.id,

@@ -8,7 +8,7 @@ import { AboutUs } from "@/components/about-us"
 import FAQ from "@/components/faq"
 import { ContactForm } from "@/components/contact-form"
 import Footer from "@/components/footer"
-import { Chatbot } from "@/components/chatbot"
+import ChatWidget from "@/components/ChatWidget"
 
 export default function Home() {
   return (
@@ -23,7 +23,7 @@ export default function Home() {
       <FAQ />
       <ContactForm />
       <Footer />
-      <Chatbot />
+      <ChatWidget />
     </>
   )
 }

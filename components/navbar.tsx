@@ -101,7 +101,7 @@ export function Navbar() {
               <motion.a
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                href="https://webapps.condusef.gob.mx/SIPRES_N/jsp/home_publico.jsp?idins=4930"
+                href="https://webapps.condusef.gob.mx/SIPRES/jsp/home_publico.jsp?idins=4930"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden sm:flex hover:opacity-90 transition-opacity"

@@ -41,7 +41,6 @@ const CreditCalculator = ({
   // Resultados
   const [results, setResults] = useState({
     monthlyPayment: 0,
-    adminFee: 0,
     totalInterest: 0
   });
 
@@ -51,21 +50,14 @@ const CreditCalculator = ({
   // Opciones de plazo
   const yearOptions = [4, 6, 8, 10, 12, 16, 20];
 
-  // Calcular gastos administrativos (1% del monto)
-  const calculateAdminFee = (amount: number) => {
-    return amount * 0.01; // 1% del monto
-  };
-
-  // Calcular préstamo
+  // Calcular préstamo (sin anticipo)
   const calculateLoan = () => {
-    const adminFee = calculateAdminFee(creditAmount);
-    const netAmount = creditAmount - adminFee;
+    const netAmount = creditAmount;
     const months = years * 12;
     
     if (netAmount <= 0) {
       setResults({
         monthlyPayment: 0,
-        adminFee,
         totalInterest: 0
       });
       return;
@@ -78,7 +70,6 @@ const CreditCalculator = ({
 
     setResults({
       monthlyPayment,
-      adminFee,
       totalInterest
     });
   };
@@ -131,8 +122,7 @@ const CreditCalculator = ({
 
   // Generar tabla de amortización
   const generateAmortizationTable = (): AmortizationRow[] => {
-    const adminFee = results.adminFee;
-    const netAmount = creditAmount - adminFee;
+    const netAmount = creditAmount;
     const months = years * 12;
     const monthlyPayment = results.monthlyPayment;
     let balance = netAmount;
@@ -174,7 +164,6 @@ const CreditCalculator = ({
             td { padding: 8px; border-bottom: 1px solid #ddd; }
             .total { font-weight: bold; background: #f3f4f6; }
             .summary { background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0; }
-            .oxxo-badge { background: #fbbf24; color: #000; padding: 5px 10px; border-radius: 20px; display: inline-block; font-size: 12px; }
           </style>
         </head>
         <body>
@@ -186,7 +175,6 @@ const CreditCalculator = ({
             <p><strong>Rango de crédito:</strong> ${getCurrentRange(creditAmount)}</p>
             <p><strong>Plazo:</strong> ${years} años (${years * 12} meses)</p>
             <p><strong>Mensualidad:</strong> ${formatCurrency(results.monthlyPayment)}</p>
-            <p><strong>Gastos administrativos (1% del monto):</strong> ${formatCurrency(results.adminFee)}</p>
             <p><strong>Interés total:</strong> ${formatCurrency(results.totalInterest)}</p>
             <p><strong>Total a pagar:</strong> ${formatCurrency(creditAmount + results.totalInterest)}</p>
           </div>
@@ -194,37 +182,34 @@ const CreditCalculator = ({
           <h3>Primeros 12 meses de amortización</h3>
            <table>
             <thead>
-               <tr>
+                <tr>
                 <th>Mes</th>
                 <th>Pago</th>
                 <th>Interés</th>
                 <th>Capital</th>
                 <th>Saldo</th>
-               </tr>
+                </tr>
             </thead>
             <tbody>
     `;
     
     amortizationRows.forEach(row => {
       htmlContent += `
-         <tr>
-          <td>${row.month}</td>
-          <td>${formatCurrency(row.payment)}</td>
-          <td>${formatCurrency(row.interest)}</td>
-          <td>${formatCurrency(row.principal)}</td>
-          <td>${formatCurrency(row.balance)}</td>
-         </tr>
+              <tr>
+                <td>${row.month}</td>
+                <td>${formatCurrency(row.payment)}</td>
+                <td>${formatCurrency(row.interest)}</td>
+                <td>${formatCurrency(row.principal)}</td>
+                <td>${formatCurrency(row.balance)}</td>
+              </tr>
       `;
     });
     
     htmlContent += `
             </tbody>
-           </table>
+          </table>
           <p style="text-align: center; margin-top: 30px; color: #666;">
             Esta simulación es informativa y puede variar según condiciones finales.
-          </p>
-          <p style="text-align: center; margin-top: 20px; color: #059669; font-weight: bold;">
-            Paga tus gastos administrativos en más de 20,000 OXXOs en todo México
           </p>
         </body>
       </html>
@@ -407,8 +392,8 @@ const CreditCalculator = ({
               </p>
             </div>
 
-            {/* Tarjetas de resultados */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            {/* Tarjetas de resultados - SOLO 2 TARJETAS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
               {/* Monto solicitado */}
               <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
@@ -443,22 +428,6 @@ const CreditCalculator = ({
                   Pago mensual fijo en MXN
                 </div>
               </div>
-
-              {/* Gastos administrativos */}
-              <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-xl border border-green-100 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Percent className="w-5 h-5 text-green-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-700">Gastos administrativos</h3>
-                </div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">
-                  {formatCurrency(results.adminFee)}
-                </div>
-                <div className="text-gray-500 text-sm">
-                  1% del monto solicitado
-                </div>
-              </div>
             </div>
 
             {/* Interés total */}
@@ -470,58 +439,6 @@ const CreditCalculator = ({
                 </div>
                 <div className="text-4xl md:text-5xl font-bold mt-4 md:mt-0">
                   {formatCurrency(results.totalInterest)}
-                </div>
-              </div>
-            </div>
-
-            {/* Alianza OXXO */}
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-8 mb-10 border border-amber-200 shadow-md">
-              <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="flex-shrink-0 bg-white p-4 rounded-xl shadow-md">
-                  <img 
-                    src="/oxxo.png" 
-                    alt="OXXO" 
-                    className="h-16 w-auto object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.parentElement!.innerHTML += `
-                        <div class="text-amber-600 font-bold text-2xl">OXXO</div>
-                      `;
-                    }}
-                  />
-                </div>
-                
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-amber-600" />
-                    Paga tus gastos administrativos en más de 20,000 OXXOs
-                  </h3>
-                  
-                  <p className="text-gray-700 mb-4">
-                    Gracias a nuestra alianza estratégica con <strong>OXXO</strong>, ahora puedes realizar el pago de tus <strong>gastos administrativos</strong> de forma 
-                    <strong> rápida, segura y sin complicaciones</strong> en cualquier sucursal OXXO de todo México.
-                  </p>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                    <div className="flex items-start gap-2">
-                      <div className="bg-green-100 p-1 rounded-full">
-                        <Smartphone className="w-4 h-4 text-green-600" />
-                      </div>
-                      <span className="text-sm text-gray-600">Genera tu línea de captura</span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="bg-green-100 p-1 rounded-full">
-                        <Shield className="w-4 h-4 text-green-600" />
-                      </div>
-                      <span className="text-sm text-gray-600">Pago seguro y protegido</span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="bg-green-100 p-1 rounded-full">
-                        <Zap className="w-4 h-4 text-green-600" />
-                      </div>
-                      <span className="text-sm text-gray-600">Confirmación inmediata</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -544,13 +461,10 @@ const CreditCalculator = ({
               </button>
             </div>
 
-            {/* Nota informativa */}
+            {/* Nota informativa simplificada */}
             <div className="p-6 bg-green-50 rounded-xl border border-green-200 mb-10">
               <p className="text-gray-700 text-sm text-center">
                 <strong>Nota:</strong> La tasa de interés es fija del <strong>11% anual</strong> en pesos mexicanos (MXN). 
-                Los <strong>gastos administrativos</strong> corresponden al <strong>1% del monto solicitado</strong>.
-                <br /><br />
-                <span className="font-semibold text-amber-600">✅ Paga tus gastos administrativos en cualquier OXXO de México.</span>
                 Esta simulación es informativa y puede variar según condiciones finales.
               </p>
             </div>
@@ -607,9 +521,6 @@ const CreditCalculator = ({
                 <p className="text-green-100 mt-1">
                   {formatCurrency(creditAmount)} a {years} años • Tasa {interestRate * 12}% anual
                 </p>
-                <p className="text-green-100 text-sm mt-1">
-                  Gastos administrativos: {formatCurrency(results.adminFee)} (1% del monto)
-                </p>
               </div>
               <button
                 onClick={() => setShowAmortizationModal(false)}
@@ -622,13 +533,13 @@ const CreditCalculator = ({
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 sticky top-0">
-                   <tr>
+                  <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mes</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago mensual</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interés</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capital</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
-                   </tr>
+                  </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {generateAmortizationTable().map((row: AmortizationRow) => (
