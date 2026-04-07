@@ -1,4 +1,3 @@
-// app/api/chat/messages/route.ts
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -64,9 +63,10 @@ export async function GET(req: Request) {
       },
       {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0'
+          'Expires': '0',
+          'Surrogate-Control': 'no-store'
         }
       }
     )
