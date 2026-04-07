@@ -1,1 +1,1 @@
-{"status":200,"headers":{"content-type":"application/json","x-next-cache-tags":"_N_T_/layout,_N_T_/api/layout,_N_T_/api/chat/layout,_N_T_/api/chat/conversations/layout,_N_T_/api/chat/conversations/route,_N_T_/api/chat/conversations"}}
+{"status":200,"headers":{"cache-control":"no-store, no-cache, must-revalidate, proxy-revalidate","content-type":"application/json","expires":"0","pragma":"no-cache","x-next-cache-tags":"_N_T_/layout,_N_T_/api/layout,_N_T_/api/chat/layout,_N_T_/api/chat/conversations/layout,_N_T_/api/chat/conversations/route,_N_T_/api/chat/conversations"}}

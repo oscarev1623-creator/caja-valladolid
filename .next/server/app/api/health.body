@@ -1,1 +1,1 @@
-{"success":true,"message":"API funcionando","database":"conectada","users":3,"dbUrl":"postgres://a8cb9ae6d687cd4fcf531ab885d81440fc1a6ef..."}
+{"status":"healthy","database":"connected","environment":"production","vercel":"false","timestamp":"2026-04-07T22:44:23.353Z"}
