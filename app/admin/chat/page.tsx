@@ -17,6 +17,7 @@ export default function AdminChatPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date())
   const [isPolling, setIsPolling] = useState(false)
+  const [forceUpdate, setForceUpdate] = useState(0) // 👈 NUEVO: forzar re-render
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const leadId = searchParams?.get('leadId') || null
@@ -24,89 +25,99 @@ export default function AdminChatPage() {
   const leadName = searchParams?.get('name') || null
   const leadPhone = searchParams?.get('phone') || null
 
-  // Escuchar evento para refrescar conversaciones
+  // 🔴 SOLUCIÓN NUCLEAR: Usar localStorage para comunicación entre pestañas
   useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'chat_refresh') {
+        console.log('💥 ACTUALIZACIÓN NUCLEAR DETECTADA');
+        fetchConversations(true);
+        setForceUpdate(prev => prev + 1); // Forzar re-render
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // También escuchar el evento normal
     const handleRefresh = () => {
-      console.log('🔄 Evento refreshConversations recibido')
-      fetchConversations(true) // silent = true para no mostrar loading
-    }
+      console.log('🔄 Evento refresh recibido');
+      fetchConversations(true);
+      setForceUpdate(prev => prev + 1);
+    };
     
-    window.addEventListener('refreshConversations', handleRefresh)
-    
-    // También actualizar cuando la ventana recupera el foco
-    window.addEventListener('focus', handleRefresh)
+    window.addEventListener('refreshConversations', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
     
     return () => {
-      window.removeEventListener('refreshConversations', handleRefresh)
-      window.removeEventListener('focus', handleRefresh)
-    }
-  }, [])
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('refreshConversations', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+    };
+  }, []);
 
   useEffect(() => {
-    fetchConversations()
-    fetchAgents()
+    fetchConversations();
+    fetchAgents();
     
-    // Polling cada 3 segundos (más rápido)
+    // Polling cada 2 segundos (más agresivo)
     pollingIntervalRef.current = setInterval(() => {
-      fetchConversations(true)
-    }, 3000)
+      fetchConversations(true);
+    }, 2000);
     
     return () => {
       if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
+        clearInterval(pollingIntervalRef.current);
       }
-    }
-  }, [])
+    };
+  }, []);
 
-  // Ordenar conversaciones y calcular no leídos
   useEffect(() => {
     const sorted = [...conversations].sort((a, b) => 
       new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    )
+    );
     
-    const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0)
-    setUnreadCount(totalUnread)
+    const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+    setUnreadCount(totalUnread);
     
     if (totalUnread > 0) {
-      document.title = `(${totalUnread}) Conversaciones - Caja Valladolid`
+      document.title = `(${totalUnread}) Conversaciones - Caja Valladolid`;
     } else {
-      document.title = 'Conversaciones - Caja Valladolid'
+      document.title = 'Conversaciones - Caja Valladolid';
     }
     
     if (selectedAgent === 'all') {
-      setFilteredConversations(sorted)
+      setFilteredConversations(sorted);
     } else {
-      const filtered = sorted.filter(conv => conv.assignedTo?.id === selectedAgent)
-      setFilteredConversations(filtered)
+      const filtered = sorted.filter(conv => conv.assignedTo?.id === selectedAgent);
+      setFilteredConversations(filtered);
     }
-  }, [conversations, selectedAgent])
+  }, [conversations, selectedAgent, forceUpdate]); // 👈 forceUpdate como dependencia
 
   useEffect(() => {
     if (leadId && leadEmail && !creatingChat) {
-      openOrCreateConversation()
+      openOrCreateConversation();
     }
-  }, [leadId, leadEmail])
+  }, [leadId, leadEmail]);
 
   const fetchAgents = async () => {
     try {
-      const res = await fetch('/api/admin/agents')
-      const data = await res.json()
+      const res = await fetch('/api/admin/agents');
+      const data = await res.json();
       if (data.success) {
-        setAgents(data.agents)
+        setAgents(data.agents);
       }
     } catch (error) {
-      console.error('Error fetching agents:', error)
+      console.error('Error fetching agents:', error);
     }
-  }
+  };
 
   const openOrCreateConversation = async () => {
-    setCreatingChat(true)
+    setCreatingChat(true);
     try {
-      const res = await fetch(`/api/chat/find-by-email?email=${encodeURIComponent(leadEmail || '')}`)
-      const data = await res.json()
+      const res = await fetch(`/api/chat/find-by-email?email=${encodeURIComponent(leadEmail || '')}`);
+      const data = await res.json();
       
       if (data.success && data.conversationId) {
-        router.push(`/admin/chat/${data.conversationId}`)
+        router.push(`/admin/chat/${data.conversationId}`);
       } else {
         const createRes = await fetch('/api/chat/start', {
           method: 'POST',
@@ -116,77 +127,82 @@ export default function AdminChatPage() {
             email: leadEmail,
             phone: leadPhone || ''
           })
-        })
-        const createData = await createRes.json()
+        });
+        const createData = await createRes.json();
         
         if (createData.success) {
           await fetch('/api/chat/assign', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ conversationId: createData.conversationId })
-          })
+          });
           
-          router.push(`/admin/chat/${createData.conversationId}`)
+          router.push(`/admin/chat/${createData.conversationId}`);
         }
       }
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error:', error);
     } finally {
-      setCreatingChat(false)
+      setCreatingChat(false);
     }
-  }
+  };
 
   const fetchConversations = async (silent = false) => {
     if (!silent) {
-      setIsPolling(true)
+      setIsPolling(true);
     }
     
     try {
-      const res = await fetch('/api/chat/conversations')
-      const data = await res.json()
+      const res = await fetch('/api/chat/conversations', {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const data = await res.json();
       
       if (data.success) {
-        setConversations(data.conversations)
-        setLastRefreshTime(new Date())
+        setConversations(data.conversations);
+        setLastRefreshTime(new Date());
       }
     } catch (error) {
-      console.error('Error fetching conversations:', error)
+      console.error('Error fetching conversations:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
       if (!silent) {
-        setIsPolling(false)
+        setIsPolling(false);
       }
     }
-  }
+  };
 
   const deleteConversation = async (id: string, e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!confirm('¿Eliminar esta conversación permanentemente? Esta acción no se puede deshacer.')) return
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm('¿Eliminar esta conversación permanentemente?')) return;
     
     try {
       const res = await fetch(`/api/chat/delete?id=${id}`, {
         method: 'DELETE',
-      })
-      const data = await res.json()
+      });
+      const data = await res.json();
       if (data.success) {
-        fetchConversations()
-        window.dispatchEvent(new CustomEvent('refreshConversations'))
+        fetchConversations();
+        // Disparar actualización nuclear
+        localStorage.setItem('chat_refresh', Date.now().toString());
+        window.dispatchEvent(new CustomEvent('refreshConversations'));
       } else {
-        alert(data.error || 'Error al eliminar la conversación')
+        alert(data.error || 'Error al eliminar la conversación');
       }
     } catch (error) {
-      console.error('Error deleting conversation:', error)
-      alert('Error al eliminar')
+      console.error('Error deleting conversation:', error);
+      alert('Error al eliminar');
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
     if (status === 'active') {
       return <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Activo</span>
     }
     return <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs flex items-center gap-1"><Clock className="w-3 h-3" /> Cerrado</span>
-  }
+  };
 
   const getAgentColor = (color: string | undefined) => {
     const colors: Record<string, string> = {
@@ -199,16 +215,16 @@ export default function AdminChatPage() {
       red: '#ef4444',
       cyan: '#06b6d4',
       lime: '#84cc16'
-    }
-    return colors[color || 'green'] || '#10b981'
-  }
+    };
+    return colors[color || 'green'] || '#10b981';
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-600 border-t-transparent"></div>
       </div>
-    )
+    );
   }
 
   return (
@@ -234,12 +250,15 @@ export default function AdminChatPage() {
               )}
             </h1>
             <p className="text-gray-500 text-sm">
-              Actualización automática cada 3 segundos • Última: {lastRefreshTime.toLocaleTimeString()}
+              Actualización cada 2s • Última: {lastRefreshTime.toLocaleTimeString()}
             </p>
           </div>
         </div>
         <button
-          onClick={() => fetchConversations(false)}
+          onClick={() => {
+            fetchConversations(false);
+            setForceUpdate(prev => prev + 1);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all"
         >
           <RefreshCw className="w-4 h-4" />
@@ -254,7 +273,6 @@ export default function AdminChatPage() {
         </div>
       )}
 
-      {/* Filtro por asesor */}
       <div className="bg-white rounded-xl shadow p-4 mb-6">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -291,9 +309,9 @@ export default function AdminChatPage() {
             </div>
           </button>
           {agents.map((agent) => {
-            const agentConversations = conversations.filter(c => c.assignedTo?.id === agent.id)
-            const agentUnread = agentConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
-            const agentColor = getAgentColor(agent.color)
+            const agentConversations = conversations.filter(c => c.assignedTo?.id === agent.id);
+            const agentUnread = agentConversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+            const agentColor = getAgentColor(agent.color);
             return (
               <button
                 key={agent.id}
@@ -316,7 +334,7 @@ export default function AdminChatPage() {
                   </span>
                 )}
               </button>
-            )
+            );
           })}
         </div>
       </div>
@@ -334,7 +352,7 @@ export default function AdminChatPage() {
                 <Link
                   href={`/admin/chat/${conv.id}`}
                   className={`block p-4 hover:bg-gray-50 transition-colors ${
-                    conv.unreadCount > 0 ? 'bg-blue-50/50 border-l-4 border-l-blue-500' : ''
+                    conv.unreadCount > 0 ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -344,7 +362,7 @@ export default function AdminChatPage() {
                           <User className="w-5 h-5 text-green-600" />
                         </div>
                         {conv.unreadCount > 0 && (
-                          <div className="absolute -top-1 -right-1 flex items-center justify-center">
+                          <div className="absolute -top-1 -right-1">
                             <span className="absolute w-3 h-3 bg-red-500 rounded-full animate-ping opacity-75"></span>
                             <span className="relative w-3 h-3 bg-red-500 rounded-full"></span>
                           </div>
@@ -362,15 +380,6 @@ export default function AdminChatPage() {
                         <p className="text-sm text-gray-500">{conv.userEmail}</p>
                         {conv.userPhone && (
                           <p className="text-xs text-gray-400">{conv.userPhone}</p>
-                        )}
-                        {conv.assignedTo && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <div 
-                              className="w-2 h-2 rounded-full" 
-                              style={{ backgroundColor: getAgentColor(conv.assignedTo.color) }}
-                            />
-                            <p className="text-xs text-gray-400">Asesor: {conv.assignedTo.name}</p>
-                          </div>
                         )}
                       </div>
                     </div>
@@ -392,7 +401,6 @@ export default function AdminChatPage() {
                 <button
                   onClick={(e) => deleteConversation(conv.id, e)}
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                  title="Eliminar conversación"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -402,5 +410,5 @@ export default function AdminChatPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

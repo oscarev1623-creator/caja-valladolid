@@ -29,7 +29,10 @@ export default function AgentChatPage() {
         ? `/api/chat/messages?conversationId=${id}&markAsRead=true`
         : `/api/chat/messages?conversationId=${id}`
       
-      const res = await fetch(url)
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      })
       const data = await res.json()
       
       if (data.success) {
@@ -46,7 +49,9 @@ export default function AgentChatPage() {
         if (markAsRead) {
           console.log('✅ Mensajes marcados como leídos')
           hasMarkedAsReadRef.current = true
-          // 🔴 IMPORTANTE: Disparar evento para actualizar lista
+          
+          // 🔴 DISPARO NUCLEAR: Actualizar lista de conversaciones
+          localStorage.setItem('chat_refresh', Date.now().toString())
           window.dispatchEvent(new CustomEvent('refreshConversations'))
         }
         
@@ -66,16 +71,19 @@ export default function AgentChatPage() {
     }
   }, [id, loadMessages])
 
-  // 🔴 NUEVO: Marcar como leído al SALIR de la página
+  // Marcar como leído al SALIR de la página
   useEffect(() => {
     return () => {
       if (id && hasMarkedAsReadRef.current) {
         console.log('👋 Saliendo de conversación, refrescando lista...')
         // Marcar como leído al salir
-        fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
+        fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
+          cache: 'no-store'
+        })
           .then(res => res.json())
           .then(data => {
             if (data.success) {
+              localStorage.setItem('chat_refresh', Date.now().toString())
               window.dispatchEvent(new CustomEvent('refreshConversations'))
             }
           })
@@ -84,7 +92,7 @@ export default function AgentChatPage() {
     }
   }, [id])
 
-  // Polling optimizado - 🔴 CORREGIDO: Marcar como leído en cada poll
+  // Polling optimizado - Marcar como leído en cada poll
   useEffect(() => {
     if (!id) return
     
@@ -94,8 +102,11 @@ export default function AgentChatPage() {
     
     const pollForMessages = async () => {
       try {
-        // 🔴 IMPORTANTE: Siempre marcar como leído en el polling
-        const res = await fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
+        // Siempre marcar como leído en el polling
+        const res = await fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        })
         const data = await res.json()
         
         if (data.success) {
@@ -110,7 +121,8 @@ export default function AgentChatPage() {
               setConversation(data.conversation)
             }
             
-            // 🔴 Notificar actualización de conversaciones
+            // 🔴 DISPARO NUCLEAR: Notificar actualización de conversaciones
+            localStorage.setItem('chat_refresh', Date.now().toString())
             window.dispatchEvent(new CustomEvent('refreshConversations'))
           }
         }
@@ -119,7 +131,8 @@ export default function AgentChatPage() {
       }
     }
     
-    pollingIntervalRef.current = setInterval(pollForMessages, 3000)
+    // Polling cada 2 segundos
+    pollingIntervalRef.current = setInterval(pollForMessages, 2000)
     
     return () => {
       if (pollingIntervalRef.current) {
@@ -175,7 +188,19 @@ export default function AgentChatPage() {
           return newMessages
         })
         
+        // 🔴 DISPARO NUCLEAR MÚLTIPLE para asegurar actualización
+        localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
+        
+        setTimeout(() => {
+          localStorage.setItem('chat_refresh', Date.now().toString())
+          window.dispatchEvent(new CustomEvent('refreshConversations'))
+        }, 100)
+        
+        setTimeout(() => {
+          localStorage.setItem('chat_refresh', Date.now().toString())
+          window.dispatchEvent(new CustomEvent('refreshConversations'))
+        }, 500)
       } else {
         setMessages(prev => {
           const filtered = prev.filter(m => m.id !== tempMessage.id)
@@ -253,6 +278,9 @@ export default function AgentChatPage() {
             lastMessageCountRef.current = newMessages.length
             return newMessages
           })
+          
+          // 🔴 DISPARO NUCLEAR
+          localStorage.setItem('chat_refresh', Date.now().toString())
           window.dispatchEvent(new CustomEvent('refreshConversations'))
         } else {
           setMessages(prev => {
@@ -281,6 +309,9 @@ export default function AgentChatPage() {
       const data = await res.json()
       if (data.success) {
         await loadMessages()
+        
+        // 🔴 DISPARO NUCLEAR
+        localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
       }
     } catch (error) {
@@ -296,6 +327,8 @@ export default function AgentChatPage() {
       })
       const data = await res.json()
       if (data.success) {
+        // 🔴 DISPARO NUCLEAR
+        localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
         router.push('/admin/chat')
       } else {
@@ -349,16 +382,29 @@ export default function AgentChatPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-      {/* Header - sin cambios */}
+      {/* Header */}
       <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => {
-              // 🔴 Marcar como leído antes de salir
-              fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
-                .then(() => {
-                  window.dispatchEvent(new CustomEvent('refreshConversations'))
-                  router.push('/admin/chat')
+              // Marcar como leído antes de salir
+              fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
+                cache: 'no-store'
+              })
+                .then(res => res.json())
+                .then(data => {
+                  if (data.success) {
+                    // 🔴 DISPARO NUCLEAR antes de salir
+                    localStorage.setItem('chat_refresh', Date.now().toString())
+                    window.dispatchEvent(new CustomEvent('refreshConversations'))
+                    
+                    // Pequeño delay para asegurar que se procese
+                    setTimeout(() => {
+                      router.push('/admin/chat')
+                    }, 100)
+                  } else {
+                    router.push('/admin/chat')
+                  }
                 })
                 .catch(() => router.push('/admin/chat'))
             }}
@@ -401,7 +447,7 @@ export default function AgentChatPage() {
         </div>
       </div>
 
-      {/* Messages - sin cambios */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
@@ -436,7 +482,7 @@ export default function AgentChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input - sin cambios */}
+      {/* Input */}
       {conversation?.status === 'active' && (
         <div className="bg-white border-t p-4">
           <div className="flex gap-2">
