@@ -1,56 +1,29 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, ArrowLeft, User, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2 } from 'lucide-react'
+import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2 } from 'lucide-react'
 
 export default function AgentChatPage() {
   const params = useParams()
   const router = useRouter()
-  const id = params?.id as string  // 👈 CORREGIDO: obtener el id correctamente
+  const id = params?.id as string
   const [messages, setMessages] = useState<any[]>([])
   const [input, setInput] = useState('')
   const [conversation, setConversation] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
   const [isSending, setIsSending] = useState(false)
-  const [hasMarkedAsRead, setHasMarkedAsRead] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const lastMessageCountRef = useRef<number>(0)
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const hasMarkedAsReadRef = useRef<boolean>(false)
 
-  // Cargar conversación inicial y marcar como leída
-  useEffect(() => {
-    if (id) {
-      loadConversation(true)
-    }
-  }, [id])
-
-  // Polling para nuevos mensajes
-  useEffect(() => {
+  // Función para cargar mensajes
+  const loadMessages = useCallback(async (markAsRead = false) => {
     if (!id) return
     
-    const interval = setInterval(() => {
-      fetch(`/api/chat/messages?conversationId=${id}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.messages.length !== messages.length) {
-            setMessages(data.messages)
-          }
-        })
-        .catch(err => console.error('Error polling:', err))
-    }, 3000)
-    
-    return () => clearInterval(interval)
-  }, [id, messages.length])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  const loadConversation = async (markAsRead = false) => {
-    if (!id) return
-    
-    setLoading(true)
     try {
       const url = markAsRead 
         ? `/api/chat/messages?conversationId=${id}&markAsRead=true`
@@ -58,47 +31,169 @@ export default function AgentChatPage() {
       
       const res = await fetch(url)
       const data = await res.json()
+      
       if (data.success) {
-        setMessages(data.messages)
-        setConversation(data.conversation)
+        if (JSON.stringify(data.messages) !== JSON.stringify(messages)) {
+          console.log('📩 Actualizando mensajes:', data.messages.length)
+          setMessages(data.messages)
+          lastMessageCountRef.current = data.messages.length
+        }
+        
+        if (data.conversation) {
+          setConversation(data.conversation)
+        }
+        
         if (markAsRead) {
-          setHasMarkedAsRead(true)
+          console.log('✅ Mensajes marcados como leídos')
+          hasMarkedAsReadRef.current = true
+          // 🔴 IMPORTANTE: Disparar evento para actualizar lista
           window.dispatchEvent(new CustomEvent('refreshConversations'))
         }
+        
+        return true
       }
     } catch (error) {
-      console.error('Error loading conversation:', error)
-    } finally {
-      setLoading(false)
+      console.error('Error loading messages:', error)
     }
-  }
+    return false
+  }, [id, messages])
+
+  // Cargar conversación inicial y marcar como leída
+  useEffect(() => {
+    if (id) {
+      setLoading(true)
+      loadMessages(true).finally(() => setLoading(false))
+    }
+  }, [id, loadMessages])
+
+  // 🔴 NUEVO: Marcar como leído al SALIR de la página
+  useEffect(() => {
+    return () => {
+      if (id && hasMarkedAsReadRef.current) {
+        console.log('👋 Saliendo de conversación, refrescando lista...')
+        // Marcar como leído al salir
+        fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              window.dispatchEvent(new CustomEvent('refreshConversations'))
+            }
+          })
+          .catch(err => console.error('Error marking as read on exit:', err))
+      }
+    }
+  }, [id])
+
+  // Polling optimizado - 🔴 CORREGIDO: Marcar como leído en cada poll
+  useEffect(() => {
+    if (!id) return
+    
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+    }
+    
+    const pollForMessages = async () => {
+      try {
+        // 🔴 IMPORTANTE: Siempre marcar como leído en el polling
+        const res = await fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
+        const data = await res.json()
+        
+        if (data.success) {
+          const newMessageCount = data.messages.length
+          
+          if (newMessageCount !== lastMessageCountRef.current) {
+            console.log(`📨 Mensajes actualizados: ${newMessageCount} (antes: ${lastMessageCountRef.current})`)
+            setMessages(data.messages)
+            lastMessageCountRef.current = newMessageCount
+            
+            if (data.conversation) {
+              setConversation(data.conversation)
+            }
+            
+            // 🔴 Notificar actualización de conversaciones
+            window.dispatchEvent(new CustomEvent('refreshConversations'))
+          }
+        }
+      } catch (error) {
+        console.error('Error en polling:', error)
+      }
+    }
+    
+    pollingIntervalRef.current = setInterval(pollForMessages, 3000)
+    
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+    }
+  }, [id])
+
+  // Scroll automático
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   const sendMessage = async () => {
     if (!input.trim() || !id) return
 
+    const messageText = input.trim()
     setIsSending(true)
-    const newMessage = {
-      id: Date.now().toString(),
-      message: input,
+    
+    const tempMessage = {
+      id: `temp-${Date.now()}`,
+      message: messageText,
       senderType: 'agent',
       createdAt: new Date().toISOString()
     }
-    setMessages(prev => [...prev, newMessage])
+    
+    setMessages(prev => {
+      const newMessages = [...prev, tempMessage]
+      lastMessageCountRef.current = newMessages.length
+      return newMessages
+    })
     setInput('')
 
     try {
-      await fetch('/api/chat/send', {
+      const res = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: id,
-          message: input,
+          message: messageText,
           senderType: 'agent'
         })
       })
-      window.dispatchEvent(new CustomEvent('refreshConversations'))
+      
+      const data = await res.json()
+      
+      if (data.success) {
+        setMessages(prev => {
+          const filtered = prev.filter(m => m.id !== tempMessage.id)
+          const newMessages = [...filtered, data.message]
+          lastMessageCountRef.current = newMessages.length
+          return newMessages
+        })
+        
+        window.dispatchEvent(new CustomEvent('refreshConversations'))
+      } else {
+        setMessages(prev => {
+          const filtered = prev.filter(m => m.id !== tempMessage.id)
+          lastMessageCountRef.current = filtered.length
+          return filtered
+        })
+        setInput(messageText)
+        alert('Error al enviar mensaje')
+      }
     } catch (error) {
       console.error('Error sending message:', error)
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.id !== tempMessage.id)
+        lastMessageCountRef.current = filtered.length
+        return filtered
+      })
+      setInput(messageText)
+      alert('Error al enviar mensaje')
     } finally {
       setIsSending(false)
     }
@@ -120,6 +215,22 @@ export default function AgentChatPage() {
       const uploadData = await uploadRes.json()
 
       if (uploadData.success) {
+        const tempFileMessage = {
+          id: `temp-file-${Date.now()}`,
+          message: `📎 ${file.name}`,
+          senderType: 'agent',
+          fileUrl: uploadData.url,
+          fileType: uploadData.fileType,
+          fileName: file.name,
+          createdAt: new Date().toISOString()
+        }
+        
+        setMessages(prev => {
+          const newMessages = [...prev, tempFileMessage]
+          lastMessageCountRef.current = newMessages.length
+          return newMessages
+        })
+        
         const sendRes = await fetch('/api/chat/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -136,21 +247,24 @@ export default function AgentChatPage() {
         const sendData = await sendRes.json()
         
         if (sendData.success) {
-          const newMessage = {
-            id: sendData.message.id,
-            message: `📎 ${file.name}`,
-            senderType: 'agent',
-            fileUrl: uploadData.url,
-            fileType: uploadData.fileType,
-            fileName: file.name,
-            createdAt: new Date().toISOString()
-          }
-          setMessages(prev => [...prev, newMessage])
+          setMessages(prev => {
+            const filtered = prev.filter(m => m.id !== tempFileMessage.id)
+            const newMessages = [...filtered, sendData.message]
+            lastMessageCountRef.current = newMessages.length
+            return newMessages
+          })
           window.dispatchEvent(new CustomEvent('refreshConversations'))
+        } else {
+          setMessages(prev => {
+            const filtered = prev.filter(m => m.id !== tempFileMessage.id)
+            lastMessageCountRef.current = filtered.length
+            return filtered
+          })
         }
       }
     } catch (error) {
       console.error('Error uploading file:', error)
+      alert('Error al subir archivo')
     } finally {
       setIsUploading(false)
     }
@@ -159,41 +273,45 @@ export default function AgentChatPage() {
   const closeConversation = async () => {
     if (!confirm('¿Cerrar esta conversación?')) return
     try {
-      await fetch('/api/chat/close', {
+      const res = await fetch('/api/chat/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId: id })
       })
-      loadConversation()
+      const data = await res.json()
+      if (data.success) {
+        await loadMessages()
+        window.dispatchEvent(new CustomEvent('refreshConversations'))
+      }
     } catch (error) {
       console.error('Error closing conversation:', error)
     }
   }
 
-const deleteConversation = async () => {
-  if (!confirm('¿Eliminar permanentemente esta conversación? Esta acción no se puede deshacer.')) return
-  try {
-    const res = await fetch(`/api/chat/delete?id=${id}`, {
-      method: 'DELETE',
-    })
-    const data = await res.json()
-    if (data.success) {
-      router.push('/admin/chat')
-    } else {
-      alert(data.error || 'Error al eliminar la conversación')
+  const deleteConversation = async () => {
+    if (!confirm('¿Eliminar permanentemente esta conversación? Esta acción no se puede deshacer.')) return
+    try {
+      const res = await fetch(`/api/chat/delete?id=${id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (data.success) {
+        window.dispatchEvent(new CustomEvent('refreshConversations'))
+        router.push('/admin/chat')
+      } else {
+        alert(data.error || 'Error al eliminar la conversación')
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error)
+      alert('Error al eliminar')
     }
-  } catch (error) {
-    console.error('Error deleting conversation:', error)
-    alert('Error al eliminar')
   }
-}
 
   const renderFilePreview = (msg: any) => {
     if (!msg.fileUrl) return null
     
     const fileName = msg.fileName || ''
     const isImage = msg.fileType === 'image' || fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-    const isPDF = msg.fileType === 'pdf' || fileName.endsWith('.pdf')
     
     if (isImage) {
       return (
@@ -231,11 +349,19 @@ const deleteConversation = async () => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-      {/* Header */}
+      {/* Header - sin cambios */}
       <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => router.push('/admin/chat')}
+            onClick={() => {
+              // 🔴 Marcar como leído antes de salir
+              fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
+                .then(() => {
+                  window.dispatchEvent(new CustomEvent('refreshConversations'))
+                  router.push('/admin/chat')
+                })
+                .catch(() => router.push('/admin/chat'))
+            }}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -275,7 +401,7 @@ const deleteConversation = async () => {
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages - sin cambios */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
@@ -289,7 +415,7 @@ const deleteConversation = async () => {
               {msg.senderType === 'system' && (
                 <div className="text-xs mb-1">📢 Sistema</div>
               )}
-              {msg.message && <p className="text-sm">{msg.message}</p>}
+              {msg.message && <p className="text-sm whitespace-pre-wrap">{msg.message}</p>}
               {renderFilePreview(msg)}
               <div className={`text-[10px] mt-1 ${
                 msg.senderType === 'agent' ? 'text-green-200' : 'text-gray-400'
@@ -310,7 +436,7 @@ const deleteConversation = async () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
+      {/* Input - sin cambios */}
       {conversation?.status === 'active' && (
         <div className="bg-white border-t p-4">
           <div className="flex gap-2">
@@ -330,17 +456,27 @@ const deleteConversation = async () => {
               onClick={() => fileInputRef.current?.click()}
               className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors"
               title="Adjuntar archivo"
-              disabled={isUploading}
+              disabled={isUploading || isSending}
             >
-              <Paperclip className="w-5 h-5" />
+              {isUploading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Paperclip className="w-5 h-5" />
+              )}
             </button>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  sendMessage()
+                }
+              }}
               placeholder="Escribe tu respuesta..."
               className="flex-1 px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
               rows={2}
+              disabled={isSending}
             />
             <button
               onClick={sendMessage}
@@ -350,12 +486,6 @@ const deleteConversation = async () => {
               <Send className="w-5 h-5" />
             </button>
           </div>
-          {isUploading && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Subiendo archivo...
-            </div>
-          )}
           <p className="text-xs text-gray-400 mt-2">
             Presiona Enter para enviar, Shift+Enter para nueva línea
           </p>

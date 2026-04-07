@@ -1,26 +1,23 @@
 // app/api/health/route.ts
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    // Probar conexión a la base de datos
-    const userCount = await prisma.user.count()
+    // Test database
+    await prisma.$queryRaw`SELECT 1`
     
-    return NextResponse.json({ 
-      success: true, 
-      message: 'API funcionando',
-      database: 'conectada',
-      users: userCount,
-      dbUrl: process.env.DATABASE_URL?.substring(0, 50) + '...'
+    return NextResponse.json({
+      status: 'healthy',
+      database: 'connected',
+      environment: process.env.NODE_ENV,
+      vercel: process.env.VERCEL === '1' ? 'true' : 'false',
+      timestamp: new Date().toISOString()
     })
-  } catch (error: any) {
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message,
-      dbUrl: process.env.DATABASE_URL?.substring(0, 50) + '...'
+  } catch (error) {
+    return NextResponse.json({
+      status: 'unhealthy',
+      error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }

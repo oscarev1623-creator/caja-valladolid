@@ -17,39 +17,53 @@ export default function AdminChatPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date())
   const [isPolling, setIsPolling] = useState(false)
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // 👈 CORREGIDO: Verificar que searchParams no sea null
   const leadId = searchParams?.get('leadId') || null
   const leadEmail = searchParams?.get('email') || null
   const leadName = searchParams?.get('name') || null
   const leadPhone = searchParams?.get('phone') || null
 
-  // Escuchar evento para refrescar conversaciones (desde el chat individual)
+  // Escuchar evento para refrescar conversaciones
   useEffect(() => {
     const handleRefresh = () => {
-      fetchConversations()
+      console.log('🔄 Evento refreshConversations recibido')
+      fetchConversations(true) // silent = true para no mostrar loading
     }
+    
     window.addEventListener('refreshConversations', handleRefresh)
-    return () => window.removeEventListener('refreshConversations', handleRefresh)
+    
+    // También actualizar cuando la ventana recupera el foco
+    window.addEventListener('focus', handleRefresh)
+    
+    return () => {
+      window.removeEventListener('refreshConversations', handleRefresh)
+      window.removeEventListener('focus', handleRefresh)
+    }
   }, [])
 
   useEffect(() => {
     fetchConversations()
     fetchAgents()
     
-    // Polling cada 10 segundos
-    const interval = setInterval(() => {
+    // Polling cada 3 segundos (más rápido)
+    pollingIntervalRef.current = setInterval(() => {
       fetchConversations(true)
-    }, 10000)
+    }, 3000)
     
-    return () => clearInterval(interval)
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+      }
+    }
   }, [])
 
-  // Ordenar conversaciones por fecha (más reciente primero)
+  // Ordenar conversaciones y calcular no leídos
   useEffect(() => {
     const sorted = [...conversations].sort((a, b) => 
       new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     )
+    
     const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0)
     setUnreadCount(totalUnread)
     
@@ -123,10 +137,14 @@ export default function AdminChatPage() {
   }
 
   const fetchConversations = async (silent = false) => {
-    if (!silent) setIsPolling(true)
+    if (!silent) {
+      setIsPolling(true)
+    }
+    
     try {
       const res = await fetch('/api/chat/conversations')
       const data = await res.json()
+      
       if (data.success) {
         setConversations(data.conversations)
         setLastRefreshTime(new Date())
@@ -135,31 +153,33 @@ export default function AdminChatPage() {
       console.error('Error fetching conversations:', error)
     } finally {
       setLoading(false)
-      if (!silent) setIsPolling(false)
+      if (!silent) {
+        setIsPolling(false)
+      }
     }
   }
 
-const deleteConversation = async (id: string, e: React.MouseEvent) => {
-  e.preventDefault()
-  e.stopPropagation()
-  if (!confirm('¿Eliminar esta conversación permanentemente? Esta acción no se puede deshacer.')) return
-  
-  try {
-    // Usar query params en lugar de ruta dinámica
-    const res = await fetch(`/api/chat/delete?id=${id}`, {
-      method: 'DELETE',
-    })
-    const data = await res.json()
-    if (data.success) {
-      fetchConversations()
-    } else {
-      alert(data.error || 'Error al eliminar la conversación')
+  const deleteConversation = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!confirm('¿Eliminar esta conversación permanentemente? Esta acción no se puede deshacer.')) return
+    
+    try {
+      const res = await fetch(`/api/chat/delete?id=${id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (data.success) {
+        fetchConversations()
+        window.dispatchEvent(new CustomEvent('refreshConversations'))
+      } else {
+        alert(data.error || 'Error al eliminar la conversación')
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error)
+      alert('Error al eliminar')
     }
-  } catch (error) {
-    console.error('Error deleting conversation:', error)
-    alert('Error al eliminar')
   }
-}
 
   const getStatusBadge = (status: string) => {
     if (status === 'active') {
@@ -214,7 +234,7 @@ const deleteConversation = async (id: string, e: React.MouseEvent) => {
               )}
             </h1>
             <p className="text-gray-500 text-sm">
-              Actualización automática cada 10 segundos • Última: {lastRefreshTime.toLocaleTimeString()}
+              Actualización automática cada 3 segundos • Última: {lastRefreshTime.toLocaleTimeString()}
             </p>
           </div>
         </div>
@@ -313,7 +333,9 @@ const deleteConversation = async (id: string, e: React.MouseEvent) => {
               <div key={conv.id} className="relative group">
                 <Link
                   href={`/admin/chat/${conv.id}`}
-                  className={`block p-4 hover:bg-gray-50 transition-colors ${conv.unreadCount > 0 ? 'bg-blue-50/30' : ''}`}
+                  className={`block p-4 hover:bg-gray-50 transition-colors ${
+                    conv.unreadCount > 0 ? 'bg-blue-50/50 border-l-4 border-l-blue-500' : ''
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -322,14 +344,17 @@ const deleteConversation = async (id: string, e: React.MouseEvent) => {
                           <User className="w-5 h-5 text-green-600" />
                         </div>
                         {conv.unreadCount > 0 && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                          <div className="absolute -top-1 -right-1 flex items-center justify-center">
+                            <span className="absolute w-3 h-3 bg-red-500 rounded-full animate-ping opacity-75"></span>
+                            <span className="relative w-3 h-3 bg-red-500 rounded-full"></span>
+                          </div>
                         )}
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">
+                        <h3 className="font-medium text-gray-900 flex items-center gap-2">
                           {conv.userName || conv.userEmail}
                           {conv.unreadCount > 0 && (
-                            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">
                               {conv.unreadCount}
                             </span>
                           )}
@@ -357,7 +382,9 @@ const deleteConversation = async (id: string, e: React.MouseEvent) => {
                     </div>
                   </div>
                   {conv.lastMessage && (
-                    <p className="text-sm text-gray-500 mt-2 truncate pl-13">
+                    <p className={`text-sm mt-2 truncate pl-13 ${
+                      conv.unreadCount > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'
+                    }`}>
                       {conv.lastMessage}
                     </p>
                   )}
