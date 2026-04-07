@@ -14,7 +14,7 @@ export async function GET() {
       }
     })
 
-    // Contar mensajes no leídos (SIN marcar como leídos)
+    // Contar mensajes no leídos
     const conversationsWithUnread = await Promise.all(conversations.map(async (conv) => {
       const unreadCount = await prisma.chatMessage.count({
         where: {
