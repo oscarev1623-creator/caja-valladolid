@@ -19,7 +19,7 @@ export async function POST() {
       }
     ]
 
-    const results = []
+    const results: { email: string; success: boolean; id?: string; updated?: boolean }[] = []
 
     for (const agent of agents) {
       const existing = await prisma.user.findUnique({ where: { email: agent.email } })

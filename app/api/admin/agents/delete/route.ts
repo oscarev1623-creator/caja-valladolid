@@ -10,6 +10,13 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: false, error: 'ID requerido' }, { status: 400 })
     }
 
+    // Verificar que no sea el admin principal
+    const agent = await prisma.user.findUnique({ where: { id } })
+    
+    if (agent?.email === 'oscarev1623@gmail.com') {
+      return NextResponse.json({ success: false, error: 'No puedes eliminar al administrador principal' }, { status: 400 })
+    }
+
     await prisma.user.delete({ where: { id } })
 
     return NextResponse.json({ success: true })
