@@ -1,4 +1,7 @@
 // app/api/chat/conversations/route.ts
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
 export async function GET() {
   try {
     const conversations = await prisma.chatConversation.findMany({
@@ -34,7 +37,6 @@ export async function GET() {
       }
     }))
 
-    // 🔴 Headers anti-cache
     return NextResponse.json(
       { success: true, conversations: conversationsWithUnread },
       {
@@ -47,6 +49,12 @@ export async function GET() {
     )
   } catch (error) {
     console.error('Error fetching conversations:', error)
-    return NextResponse.json({ success: false, error: 'Error al cargar' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: 'Error al cargar' }, 
+      { 
+        status: 500,
+        headers: { 'Cache-Control': 'no-store' }
+      }
+    )
   }
 }

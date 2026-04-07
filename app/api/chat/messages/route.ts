@@ -1,4 +1,7 @@
 // app/api/chat/messages/route.ts
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
@@ -6,7 +9,13 @@ export async function GET(req: Request) {
     const markAsRead = searchParams.get('markAsRead') === 'true'
 
     if (!conversationId) {
-      return NextResponse.json({ success: false, error: 'Conversation ID required' }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: 'Conversation ID required' }, 
+        { 
+          status: 400,
+          headers: { 'Cache-Control': 'no-store' }
+        }
+      )
     }
 
     const conversation = await prisma.chatConversation.findUnique({
@@ -20,7 +29,13 @@ export async function GET(req: Request) {
     })
 
     if (!conversation) {
-      return NextResponse.json({ success: false, error: 'Conversation not found' }, { status: 404 })
+      return NextResponse.json(
+        { success: false, error: 'Conversation not found' }, 
+        { 
+          status: 404,
+          headers: { 'Cache-Control': 'no-store' }
+        }
+      )
     }
 
     if (markAsRead) {
@@ -34,7 +49,6 @@ export async function GET(req: Request) {
       })
     }
 
-    // 🔴 IMPORTANTE: Headers para evitar cache en Vercel
     return NextResponse.json(
       {
         success: true,
@@ -50,15 +64,20 @@ export async function GET(req: Request) {
       },
       {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
           'Pragma': 'no-cache',
-          'Expires': '0',
-          'Surrogate-Control': 'no-store'
+          'Expires': '0'
         }
       }
     )
   } catch (error) {
     console.error('Error fetching messages:', error)
-    return NextResponse.json({ success: false, error: 'Error al cargar' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: 'Error al cargar' }, 
+      { 
+        status: 500,
+        headers: { 'Cache-Control': 'no-store' }
+      }
+    )
   }
 }
