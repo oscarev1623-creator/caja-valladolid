@@ -102,11 +102,13 @@ export async function POST(request: NextRequest) {
     // Enviar correo de confirmación
     console.log('📧 Llamando a sendConfirmationEmail...')
     try {
-      await sendConfirmationEmail({
-        to: email,
-        nombre: fullName,
-        leadId: lead.id
-      })
+await sendConfirmationEmail({
+  to: email,
+  nombre: fullName,
+  leadId: lead.id,
+  monto: estimatedAmount,      // ← NUEVO
+  tipoCredito: creditType       // ← NUEVO
+})
       console.log('✅ sendConfirmationEmail completado')
     } catch (emailError: any) {
       console.error('❌ Error en sendConfirmationEmail:', emailError.message)

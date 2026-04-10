@@ -58,10 +58,31 @@ const getEmailTemplate = (content: string, title: string) => `
 </html>
 `
 
-// Email de confirmación - USA SENDGRID (más confiable)
-export async function sendConfirmationEmail({ to, nombre, leadId }: { to: string; nombre: string; leadId: string }) {
+// Email de confirmación - MEJORADO
+export async function sendConfirmationEmail({ 
+  to, 
+  nombre, 
+  leadId, 
+  monto, 
+  tipoCredito 
+}: { 
+  to: string
+  nombre: string
+  leadId: string
+  monto?: number | string
+  tipoCredito?: string 
+}) {
   console.log('📧 Enviando confirmación vía SendGrid a:', to)
   
+  // Formatear monto
+  const montoFormateado = monto 
+    ? `$${parseFloat(monto.toString()).toLocaleString('es-MX')}` 
+    : 'No especificado'
+  
+  const tipo = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' 
+    ? 'Criptomonedas' 
+    : 'Tradicional'
+
   const content = `
     <div style="text-align: center; margin-bottom: 24px;">
       <div style="background-color: #f0fdf4; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
@@ -78,6 +99,14 @@ export async function sendConfirmationEmail({ to, nombre, leadId }: { to: string
           <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: right;">#${leadId.slice(-8).toUpperCase()}</td>
         </tr>
         <tr>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb;"><strong>Monto solicitado:</strong></td>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold; color: #059669;">${montoFormateado}</td>
+        </tr>
+        <tr>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb;"><strong>Tipo de crédito:</strong></td>
+          <td style="padding: 12px 16px; border-bottom: 1px solid #e5e7eb; text-align: right;">${tipo}</td>
+        </tr>
+        <tr>
           <td style="padding: 12px 16px;"><strong>Estado:</strong></td>
           <td style="padding: 12px 16px; text-align: right;"><span style="background-color: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 20px; font-size: 12px;">En evaluación</span></td>
         </tr>
@@ -86,17 +115,20 @@ export async function sendConfirmationEmail({ to, nombre, leadId }: { to: string
 
     <div style="background-color: #eff6ff; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
       <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 16px;">💬 Oficina Virtual</h3>
-      <p style="color: #1e40af; margin: 0 0 16px 0;">Habla directamente con un asesor en tiempo real:</p>
+      <p style="color: #1e40af; margin: 0 0 16px 0;">Habla directamente con tu asesor asignado en tiempo real:</p>
       <div style="text-align: center;">
         <a href="${baseUrl}" style="background: linear-gradient(135deg, #059669, #047857); color: white; padding: 12px 32px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; font-size: 16px;">
           💬 Abrir Oficina Virtual
         </a>
       </div>
+      <p style="color: #6b7280; margin: 16px 0 0 0; font-size: 13px; text-align: center;">
+        Al hacer clic, se abrirá tu conversación con el asesor asignado.
+      </p>
     </div>
 
     <div style="background-color: #f0fdf4; border-radius: 12px; padding: 16px; text-align: center;">
       <p style="color: #065f46; margin: 0; font-size: 14px;">
-        ⏳ <strong>Próximos pasos:</strong> Un asesor evaluará tu solicitud en <strong>24-48 horas</strong>
+        ⏳ <strong>Caja Valladolid está evaluando tu solicitud.</strong>
       </p>
     </div>
   `
@@ -111,7 +143,6 @@ export async function sendConfirmationEmail({ to, nombre, leadId }: { to: string
     console.log('✅ Correo enviado vía SendGrid a:', to)
   } catch (error: any) {
     console.error('❌ SendGrid falló, intentando con Zoho...')
-    // Fallback a Zoho
     await transporter.sendMail({
       from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
       to,
