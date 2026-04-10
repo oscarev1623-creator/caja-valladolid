@@ -9,7 +9,21 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD,
   },
+  tls: {
+    rejectUnauthorized: false // Para evitar errores de certificado en Vercel
+  }
 })
+
+// Verificar conexión al iniciar (solo en desarrollo)
+if (process.env.NODE_ENV === 'development') {
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('❌ Error conectando al servidor SMTP:', error)
+    } else {
+      console.log('✅ Servidor SMTP listo para enviar mensajes')
+    }
+  })
+}
 
 // URL base para imágenes
 const baseUrl = process.env.NEXTAUTH_URL || 'https://cajavalladolid.com'
@@ -79,6 +93,19 @@ const getEmailTemplate = (content: string, title: string) => `
 
 // Email de confirmación de solicitud
 export async function sendConfirmationEmail({ to, nombre, leadId }: { to: string; nombre: string; leadId: string }) {
+  console.log('📧 ========================================')
+  console.log('📧 Intentando enviar correo de confirmación')
+  console.log('📧 Destinatario:', to)
+  console.log('📧 Nombre:', nombre)
+  console.log('📧 Lead ID:', leadId)
+  console.log('📧 SMTP Config:', {
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    secure: process.env.SMTP_SECURE,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD ? '***CONFIGURADO***' : '❌ NO CONFIGURADO'
+  })
+  
   const whatsappNumber = "529541184165"
   const whatsappLink = `https://wa.me/${whatsappNumber}`
 
@@ -137,16 +164,32 @@ export async function sendConfirmationEmail({ to, nombre, leadId }: { to: string
     </div>
   `
 
-  await transporter.sendMail({
-    from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
-    to,
-    subject: '✨ ¡Hola! Hemos recibido tu solicitud de crédito',
-    html: getEmailTemplate(content, 'Solicitud de crédito recibida')
-  })
+  try {
+    const info = await transporter.sendMail({
+      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
+      to,
+      subject: '✨ ¡Hola! Hemos recibido tu solicitud de crédito',
+      html: getEmailTemplate(content, 'Solicitud de crédito recibida')
+    })
+    console.log('✅ Correo enviado exitosamente!')
+    console.log('📧 Message ID:', info.messageId)
+    console.log('📧 ========================================')
+    return info
+  } catch (error: any) {
+    console.error('❌ ERROR SMTP DETALLADO:')
+    console.error('❌ Mensaje:', error.message)
+    console.error('❌ Código:', error.code)
+    console.error('❌ Comando:', error.command)
+    console.error('❌ Stack:', error.stack)
+    console.error('📧 ========================================')
+    throw error
+  }
 }
 
 // Email de notificación de nuevo mensaje en el chat
 export async function sendChatNotificationEmail({ to, name, message, conversationId }: { to: string; name: string; message: string; conversationId: string }) {
+  console.log('📧 Enviando notificación de chat a:', to)
+  
   const chatUrl = `${baseUrl}/`
 
   const content = `
@@ -186,20 +229,30 @@ export async function sendChatNotificationEmail({ to, name, message, conversatio
     </div>
   `
 
-  await transporter.sendMail({
-    from: '"Caja Valladolid - Oficina Virtual" <contacto@cajavalladolid.com>',
-    to,
-    subject: '📩 Nuevo mensaje de tu asesor',
-    html: getEmailTemplate(content, 'Nuevo mensaje en tu Oficina Virtual')
-  })
+  try {
+    await transporter.sendMail({
+      from: '"Caja Valladolid - Oficina Virtual" <contacto@cajavalladolid.com>',
+      to,
+      subject: '📩 Nuevo mensaje de tu asesor',
+      html: getEmailTemplate(content, 'Nuevo mensaje en tu Oficina Virtual')
+    })
+    console.log('✅ Notificación de chat enviada a:', to)
+  } catch (error) {
+    console.error('❌ Error enviando notificación de chat:', error)
+  }
 }
 
 // Función genérica para enviar cualquier email
 export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  await transporter.sendMail({
-    from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
-    to,
-    subject,
-    html: getEmailTemplate(html, subject)
-  })
+  try {
+    await transporter.sendMail({
+      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
+      to,
+      subject,
+      html: getEmailTemplate(html, subject)
+    })
+    console.log('✅ Email genérico enviado a:', to)
+  } catch (error) {
+    console.error('❌ Error enviando email genérico:', error)
+  }
 }

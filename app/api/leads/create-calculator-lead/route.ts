@@ -30,6 +30,7 @@ async function getBestAgent() {
   }))
 
   agentsWithLoad.sort((a, b) => a.currentLoad - b.currentLoad)
+  console.log(`✅ Asesor seleccionado: ${agentsWithLoad[0].name}`)
   return agentsWithLoad[0]
 }
 
@@ -98,16 +99,18 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Ticket creado')
 
-    // ✅ USAR LA FUNCIÓN UNIFICADA DE EMAIL
+    // Enviar correo de confirmación
+    console.log('📧 Llamando a sendConfirmationEmail...')
     try {
       await sendConfirmationEmail({
         to: email,
         nombre: fullName,
         leadId: lead.id
       })
-      console.log('✅ Correo enviado a:', email)
-    } catch (emailError) {
-      console.error('❌ Error enviando correo:', emailError)
+      console.log('✅ sendConfirmationEmail completado')
+    } catch (emailError: any) {
+      console.error('❌ Error en sendConfirmationEmail:', emailError.message)
+      // No lanzar error para que el lead se cree igual
     }
 
     return NextResponse.json({
