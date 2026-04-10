@@ -5,18 +5,25 @@ import { useParams, useRouter } from 'next/navigation'
 import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2 } from 'lucide-react'
 
 // 🔗 Función para convertir URLs en enlaces clickeables
+// 🔗 Función para convertir URLs en enlaces clickeables (VERSIÓN MEJORADA)
 const linkify = (text: string, isAgent: boolean) => {
   if (!text) return text
   
-  const urlRegex = /(https?:\/\/[^\s]+)/g
+  // Regex que detecta:
+  // - https://ejemplo.com
+  // - http://ejemplo.com  
+  // - www.ejemplo.com
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
   const parts = text.split(urlRegex)
   
   return parts.map((part, index) => {
     if (part.match(urlRegex)) {
+      // Si empieza con www., agregar https://
+      const href = part.startsWith('www.') ? `https://${part}` : part
       return (
         <a
           key={index}
-          href={part}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
           className={`underline hover:opacity-80 break-all ${isAgent ? 'text-green-200' : 'text-blue-600'}`}
