@@ -250,78 +250,81 @@ export default function AgentChatPage() {
     }
   }
 
-  const uploadFile = async (file: File) => {
-    if (!id) return
+const uploadFile = async (file: File) => {
+  if (!id) return
 
-    setIsUploading(true)
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('conversationId', id)
+  setIsUploading(true)
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('conversationId', id)
 
-    try {
-      const uploadRes = await fetch('/api/chat/upload', {
-        method: 'POST',
-        body: formData
+  try {
+    const uploadRes = await fetch('/api/chat/upload', {
+      method: 'POST',
+      body: formData
+    })
+    const uploadData = await uploadRes.json()
+
+    if (uploadData.success) {
+      // ✅ Determinar si es imagen
+      const isImage = file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+      
+      const tempFileMessage = {
+        id: `temp-file-${Date.now()}`,
+        message: isImage ? '' : `📎 ${file.name}`, // ← SOLO texto si NO es imagen
+        senderType: 'agent',
+        fileUrl: uploadData.url,
+        fileType: uploadData.fileType,
+        fileName: file.name,
+        createdAt: new Date().toISOString()
+      }
+      
+      setMessages(prev => {
+        const newMessages = [...prev, tempFileMessage]
+        lastMessageCountRef.current = newMessages.length
+        return newMessages
       })
-      const uploadData = await uploadRes.json()
-
-      if (uploadData.success) {
-        const tempFileMessage = {
-          id: `temp-file-${Date.now()}`,
-          message: `📎 ${file.name}`,
+      
+      const sendRes = await fetch('/api/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: id,
+          message: isImage ? '' : `📎 ${file.name}`, // ← SOLO texto si NO es imagen
           senderType: 'agent',
           fileUrl: uploadData.url,
           fileType: uploadData.fileType,
-          fileName: file.name,
-          createdAt: new Date().toISOString()
-        }
-        
+          fileName: file.name
+        })
+      })
+      
+      const sendData = await sendRes.json()
+      
+      if (sendData.success) {
         setMessages(prev => {
-          const newMessages = [...prev, tempFileMessage]
+          const filtered = prev.filter(m => m.id !== tempFileMessage.id)
+          const newMessages = [...filtered, sendData.message]
           lastMessageCountRef.current = newMessages.length
           return newMessages
         })
         
-        const sendRes = await fetch('/api/chat/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: id,
-            message: `📎 ${file.name}`,
-            senderType: 'agent',
-            fileUrl: uploadData.url,
-            fileType: uploadData.fileType,
-            fileName: file.name
-          })
+        localStorage.setItem('chat_refresh', Date.now().toString())
+        window.dispatchEvent(new CustomEvent('refreshConversations'))
+      } else {
+        setMessages(prev => {
+          const filtered = prev.filter(m => m.id !== tempFileMessage.id)
+          lastMessageCountRef.current = filtered.length
+          return filtered
         })
-        
-        const sendData = await sendRes.json()
-        
-        if (sendData.success) {
-          setMessages(prev => {
-            const filtered = prev.filter(m => m.id !== tempFileMessage.id)
-            const newMessages = [...filtered, sendData.message]
-            lastMessageCountRef.current = newMessages.length
-            return newMessages
-          })
-          
-          localStorage.setItem('chat_refresh', Date.now().toString())
-          window.dispatchEvent(new CustomEvent('refreshConversations'))
-        } else {
-          setMessages(prev => {
-            const filtered = prev.filter(m => m.id !== tempFileMessage.id)
-            lastMessageCountRef.current = filtered.length
-            return filtered
-          })
-        }
       }
-    } catch (error) {
-      console.error('Error uploading file:', error)
-      alert('Error al subir archivo')
-    } finally {
-      setIsUploading(false)
     }
+  } catch (error) {
+    console.error('Error uploading file:', error)
+    alert('Error al subir archivo')
+  } finally {
+    setIsUploading(false)
   }
+}
 
   const closeConversation = async () => {
     if (!confirm('¿Cerrar esta conversación?')) return

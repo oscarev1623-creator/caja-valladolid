@@ -119,127 +119,117 @@ export default function ChatWidget() {
     }
   }
 
-const startConversation = async (e: React.FormEvent) => {
-  e.preventDefault()
-  if (!formData.name || !formData.email) return
+  const startConversation = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.name || !formData.email) return
 
-  setIsLoading(true)
-  try {
-    // 1. Crear lead
-    const leadResponse = await fetch('/api/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fullName: formData.name,
-        email: formData.email,
-        phone: formData.phone || '',
-        estimatedAmount: 0,
-        creditType: 'TRADITIONAL',
-        status: 'PENDING_CONTACT',
-        message: `Cliente inició conversación por chat. Teléfono: ${formData.phone || 'No proporcionado'}`
-      })
-    })
-
-    const leadData = await leadResponse.json()
-    console.log('✅ Lead creado:', leadData)
-    
-    // ✅ USAR EL ENDPOINT EXISTENTE: generate-link
-    let documentLink = ''
-    if (leadData.success && leadData.data?.id) {
-      try {
-        const baseUrl = window.location.origin
-        
-        const ticketRes = await fetch('/api/leads/generate-link', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include', // ← Necesario para la cookie de sesión
-          body: JSON.stringify({ 
-            leadId: leadData.data.id,
-            baseUrl: baseUrl
-          })
-        })
-        const ticketData = await ticketRes.json()
-        
-        if (ticketData.success) {
-          documentLink = ticketData.data.url
-          console.log('✅ Enlace generado:', documentLink)
-        }
-      } catch (err) {
-        console.error('Error generando enlace:', err)
-      }
-    }
-    
-    // 2. Facebook Pixel
-    if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'Lead', {
-        content_name: 'Chat Iniciado',
-        content_category: 'Oficina Virtual',
-        value: 1,
-        currency: 'MXN'
-      })
-    }
-
-    // 3. Iniciar conversación de chat
-    const res = await fetch('/api/chat/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone
-      })
-    })
-    const data = await res.json()
-
-    if (data.success) {
-      setConversationId(data.conversationId)
-      localStorage.setItem('chat_conversation_id', data.conversationId)
-      
-      // 4. Asignar asesor
-      const assignRes = await fetch('/api/chat/assign', {
+    setIsLoading(true)
+    try {
+      // 1. Crear lead
+      const leadResponse = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId: data.conversationId })
+        body: JSON.stringify({
+          fullName: formData.name,
+          email: formData.email,
+          phone: formData.phone || '',
+          estimatedAmount: 0,
+          creditType: 'TRADITIONAL',
+          status: 'PENDING_CONTACT',
+          message: `Cliente inició conversación por chat. Teléfono: ${formData.phone || 'No proporcionado'}`
+        })
       })
-      const assignData = await assignRes.json()
+
+      const leadData = await leadResponse.json()
+      console.log('✅ Lead creado:', leadData)
       
-      if (assignData.success) {
-        setAssignedAgent(assignData.agent)
+      // 2. Generar enlace de documentos
+      let documentLink = ''
+      if (leadData.success && leadData.data?.id) {
+        try {
+          const baseUrl = window.location.origin
+          const ticketRes = await fetch('/api/leads/generate-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ leadId: leadData.data.id, baseUrl })
+          })
+          const ticketData = await ticketRes.json()
+          if (ticketData.success) {
+            documentLink = ticketData.data.url
+            console.log('✅ Enlace generado:', documentLink)
+          }
+        } catch (err) {
+          console.error('Error generando enlace:', err)
+        }
       }
       
-      setStep('chat')
-      
-      // 5. Mensaje de bienvenida + enlace de documentos (si se generó)
-      const welcomeMessage = documentLink 
-        ? `Hola ${formData.name}, ¡bienvenido! Un asesor te atenderá en breve.`
-        : `Hola ${formData.name}, ¡bienvenido! Un asesor te atenderá en breve.`
-      
-      setMessages([{
-        id: 'welcome',
-        message: welcomeMessage,
-        senderType: 'system',
-        createdAt: new Date().toISOString()
-      }])
-      
-      // 6. Enviar mensaje del sistema con el enlace (si se generó)
-      if (documentLink) {
-        await fetch('/api/chat/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: data.conversationId,
-            message: `📎 Enlace para subir documentos: ${documentLink}`,
-            senderType: 'system'
-          })
+      // 3. Facebook Pixel
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'Lead', {
+          content_name: 'Chat Iniciado',
+          content_category: 'Oficina Virtual',
+          value: 1,
+          currency: 'MXN'
         })
       }
+
+      // 4. Iniciar conversación de chat
+      const res = await fetch('/api/chat/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone
+        })
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setConversationId(data.conversationId)
+        localStorage.setItem('chat_conversation_id', data.conversationId)
+        
+        // 5. Asignar asesor
+        const assignRes = await fetch('/api/chat/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId: data.conversationId })
+        })
+        const assignData = await assignRes.json()
+        if (assignData.success) setAssignedAgent(assignData.agent)
+        
+        setStep('chat')
+        
+        // 6. Mensaje de bienvenida
+        const welcomeMessage = `Hola ${formData.name}, ¡bienvenido! Un asesor te atenderá en breve.`
+        setMessages([{
+          id: 'welcome',
+          message: welcomeMessage,
+          senderType: 'system',
+          createdAt: new Date().toISOString()
+        }])
+        
+        // 7. Enviar enlace de documentos (si se generó)
+        if (documentLink) {
+          await fetch('/api/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              conversationId: data.conversationId,
+              message: `📎 Enlace para subir documentos: ${documentLink}`,
+              senderType: 'system'
+            })
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error:', error)
+    } finally {
+      setIsLoading(false)
     }
-  } catch (error) {
-    console.error('Error:', error)
-  } finally {
-    setIsLoading(false)
   }
-}
+
   const sendMessage = async () => {
     if (!input.trim() || !conversationId) return
 
@@ -283,12 +273,14 @@ const startConversation = async (e: React.FormEvent) => {
       const uploadData = await uploadRes.json()
       
       if (uploadData.success) {
+        const isImage = file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+        
         const sendRes = await fetch('/api/chat/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             conversationId,
-            message: `📎 ${file.name}`,
+            message: isImage ? '' : `📎 ${file.name}`,
             senderType: 'user',
             fileUrl: uploadData.url,
             fileType: uploadData.fileType,
@@ -301,7 +293,7 @@ const startConversation = async (e: React.FormEvent) => {
         if (sendData.success) {
           const newMessage = {
             id: sendData.message.id,
-            message: `📎 ${file.name}`,
+            message: isImage ? '' : `📎 ${file.name}`,
             senderType: 'user',
             fileUrl: uploadData.url,
             fileType: uploadData.fileType,
