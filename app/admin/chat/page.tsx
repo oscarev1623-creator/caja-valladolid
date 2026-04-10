@@ -179,9 +179,9 @@ export default function AdminChatPage() {
     if (!confirm('¿Eliminar esta conversación permanentemente?')) return;
     
     try {
-      const res = await fetch(`/api/chat/delete?id=${id}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch(`/api/chat/delete/${id}`, {
+  method: 'DELETE',
+})
       const data = await res.json();
       if (data.success) {
         fetchConversations();

@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+    const id = params.id
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'ID requerido' }, { status: 400 })
     }
 
-    // Primero eliminar todos los mensajes de la conversación
+    // Eliminar mensajes
     await prisma.chatMessage.deleteMany({
       where: { conversationId: id }
     })
 
-    // Luego eliminar la conversación
+    // Eliminar conversación
     await prisma.chatConversation.delete({
       where: { id }
     })
