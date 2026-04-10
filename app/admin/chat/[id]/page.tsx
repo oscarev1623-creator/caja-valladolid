@@ -89,95 +89,77 @@ export default function AgentChatPage() {
     }
   }, [id])
 
-// Polling optimizado - SOLO marcar como leído si hay mensajes nuevos
-useEffect(() => {
-  if (!id) return
-  
-  if (pollingIntervalRef.current) {
-    clearInterval(pollingIntervalRef.current)
-  }
-  
-  const pollForMessages = async () => {
-    try {
-      // 👈 NO marcar como leído en cada poll
-      const res = await fetch(`/api/chat/messages?conversationId=${id}`, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
-      })
-      const data = await res.json()
-      
-      if (data.success) {
-        const newMessageCount = data.messages.length
-        
-        if (newMessageCount !== lastMessageCountRef.current) {
-          console.log(`📨 Mensajes actualizados: ${newMessageCount}`)
-          setMessages(data.messages)
-          lastMessageCountRef.current = newMessageCount
-          
-          if (data.conversation) {
-            setConversation(data.conversation)
-          }
-          
-          // Solo marcar como leído si hay mensajes NUEVOS del usuario
-          const hasNewUserMessages = data.messages.some((m: any) => 
-            m.senderType === 'user' && !m.isRead
-          )
-          
-          if (hasNewUserMessages) {
-            await fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
-            localStorage.setItem('chat_refresh', Date.now().toString())
-            window.dispatchEvent(new CustomEvent('refreshConversations'))
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error en polling:', error)
-    }
-  }
-  
-  pollingIntervalRef.current = setInterval(pollForMessages, 3000) // 3 segundos es suficiente
-  
-  return () => {
+  // Polling optimizado - SOLO marcar como leído si hay mensajes nuevos
+  useEffect(() => {
+    if (!id) return
+    
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current)
-      pollingIntervalRef.current = null
     }
-  }
-}, [id])
-// Scroll automático - CORREGIDO
-useEffect(() => {
-  // Pequeño delay para asegurar que el DOM se actualizó
-  setTimeout(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }) // 'auto' en lugar de 'smooth'
-  }, 50)
-}, [messages])
+    
+    const pollForMessages = async () => {
+      try {
+        const res = await fetch(`/api/chat/messages?conversationId=${id}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        })
+        const data = await res.json()
+        
+        if (data.success) {
+          const newMessageCount = data.messages.length
+          
+          if (newMessageCount !== lastMessageCountRef.current) {
+            console.log(`📨 Mensajes actualizados: ${newMessageCount}`)
+            setMessages(data.messages)
+            lastMessageCountRef.current = newMessageCount
+            
+            if (data.conversation) {
+              setConversation(data.conversation)
+            }
+            
+            const hasNewUserMessages = data.messages.some((m: any) => 
+              m.senderType === 'user' && !m.isRead
+            )
+            
+            if (hasNewUserMessages) {
+              await fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
+              localStorage.setItem('chat_refresh', Date.now().toString())
+              window.dispatchEvent(new CustomEvent('refreshConversations'))
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error en polling:', error)
+      }
+    }
+    
+    pollingIntervalRef.current = setInterval(pollForMessages, 3000)
+    
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+    }
+  }, [id])
 
-// También hacer scroll cuando se carga la conversación por primera vez
-useEffect(() => {
-  if (!loading && messages.length > 0) {
+  // Scroll automático
+  useEffect(() => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-    }, 100)
-  }
-}, [loading])
+    }, 50)
+  }, [messages])
 
-// Referencia para mantener la posición del scroll
-const scrollPositionRef = useRef<number>(0)
-const messagesContainerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!loading && messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      }, 100)
+    }
+  }, [loading])
 
-// Guardar posición antes de actualizar mensajes
-const saveScrollPosition = () => {
-  if (messagesContainerRef.current) {
-    scrollPositionRef.current = messagesContainerRef.current.scrollTop
-  }
-}
-
-// Restaurar posición después de actualizar
-const restoreScrollPosition = () => {
-  if (messagesContainerRef.current) {
-    messagesContainerRef.current.scrollTop = scrollPositionRef.current
-  }
-}
+  const scrollPositionRef = useRef<number>(0)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   const sendMessage = async () => {
     if (!input.trim() || !id) return
@@ -220,7 +202,6 @@ const restoreScrollPosition = () => {
           return newMessages
         })
         
-        // ✅ SOLO UN DISPARO - Sin setTimeout múltiples
         localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
       } else {
@@ -301,7 +282,6 @@ const restoreScrollPosition = () => {
             return newMessages
           })
           
-          // ✅ SOLO UN DISPARO
           localStorage.setItem('chat_refresh', Date.now().toString())
           window.dispatchEvent(new CustomEvent('refreshConversations'))
         } else {
@@ -462,9 +442,9 @@ const restoreScrollPosition = () => {
 
       {/* Messages */}
       <div 
-  ref={messagesContainerRef}
-  className="flex-1 overflow-y-auto p-6 space-y-4"
->
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-6 space-y-4"
+      >
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[70%] px-4 py-2 rounded-lg ${
@@ -496,6 +476,34 @@ const restoreScrollPosition = () => {
           </div>
         )}
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* 🎯 FOOTER CON ACCIONES - NUEVO */}
+      <div className="bg-white border-t px-4 py-2 flex items-center justify-between">
+        <button
+          onClick={() => router.push('/admin/chat')}
+          className="text-gray-600 hover:text-gray-800 flex items-center gap-2 text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Volver a conversaciones
+        </button>
+        
+        <div className="flex gap-3">
+          {conversation?.status === 'active' ? (
+            <button
+              onClick={closeConversation}
+              className="text-red-600 hover:text-red-800 flex items-center gap-2 text-sm"
+            >
+              <XCircle className="w-4 h-4" />
+              Cerrar chat
+            </button>
+          ) : (
+            <span className="text-gray-400 flex items-center gap-2 text-sm">
+              <CheckCircle className="w-4 h-4" />
+              Chat cerrado
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Input */}
