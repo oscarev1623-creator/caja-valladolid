@@ -1,10 +1,8 @@
-// app/api/leads/generate-link/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// UUID simple
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0
@@ -15,44 +13,8 @@ const generateUUID = () => {
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar sesión con request.cookies
-    const session = request.cookies.get('admin_session')?.value
-    console.log('🔐 Session:', session)
-
-    if (session !== 'authenticated') {
-      return NextResponse.json(
-        { success: false, error: 'No autorizado' },
-        { status: 401 }
-      )
-    }
-
-    // Obtener el usuario actual desde la cookie admin_user
-    const userCookie = request.cookies.get('admin_user')?.value
-    console.log('👤 User cookie:', userCookie)
-
-    if (!userCookie) {
-      return NextResponse.json(
-        { success: false, error: 'Usuario no encontrado en sesión' },
-        { status: 401 }
-      )
-    }
-
-    // Parsear el usuario
-    let currentUser
-    try {
-      currentUser = JSON.parse(userCookie)
-    } catch (e) {
-      console.error('Error parseando user cookie:', e)
-      return NextResponse.json(
-        { success: false, error: 'Error con datos de usuario' },
-        { status: 401 }
-      )
-    }
-
-    console.log('👤 Usuario actual:', currentUser)
-
     const { leadId, baseUrl } = await request.json()
-    console.log('📦 leadId:', leadId)
+    console.log('📦 generate-link llamado con leadId:', leadId)
 
     if (!leadId) {
       return NextResponse.json(
@@ -61,7 +23,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verificar que el lead existe
+    // Verificar si viene del chat público (no tiene cookie)
+    const session = request.cookies.get('admin_session')?.value
+    const isPublicChat = !session || session !== 'authenticated'
+    
+    console.log('🔐 ¿Es chat público?:', isPublicChat)
+
     const lead = await prisma.lead.findUnique({
       where: { id: leadId }
     })
@@ -73,65 +40,73 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generar token único
-    const uniqueToken = generateUUID()
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 días
+    // Generar o usar token existente
+    const uniqueToken = lead.uniqueToken || generateUUID()
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
-    // Primero actualizar el lead
-    await prisma.lead.update({
-      where: { id: leadId },
-      data: {
-        uniqueToken,
-        tokenExpiresAt: expiresAt,
-        tokenGeneratedAt: new Date(),
-        status: 'PENDING_DOCUMENTS'
-      }
+    // Actualizar lead si no tenía token
+    if (!lead.uniqueToken) {
+      await prisma.lead.update({
+        where: { id: leadId },
+        data: {
+          uniqueToken,
+          tokenExpiresAt: expiresAt,
+          tokenGeneratedAt: new Date(),
+          status: 'PENDING_DOCUMENTS'
+        }
+      })
+    }
+
+    // Crear o actualizar ticket (sin createdById para chat público)
+    const ticketNumber = `TKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    const documentLink = `${baseUrl || request.headers.get('origin') || 'https://www.cajavalladolid.com'}/formulario-documentos/${uniqueToken}`
+
+    const existingTicket = await prisma.ticket.findFirst({
+      where: { leadId }
     })
 
-    // CREAR TICKET con el ID del usuario actual
-    const ticketNumber = `TKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-    
-    console.log('🎫 Creando ticket con:', {
+    let ticket
+    const ticketData: any = {
       ticketNumber,
       leadId,
       uniqueToken,
-      createdById: currentUser.id,
-      linkUrl: `${baseUrl || request.headers.get('origin') || ''}/formulario-documentos/${uniqueToken}`,
-      expiresAt
-    })
+      linkUrl: documentLink,
+      expiresAt,
+      status: 'PENDING',
+      priority: 'MEDIUM'
+    }
 
-    const ticket = await prisma.ticket.create({
-      data: {
-        ticketNumber,
-        leadId: lead.id,
-        uniqueToken,
-        linkUrl: `${baseUrl || request.headers.get('origin') || ''}/formulario-documentos/${uniqueToken}`,
-        expiresAt,
-        status: 'PENDING',
-        priority: 'MEDIUM',
-        createdById: currentUser.id // ← AHORA SÍ TENEMOS EL ID
+    // Solo agregar createdById si hay sesión de admin
+    if (!isPublicChat) {
+      const userCookie = request.cookies.get('admin_user')?.value
+      if (userCookie) {
+        try {
+          const currentUser = JSON.parse(userCookie)
+          ticketData.createdById = currentUser.id
+        } catch (e) {
+          console.error('Error parseando user cookie:', e)
+        }
       }
-    })
+    }
 
-    console.log('✅ Ticket creado:', ticket.id)
+    if (existingTicket) {
+      ticket = await prisma.ticket.update({
+        where: { id: existingTicket.id },
+        data: { uniqueToken, linkUrl: documentLink, expiresAt }
+      })
+    } else {
+      ticket = await prisma.ticket.create({ data: ticketData })
+    }
 
-    const url = `${baseUrl || request.headers.get('origin') || ''}/formulario-documentos/${uniqueToken}`
+    console.log('✅ Ticket creado/actualizado:', ticket.id)
 
     return NextResponse.json({
       success: true,
       data: {
-        lead: {
-          id: lead.id,
-          fullName: lead.fullName,
-          email: lead.email,
-          phone: lead.phone
-        },
-        ticket: {
-          id: ticket.id,
-          number: ticket.ticketNumber
-        },
+        lead: { id: lead.id, fullName: lead.fullName, email: lead.email, phone: lead.phone },
+        ticket: { id: ticket.id, number: ticket.ticketNumber },
         token: uniqueToken,
-        url,
+        url: documentLink,
         shortUrl: `/formulario-documentos/${uniqueToken}`,
         expiresAt: expiresAt.toISOString(),
         isNewToken: true,
