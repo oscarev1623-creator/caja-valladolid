@@ -7,10 +7,10 @@ const prisma = new PrismaClient()
 async function getBestAgent() {
   console.log('🔍 Buscando el mejor asesor...')
   
-  // Obtener asesores activos
+  // ✅ CORREGIDO: 'agent' en minúsculas
   const agents = await prisma.user.findMany({
     where: {
-      role: 'AGENT',
+      role: 'agent',
       isActive: true
     }
   })
@@ -18,9 +18,11 @@ async function getBestAgent() {
   console.log(`📊 Asesores encontrados: ${agents.length}`)
 
   if (agents.length === 0) {
+    // ✅ CORREGIDO: 'admin' en minúsculas
     const admin = await prisma.user.findFirst({
-      where: { role: 'ADMIN' }
+      where: { role: 'admin' }
     })
+    console.log('⚠️ No hay agentes, usando admin:', admin?.name)
     return admin
   }
 
@@ -111,7 +113,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         success: false,
-        error: 'Error interno del servidor'
+        data: [],
+        pagination: { page: 1, limit: 10, total: 0, pages: 0 }
       },
       { status: 500 }
     )
