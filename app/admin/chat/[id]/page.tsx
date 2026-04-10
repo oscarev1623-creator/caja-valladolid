@@ -465,33 +465,32 @@ export default function AgentChatPage() {
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto p-6 space-y-4"
       >
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[70%] px-4 py-2 rounded-lg ${
-              msg.senderType === 'agent'
-                ? 'bg-green-600 text-white rounded-br-none'
-                : msg.senderType === 'system'
-                ? 'bg-gray-200 text-gray-500 italic'
-                : 'bg-white text-gray-800 rounded-bl-none shadow'
-            }`}>
-              {msg.senderType === 'system' && (
-                <div className="text-xs mb-1">📢 Sistema</div>
-              )}
-              {msg.message && (
-                <p className="text-sm whitespace-pre-wrap break-all">
-                  {/* 🔗 ENLACES CLICKEABLES */}
-                  {linkify(msg.message, msg.senderType === 'agent')}
-                </p>
-              )}
-              {renderFilePreview(msg)}
-              <div className={`text-[10px] mt-1 ${
-                msg.senderType === 'agent' ? 'text-green-200' : 'text-gray-400'
-              }`}>
-                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-          </div>
-        ))}
+{messages.map((msg) => (
+  <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
+    <div className={`max-w-[70%] px-4 py-2 rounded-lg ${
+      msg.senderType === 'agent'
+        ? 'bg-green-600 text-white rounded-br-none'
+        : msg.senderType === 'system'
+        ? 'bg-gray-200 text-gray-500 italic'
+        : 'bg-white text-gray-800 rounded-bl-none shadow'
+    }`}>
+      {msg.senderType === 'system' && (
+        <div className="text-xs mb-1">📢 Sistema</div>
+      )}
+      {msg.message && (
+        <p className="text-sm whitespace-pre-wrap break-all">
+          {linkify(msg.message, msg.senderType === 'agent')}
+        </p>
+      )}
+      {renderFilePreview(msg)}
+      <div className={`text-[10px] mt-1 ${
+        msg.senderType === 'agent' ? 'text-green-200' : 'text-gray-400'
+      }`}>
+        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </div>
+    </div>
+  </div>
+))}
         {isSending && (
           <div className="flex justify-end">
             <div className="bg-gray-200 p-3 rounded-lg flex items-center gap-2">
