@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (user.role !== 'ADMIN') {
+    if (user.role.toLowerCase() !== 'admin') {
       return NextResponse.json(
         { success: false, error: 'Acceso no autorizado' },
         { status: 403 }

@@ -1,1 +1,1 @@
-{"success":true,"message":"Conexión a BD exitosa","userCount":4,"envVars":{"hasDbUrl":true,"dbUrlStart":"postgres://a8cb9ae6d..."}}
+{"success":true,"message":"Conexión a BD exitosa","userCount":3,"envVars":{"hasDbUrl":true,"dbUrlStart":"postgres://a8cb9ae6d..."}}
