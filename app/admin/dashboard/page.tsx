@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Users, FileText, DollarSign, TrendingUp,
   Clock, CheckCircle, AlertCircle, Plus,
-  ArrowRight, RefreshCw, Download
+  ArrowRight, RefreshCw, Download, MessageCircle, Mail
 } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -18,7 +18,9 @@ export default function DashboardPage() {
     approvedLeads: 0,
     rejectedLeads: 0,
     totalAmount: 0,
-    conversionRate: 0
+    conversionRate: 0,
+    activeConversations: 0,
+    unreadMessages: 0
   })
   const [recentLeads, setRecentLeads] = useState<any[]>([])
 
@@ -26,7 +28,6 @@ export default function DashboardPage() {
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
       try {
-        // 1. Verificar autenticación
         const authResponse = await fetch('/api/admin/check-session', {
           credentials: 'include'
         })
@@ -39,10 +40,7 @@ export default function DashboardPage() {
         }
 
         setUser(authData.user)
-        
-        // 2. Cargar datos del dashboard
         await fetchDashboardData()
-        
       } catch (error) {
         console.error('Error en autenticación:', error)
         router.push('/admin/login')
@@ -52,67 +50,34 @@ export default function DashboardPage() {
     checkAuthAndLoadData()
   }, [router])
 
-  // ✅ fetchDashboardData SIN localStorage
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
       
       const response = await fetch('/api/admin/dashboard/stats', {
-        credentials: 'include',  // ← Usa cookies, no token
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
       })
 
-      console.log('Dashboard response status:', response.status)
-      
       const data = await response.json()
-      console.log('Dashboard data received:', data)
       
       if (data.success) {
-        setStats(data.stats)
-        setRecentLeads(data.recentLeads || [])
-      } else {
-        console.warn('API returned success: false, usando datos de respaldo')
         setStats({
-          totalLeads: data.stats?.totalLeads || 3,
-          pendingLeads: data.stats?.pendingLeads || 0,
-          approvedLeads: data.stats?.approvedLeads || 0,
-          rejectedLeads: data.stats?.rejectedLeads || 0,
-          totalAmount: data.stats?.totalAmount || 525000,
-          conversionRate: data.stats?.conversionRate || 0
+          totalLeads: data.stats.totalLeads || 0,
+          pendingLeads: data.stats.pendingLeads || 0,
+          approvedLeads: data.stats.approvedLeads || 0,
+          rejectedLeads: data.stats.rejectedLeads || 0,
+          totalAmount: data.stats.totalAmount || 0,
+          conversionRate: data.stats.conversionRate || 0,
+          activeConversations: data.stats.activeConversations || 0,
+          unreadMessages: data.stats.unreadMessages || 0
         })
         setRecentLeads(data.recentLeads || [])
       }
-      
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
-      // Datos de respaldo en caso de error
-      setStats({
-        totalLeads: 3,
-        pendingLeads: 0,
-        approvedLeads: 0,
-        rejectedLeads: 0,
-        totalAmount: 525000,
-        conversionRate: 0
-      })
-      setRecentLeads([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  // ✅ Logout usando API, no localStorage
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/admin/logout', { 
-        method: 'POST',
-        credentials: 'include'
-      })
-    } catch (error) {
-      console.error('Logout error:', error)
-    } finally {
-      router.push('/admin/login')
     }
   }
 
@@ -122,7 +87,6 @@ export default function DashboardPage() {
       value: stats.totalLeads,
       icon: Users,
       color: 'bg-blue-500',
-      change: '+12%',
       description: 'Solicitudes totales'
     },
     {
@@ -130,7 +94,6 @@ export default function DashboardPage() {
       value: stats.pendingLeads,
       icon: Clock,
       color: 'bg-yellow-500',
-      change: '+5',
       description: 'En revisión'
     },
     {
@@ -138,7 +101,6 @@ export default function DashboardPage() {
       value: stats.approvedLeads,
       icon: CheckCircle,
       color: 'bg-green-500',
-      change: '+3',
       description: 'Créditos aprobados'
     },
     {
@@ -146,8 +108,21 @@ export default function DashboardPage() {
       value: `$${stats.totalAmount.toLocaleString()}`,
       icon: DollarSign,
       color: 'bg-purple-500',
-      change: '+$250K',
       description: 'En créditos solicitados'
+    },
+    {
+      title: 'Chats Activos',
+      value: stats.activeConversations,
+      icon: MessageCircle,
+      color: 'bg-cyan-500',
+      description: 'Conversaciones en curso'
+    },
+    {
+      title: 'Mensajes Pendientes',
+      value: stats.unreadMessages,
+      icon: Mail,
+      color: 'bg-orange-500',
+      description: 'Mensajes de clientes'
     }
   ]
 
@@ -165,6 +140,13 @@ export default function DashboardPage() {
       icon: Users,
       color: 'bg-blue-100 text-blue-700',
       action: () => router.push('/admin/leads')
+    },
+    {
+      title: 'Ver Chat',
+      description: 'Atender conversaciones',
+      icon: MessageCircle,
+      color: 'bg-cyan-100 text-cyan-700',
+      action: () => router.push('/admin/chat')
     },
     {
       title: 'Generar Reporte',
@@ -224,27 +206,20 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="p-6">
-        {/* Cards de estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Cards de estadísticas - AHORA 6 CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           {statCards.map((card, index) => {
             const Icon = card.icon
             return (
-              <div key={index} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`${card.color} w-12 h-12 rounded-lg flex items-center justify-center`}>
-                    <Icon className="w-6 h-6 text-white" />
+              <div key={index} className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`${card.color} w-10 h-10 rounded-lg flex items-center justify-center`}>
+                    <Icon className="w-5 h-5 text-white" />
                   </div>
-                  <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                    card.change.startsWith('+') 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {card.change}
-                  </span>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">{card.value}</h3>
-                <p className="text-sm text-gray-600 mb-2">{card.title}</p>
-                <p className="text-xs text-gray-500">{card.description}</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{card.value}</h3>
+                <p className="text-xs text-gray-600 mb-1">{card.title}</p>
+                <p className="text-[10px] text-gray-400">{card.description}</p>
               </div>
             )
           })}
@@ -263,7 +238,7 @@ export default function DashboardPage() {
                 Ver todo <ArrowRight className="w-4 h-4" />
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {quickActions.map((action, index) => {
                 const Icon = action.icon
                 return (
@@ -302,18 +277,18 @@ export default function DashboardPage() {
               
               <div className="pt-4 border-t border-green-500">
                 <div className="flex justify-between items-center mb-2">
-                  <span>Tiempo Respuesta</span>
-                  <span className="text-xl font-bold">24h</span>
+                  <span>Chats Activos</span>
+                  <span className="text-xl font-bold">{stats.activeConversations}</span>
                 </div>
-                <p className="text-sm text-green-200">Promedio de evaluación</p>
+                <p className="text-sm text-green-200">Conversaciones en curso</p>
               </div>
               
               <div className="pt-4 border-t border-green-500">
                 <div className="flex justify-between items-center">
-                  <span>Satisfacción</span>
-                  <span className="text-xl font-bold">4.8/5</span>
+                  <span>Mensajes Sin Leer</span>
+                  <span className="text-xl font-bold">{stats.unreadMessages}</span>
                 </div>
-                <p className="text-sm text-green-200">Calificación clientes</p>
+                <p className="text-sm text-green-200">Pendientes de respuesta</p>
               </div>
             </div>
           </div>
@@ -335,9 +310,6 @@ export default function DashboardPage() {
             <div className="text-center py-8">
               <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500">No hay leads registrados aún</p>
-              <p className="text-sm text-gray-400 mt-1">
-                Los leads aparecerán aquí cuando los clientes envíen formularios
-              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -409,8 +381,8 @@ export default function DashboardPage() {
                 <div className="font-bold">{stats.totalLeads}</div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600">Uptime</div>
-                <div className="font-bold">99.8%</div>
+                <div className="text-sm text-gray-600">Chats Activos</div>
+                <div className="font-bold">{stats.activeConversations}</div>
               </div>
             </div>
           </div>
