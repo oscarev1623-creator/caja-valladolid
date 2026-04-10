@@ -22,7 +22,6 @@ function getAgentGradient(color: string | undefined) {
   return gradients[color || 'green'] || 'from-green-600 to-emerald-600'
 }
 
-// 🔗 Función para convertir URLs en enlaces clickeables
 const linkify = (text: string, isUser: boolean) => {
   if (!text) return text
   
@@ -75,7 +74,7 @@ export default function ChatWidget() {
     const chatToken = urlParams.get('chat_token')
     
     if (chatToken) {
-      console.log('🔐 Token detectado en URL:', chatToken)
+      console.log('🔐 Token detectado:', chatToken)
       
       fetch(`/api/chat/token?token=${chatToken}`)
         .then(r => r.json())
@@ -83,7 +82,6 @@ export default function ChatWidget() {
           if (data.success) {
             console.log('✅ Token validado:', data)
             
-            // Guardar datos del lead
             if (data.lead) {
               localStorage.setItem('chat_user_name', data.lead.name)
               localStorage.setItem('chat_user_email', data.lead.email)
@@ -96,17 +94,18 @@ export default function ChatWidget() {
               })
             }
             
-            // Si hay conversación, cargarla
             if (data.conversationId) {
+              // Cargar conversación existente
               localStorage.setItem('chat_conversation_id', data.conversationId)
+              setConversationId(data.conversationId)
               loadConversation(data.conversationId)
+              setStep('chat')
+            } else if (data.lead) {
+              // Crear nueva conversación automáticamente
+              startConversationAutomatically(data.lead)
             }
             
-            // Abrir el chat
             setIsOpen(true)
-            setStep('chat')
-            
-            // Limpiar token de la URL
             window.history.replaceState({}, document.title, window.location.pathname)
           }
         })
@@ -114,7 +113,7 @@ export default function ChatWidget() {
     }
   }, [])
 
-  // ✅ Cargar datos guardados al iniciar
+  // ✅ Cargar datos guardados
   useEffect(() => {
     const savedName = localStorage.getItem('chat_user_name')
     const savedEmail = localStorage.getItem('chat_user_email')
@@ -179,18 +178,62 @@ export default function ChatWidget() {
     }
   }
 
+  // ✅ Iniciar conversación automáticamente con los datos del lead
+  const startConversationAutomatically = async (lead: any) => {
+    if (!lead || !lead.email || !lead.name) return
+    
+    console.log('🚀 Iniciando conversación automática para:', lead.email)
+    
+    setIsLoading(true)
+    try {
+      const res = await fetch('/api/chat/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone || ''
+        })
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setConversationId(data.conversationId)
+        localStorage.setItem('chat_conversation_id', data.conversationId)
+        
+        const assignRes = await fetch('/api/chat/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId: data.conversationId })
+        })
+        const assignData = await assignRes.json()
+        if (assignData.success) setAssignedAgent(assignData.agent)
+        
+        setStep('chat')
+        setMessages([{
+          id: 'welcome',
+          message: `Hola ${lead.name}, ¡bienvenido de nuevo! Tu asesor te atenderá en breve.`,
+          senderType: 'system',
+          createdAt: new Date().toISOString()
+        }])
+      }
+    } catch (error) {
+      console.error('Error iniciando conversación automática:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const startConversation = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name || !formData.email) return
 
     setIsLoading(true)
     try {
-      // Guardar datos en localStorage
       localStorage.setItem('chat_user_name', formData.name)
       localStorage.setItem('chat_user_email', formData.email)
       localStorage.setItem('chat_user_phone', formData.phone)
 
-      // 1. Crear lead
       const leadResponse = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -206,9 +249,7 @@ export default function ChatWidget() {
       })
 
       const leadData = await leadResponse.json()
-      console.log('✅ Lead creado:', leadData)
       
-      // 2. Generar enlace de documentos
       let documentLink = ''
       if (leadData.success && leadData.data?.id) {
         try {
@@ -220,26 +261,14 @@ export default function ChatWidget() {
             body: JSON.stringify({ leadId: leadData.data.id, baseUrl })
           })
           const ticketData = await ticketRes.json()
-          if (ticketData.success) {
-            documentLink = ticketData.data.url
-            console.log('✅ Enlace generado:', documentLink)
-          }
-        } catch (err) {
-          console.error('Error generando enlace:', err)
-        }
+          if (ticketData.success) documentLink = ticketData.data.url
+        } catch (err) {}
       }
       
-      // 3. Facebook Pixel
       if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Lead', {
-          content_name: 'Chat Iniciado',
-          content_category: 'Oficina Virtual',
-          value: 1,
-          currency: 'MXN'
-        })
+        (window as any).fbq('track', 'Lead')
       }
 
-      // 4. Iniciar conversación de chat
       const res = await fetch('/api/chat/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -255,7 +284,6 @@ export default function ChatWidget() {
         setConversationId(data.conversationId)
         localStorage.setItem('chat_conversation_id', data.conversationId)
         
-        // 5. Asignar asesor
         const assignRes = await fetch('/api/chat/assign', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -265,17 +293,13 @@ export default function ChatWidget() {
         if (assignData.success) setAssignedAgent(assignData.agent)
         
         setStep('chat')
-        
-        // 6. Mensaje de bienvenida
-        const welcomeMessage = `Hola ${formData.name}, ¡bienvenido! Un asesor te atenderá en breve.`
         setMessages([{
           id: 'welcome',
-          message: welcomeMessage,
+          message: `Hola ${formData.name}, ¡bienvenido! Un asesor te atenderá en breve.`,
           senderType: 'system',
           createdAt: new Date().toISOString()
         }])
         
-        // 7. Enviar enlace de documentos (si se generó)
         if (documentLink) {
           await fetch('/api/chat/send', {
             method: 'POST',

@@ -33,11 +33,12 @@ const getEmailTemplate = (content: string, title: string) => `
     <tr>
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+          <!-- Header con logo GRANDE -->
           <tr>
-            <td style="background: linear-gradient(135deg, #059669, #047857); padding: 30px 20px; text-align: center;">
-              <img src="${baseUrl}/logotipo.png" alt="Caja Valladolid" style="height: 60px; width: auto; margin-bottom: 10px;" />
-              <h1 style="color: #ffffff; margin: 10px 0 0 0; font-size: 24px; font-weight: bold;">Oficina Virtual</h1>
-              <p style="color: #d1fae5; margin: 5px 0 0 0; font-size: 14px;">Tu aliado financiero de confianza</p>
+            <td style="background: linear-gradient(135deg, #059669, #047857); padding: 40px 20px; text-align: center;">
+              <img src="${baseUrl}/logotipo.png" alt="Caja Valladolid" style="height: 180px; width: auto; margin-bottom: 15px;" />
+              <h1 style="color: #ffffff; margin: 10px 0 0 0; font-size: 28px; font-weight: bold;">Oficina Virtual</h1>
+              <p style="color: #d1fae5; margin: 8px 0 0 0; font-size: 16px;">Tu aliado financiero de confianza</p>
             </td>
           </tr>
           <tr>
@@ -58,19 +59,21 @@ const getEmailTemplate = (content: string, title: string) => `
 </html>
 `
 
-// Email de confirmación - MEJORADO
+// Email de confirmación - MEJORADO CON TOKEN
 export async function sendConfirmationEmail({ 
   to, 
   nombre, 
   leadId, 
   monto, 
-  tipoCredito 
+  tipoCredito,
+  chatToken 
 }: { 
   to: string
   nombre: string
   leadId: string
   monto?: number | string
-  tipoCredito?: string 
+  tipoCredito?: string
+  chatToken?: string
 }) {
   console.log('📧 Enviando confirmación vía SendGrid a:', to)
   
@@ -82,6 +85,11 @@ export async function sendConfirmationEmail({
   const tipo = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' 
     ? 'Criptomonedas' 
     : 'Tradicional'
+
+  // Enlace con token para abrir chat automáticamente
+  const chatUrl = chatToken 
+    ? `${baseUrl}/?chat_token=${chatToken}`
+    : baseUrl
 
   const content = `
     <div style="text-align: center; margin-bottom: 24px;">
@@ -117,12 +125,12 @@ export async function sendConfirmationEmail({
       <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 16px;">💬 Oficina Virtual</h3>
       <p style="color: #1e40af; margin: 0 0 16px 0;">Habla directamente con tu asesor asignado en tiempo real:</p>
       <div style="text-align: center;">
-        <a href="${baseUrl}" style="background: linear-gradient(135deg, #059669, #047857); color: white; padding: 12px 32px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; font-size: 16px;">
+        <a href="${chatUrl}" style="background: linear-gradient(135deg, #059669, #047857); color: white; padding: 14px 36px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; font-size: 16px;">
           💬 Abrir Oficina Virtual
         </a>
       </div>
       <p style="color: #6b7280; margin: 16px 0 0 0; font-size: 13px; text-align: center;">
-        Al hacer clic, se abrirá tu conversación con el asesor asignado.
+        Al hacer clic, se abrirá tu conversación con el asesor asignado automáticamente.
       </p>
     </div>
 
@@ -153,10 +161,12 @@ export async function sendConfirmationEmail({
   }
 }
 
-// Chat - USA ZOHO (menos volumen, más seguro)
+// Chat - USA ZOHO
 export async function sendChatNotificationEmail({ to, name, message, conversationId }: { to: string; name: string; message: string; conversationId: string }) {
   console.log('📧 Enviando notificación de chat vía Zoho a:', to)
   
+  const chatUrl = `${baseUrl}/?chat_conversation=${conversationId}`
+
   const content = `
     <div style="text-align: center; margin-bottom: 24px;">
       <h2 style="color: #059669; margin: 0 0 8px 0;">¡Hola ${name}! 👋</h2>
@@ -164,7 +174,7 @@ export async function sendChatNotificationEmail({ to, name, message, conversatio
       <div style="background-color: #f3f4f6; border-radius: 12px; padding: 20px; margin: 20px 0;">
         <p style="margin: 0; color: #059669; font-style: italic;">"${message}"</p>
       </div>
-      <a href="${baseUrl}" style="background: #059669; color: white; padding: 12px 32px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">
+      <a href="${chatUrl}" style="background: #059669; color: white; padding: 14px 36px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">
         💬 Abrir Oficina Virtual
       </a>
     </div>
