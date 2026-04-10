@@ -59,21 +59,19 @@ const getEmailTemplate = (content: string, title: string) => `
 </html>
 `
 
-// Email de confirmación - MEJORADO CON TOKEN
+// Email de confirmación - VERSIÓN FINAL
 export async function sendConfirmationEmail({ 
   to, 
   nombre, 
   leadId, 
   monto, 
-  tipoCredito,
-  chatToken 
+  tipoCredito 
 }: { 
   to: string
   nombre: string
   leadId: string
   monto?: number | string
-  tipoCredito?: string
-  chatToken?: string
+  tipoCredito?: string 
 }) {
   console.log('📧 Enviando confirmación vía SendGrid a:', to)
   
@@ -86,10 +84,8 @@ export async function sendConfirmationEmail({
     ? 'Criptomonedas' 
     : 'Tradicional'
 
-  // Enlace con token para abrir chat automáticamente
-  const chatUrl = chatToken 
-    ? `${baseUrl}/?chat_token=${chatToken}`
-    : baseUrl
+  // Enlace simple con datos en URL
+  const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(nombre)}&chat_email=${encodeURIComponent(to)}`
 
   const content = `
     <div style="text-align: center; margin-bottom: 24px;">
@@ -123,14 +119,14 @@ export async function sendConfirmationEmail({
 
     <div style="background-color: #eff6ff; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
       <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 16px;">💬 Oficina Virtual</h3>
-      <p style="color: #1e40af; margin: 0 0 16px 0;">Habla directamente con tu asesor asignado en tiempo real:</p>
+      <p style="color: #1e40af; margin: 0 0 16px 0;">Habla directamente con un asesor en tiempo real:</p>
       <div style="text-align: center;">
         <a href="${chatUrl}" style="background: linear-gradient(135deg, #059669, #047857); color: white; padding: 14px 36px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; font-size: 16px;">
-          💬 Abrir Oficina Virtual
+          💬 Iniciar conversación
         </a>
       </div>
       <p style="color: #6b7280; margin: 16px 0 0 0; font-size: 13px; text-align: center;">
-        Al hacer clic, se abrirá tu conversación con el asesor asignado automáticamente.
+        Tus datos ya estarán listos. Solo haz clic en "Iniciar conversación".
       </p>
     </div>
 
@@ -165,7 +161,7 @@ export async function sendConfirmationEmail({
 export async function sendChatNotificationEmail({ to, name, message, conversationId }: { to: string; name: string; message: string; conversationId: string }) {
   console.log('📧 Enviando notificación de chat vía Zoho a:', to)
   
-  const chatUrl = `${baseUrl}/?chat_conversation=${conversationId}`
+  const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(name)}&chat_email=${encodeURIComponent(to)}`
 
   const content = `
     <div style="text-align: center; margin-bottom: 24px;">
@@ -175,7 +171,7 @@ export async function sendChatNotificationEmail({ to, name, message, conversatio
         <p style="margin: 0; color: #059669; font-style: italic;">"${message}"</p>
       </div>
       <a href="${chatUrl}" style="background: #059669; color: white; padding: 14px 36px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">
-        💬 Abrir Oficina Virtual
+        💬 Responder en Oficina Virtual
       </a>
     </div>
   `

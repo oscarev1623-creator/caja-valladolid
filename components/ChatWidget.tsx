@@ -69,49 +69,32 @@ export default function ChatWidget() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ✅ Detectar token en URL al cargar la página
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const chatToken = urlParams.get('chat_token')
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const chatName = urlParams.get('chat_name')
+  const chatEmail = urlParams.get('chat_email')
+  
+  if (chatName && chatEmail) {
+    console.log('📧 Abriendo chat desde correo para:', chatEmail)
     
-    if (chatToken) {
-      console.log('🔐 Token detectado:', chatToken)
-      
-      fetch(`/api/chat/token?token=${chatToken}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            console.log('✅ Token validado:', data)
-            
-            if (data.lead) {
-              localStorage.setItem('chat_user_name', data.lead.name)
-              localStorage.setItem('chat_user_email', data.lead.email)
-              localStorage.setItem('chat_user_phone', data.lead.phone || '')
-              
-              setFormData({
-                name: data.lead.name || '',
-                email: data.lead.email || '',
-                phone: data.lead.phone || ''
-              })
-            }
-            
-            if (data.conversationId) {
-              // Cargar conversación existente
-              localStorage.setItem('chat_conversation_id', data.conversationId)
-              setConversationId(data.conversationId)
-              loadConversation(data.conversationId)
-              setStep('chat')
-            } else if (data.lead) {
-              // Crear nueva conversación automáticamente
-              startConversationAutomatically(data.lead)
-            }
-            
-            setIsOpen(true)
-            window.history.replaceState({}, document.title, window.location.pathname)
-          }
-        })
-        .catch(err => console.error('Error validando token:', err))
-    }
-  }, [])
+    // Pre-llenar formulario
+    setFormData({
+      name: chatName,
+      email: chatEmail,
+      phone: ''
+    })
+    
+    // Guardar en localStorage
+    localStorage.setItem('chat_user_name', chatName)
+    localStorage.setItem('chat_user_email', chatEmail)
+    
+    // Abrir el chat
+    setIsOpen(true)
+    
+    // Limpiar URL
+    window.history.replaceState({}, document.title, window.location.pathname)
+  }
+}, [])
 
   // ✅ Cargar datos guardados
   useEffect(() => {
