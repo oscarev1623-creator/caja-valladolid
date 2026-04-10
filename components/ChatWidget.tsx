@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   MessageCircle, X, Send, User, Mail, Phone, 
-  CheckCircle, Clock, Minimize2, Maximize2, 
-  Paperclip, FileText, Loader2, Maximize, Minimize
+  Minimize2, Paperclip, FileText, Loader2
 } from 'lucide-react'
 
 function getAgentGradient(color: string | undefined) {
@@ -26,7 +25,6 @@ function getAgentGradient(color: string | undefined) {
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
   const [step, setStep] = useState<'form' | 'chat'>('form')
   const [messages, setMessages] = useState<any[]>([])
   const [input, setInput] = useState('')
@@ -46,17 +44,6 @@ export default function ChatWidget() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const savedExpanded = localStorage.getItem('chat_expanded')
-    if (savedExpanded) {
-      setIsExpanded(savedExpanded === 'true')
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem('chat_expanded', isExpanded.toString())
-  }, [isExpanded])
-
-  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
@@ -70,7 +57,6 @@ export default function ChatWidget() {
 
   useEffect(() => {
     const handleOpenChat = () => {
-      console.log('🎯 Evento openChat recibido - Abriendo chat')
       setIsOpen(true)
       setIsLoadingConversation(true)
     }
@@ -80,7 +66,6 @@ export default function ChatWidget() {
 
   useEffect(() => {
     const handleReloadConversation = async () => {
-      console.log('🔄 Evento reloadConversation recibido')
       const savedId = localStorage.getItem('chat_conversation_id')
       if (savedId) {
         await loadConversation(savedId)
@@ -93,7 +78,6 @@ export default function ChatWidget() {
 
   const loadConversation = async (id: string) => {
     try {
-      console.log('📥 Cargando conversación:', id)
       const res = await fetch(`/api/chat/messages?conversationId=${id}`)
       const data = await res.json()
       if (data.success) {
@@ -115,8 +99,6 @@ export default function ChatWidget() {
 
     setIsLoading(true)
     try {
-      console.log('🚀🚀🚀 INICIANDO CHAT - CREANDO LEAD 🚀🚀🚀')
-      
       const leadResponse = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -131,9 +113,7 @@ export default function ChatWidget() {
         })
       })
 
-      const leadData = await leadResponse.json()
-      console.log('✅ Lead creado:', leadData.data?.id)
-      const leadId = leadData.data?.id
+      await leadResponse.json()
       
       if (typeof window !== 'undefined' && (window as any).fbq) {
         (window as any).fbq('track', 'Lead', {
@@ -168,10 +148,6 @@ export default function ChatWidget() {
         
         if (assignData.success) {
           setAssignedAgent(assignData.agent)
-          
-          if (leadId && assignData.agent?.id) {
-            console.log('✅ Lead ya existe, NO se modifica su asesor. Asesor del chat:', assignData.agent.name)
-          }
         }
         
         setStep('chat')
@@ -183,7 +159,7 @@ export default function ChatWidget() {
         }])
       }
     } catch (error) {
-      console.error('❌ Error:', error)
+      console.error('Error:', error)
     } finally {
       setIsLoading(false)
     }
@@ -285,17 +261,12 @@ export default function ChatWidget() {
     return () => clearInterval(interval)
   }, [conversationId, messages.length, step])
 
-  const toggleExpand = () => {
-    setIsExpanded(!isExpanded)
-  }
-
   const renderFilePreview = (msg: any) => {
     if (!msg.fileUrl) return null
     
     const fileName = msg.fileName || ''
     const isImage = msg.fileType === 'image' || fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)
     const isPDF = msg.fileType === 'pdf' || fileName.endsWith('.pdf')
-    const isVideo = msg.fileType === 'video' || fileName.match(/\.(mp4|webm|mov)$/i)
     
     if (isImage) {
       return (
@@ -303,19 +274,9 @@ export default function ChatWidget() {
           <img 
             src={msg.fileUrl} 
             alt={msg.fileName || 'Imagen'} 
-            className="max-w-full rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+            className="max-w-full rounded-lg max-h-36 object-cover cursor-pointer hover:opacity-90 transition-opacity"
           />
         </a>
-      )
-    }
-    
-    if (isVideo) {
-      return (
-        <video 
-          src={msg.fileUrl} 
-          controls 
-          className="mt-2 max-w-full rounded-lg max-h-48"
-        />
       )
     }
     
@@ -324,11 +285,10 @@ export default function ChatWidget() {
         href={msg.fileUrl} 
         target="_blank" 
         rel="noopener noreferrer" 
-        className="mt-2 flex items-center gap-2 p-2 bg-gray-100 rounded-lg text-sm text-blue-600 hover:bg-gray-200 transition-colors"
+        className="mt-2 flex items-center gap-2 p-2 bg-gray-100 rounded-lg text-xs text-blue-600 hover:bg-gray-200 transition-colors"
       >
-        {isPDF ? <FileText className="w-5 h-5" /> : <Paperclip className="w-5 h-5" />}
+        {isPDF ? <FileText className="w-4 h-4" /> : <Paperclip className="w-4 h-4" />}
         <span className="truncate flex-1">{msg.fileName || 'Documento'}</span>
-        <span>📎 Ver</span>
       </a>
     )
   }
@@ -337,9 +297,9 @@ export default function ChatWidget() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-green-600 to-emerald-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 group"
+        className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 bg-gradient-to-r from-green-600 to-emerald-600 text-white p-3 md:p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 group"
       >
-        <MessageCircle className="w-6 h-6 group-hover:scale-110 transition-transform" />
+        <MessageCircle className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110 transition-transform" />
         <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
       </button>
     )
@@ -348,20 +308,20 @@ export default function ChatWidget() {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: 50, scale: 0.9 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 50, scale: 0.9 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.2 }}
-        style={{ width: isExpanded ? '560px' : '400px', height: isExpanded ? '580px' : '550px' }}
-        className="fixed bottom-6 right-6 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col transition-all duration-300 ease-in-out"
+        className="fixed inset-0 md:inset-auto md:bottom-6 md:right-6 z-50 md:w-[380px] md:h-[550px] bg-white md:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col"
       >
+        {/* Header */}
         <div className={`bg-gradient-to-r ${getAgentGradient(assignedAgent?.color)} px-4 py-3 flex items-center justify-between shrink-0`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <MessageCircle className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <MessageCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-white">Soporte en línea</h3>
+              <h3 className="font-bold text-white text-sm md:text-base">Soporte en línea</h3>
               {assignedAgent ? (
                 <p className="text-xs text-white/80">Asignado a: {assignedAgent.name}</p>
               ) : (
@@ -370,11 +330,8 @@ export default function ChatWidget() {
             </div>
           </div>
           <div className="flex gap-1">
-            <button onClick={toggleExpand} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
-              {isExpanded ? <Minimize className="w-4 h-4 text-white" /> : <Maximize className="w-4 h-4 text-white" />}
-            </button>
             <button onClick={() => setIsMinimized(!isMinimized)} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
-              {isMinimized ? <Maximize2 className="w-4 h-4 text-white" /> : <Minimize2 className="w-4 h-4 text-white" />}
+              <Minimize2 className="w-4 h-4 text-white" />
             </button>
             <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
               <X className="w-4 h-4 text-white" />
@@ -394,28 +351,28 @@ export default function ChatWidget() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex-1 overflow-y-auto p-6 flex flex-col justify-center">
-                    <div className="text-center mb-6">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <MessageCircle className="w-8 h-8 text-green-600" />
+                  <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col justify-center">
+                    <div className="text-center mb-4 md:mb-6">
+                      <div className="w-12 h-12 md:w-16 md:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <MessageCircle className="w-6 h-6 md:w-8 md:h-8 text-green-600" />
                       </div>
-                      <h4 className="font-bold text-lg">¿Necesitas ayuda?</h4>
-                      <p className="text-sm text-gray-500">Déjanos tus datos y te contactamos</p>
+                      <h4 className="font-bold text-base md:text-lg">¿Necesitas ayuda?</h4>
+                      <p className="text-xs md:text-sm text-gray-500">Déjanos tus datos y te contactamos</p>
                     </div>
                     <form onSubmit={startConversation} className="space-y-3">
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input type="text" placeholder="Tu nombre *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
+                        <input type="text" placeholder="Tu nombre *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
                       </div>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input type="email" placeholder="Tu correo *" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
+                        <input type="email" placeholder="Tu correo *" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
                       </div>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input type="tel" placeholder="Tu teléfono" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
+                        <input type="tel" placeholder="Tu teléfono" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
                       </div>
-                      <button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2.5 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50">
+                      <button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50">
                         {isLoading ? 'Conectando...' : 'Iniciar conversación'}
                       </button>
                     </form>
@@ -423,7 +380,7 @@ export default function ChatWidget() {
                 )
               ) : (
                 <>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
                     {messages.map((msg) => (
                       <div key={msg.id} className={`flex ${msg.senderType === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${msg.senderType === 'user' ? 'bg-green-600 text-white rounded-br-none' : msg.senderType === 'system' ? 'bg-gray-100 text-gray-500 italic' : 'bg-gray-100 text-gray-800 rounded-bl-none'}`}>
@@ -439,7 +396,7 @@ export default function ChatWidget() {
                       <div className="flex justify-start">
                         <div className="bg-gray-100 p-3 rounded-lg flex items-center gap-2">
                           <Loader2 className="w-4 h-4 animate-spin text-green-600" />
-                          <span className="text-sm text-gray-500">Subiendo archivo...</span>
+                          <span className="text-xs text-gray-500">Subiendo...</span>
                         </div>
                       </div>
                     )}
@@ -449,18 +406,18 @@ export default function ChatWidget() {
                   <div className="border-t p-3 flex gap-2 bg-gray-50 shrink-0">
                     <input type="file" ref={fileInputRef} accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={(e) => { if (e.target.files?.[0]) { uploadFile(e.target.files[0]); e.target.value = '' } }} />
                     <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">
-                      <Paperclip className="w-5 h-5" />
+                      <Paperclip className="w-4 h-4" />
                     </button>
-                    <input ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Escribe tu mensaje..." className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white" />
+                    <input ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Escribe tu mensaje..." className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white" />
                     <button onClick={sendMessage} disabled={!input.trim()} className="bg-green-600 text-white p-2 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50">
-                      <Send className="w-5 h-5" />
+                      <Send className="w-4 h-4" />
                     </button>
                   </div>
                 </>
               )}
             </div>
             <div className="bg-gray-50 px-4 py-2 border-t text-center shrink-0">
-              <p className="text-[10px] text-gray-400">💾 Tus mensajes se guardan • Haz clic en 🗖 para agrandar</p>
+              <p className="text-[10px] text-gray-400">💾 Tus mensajes se guardan</p>
             </div>
           </>
         )}
