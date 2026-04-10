@@ -49,8 +49,6 @@ export default function AgentChatPage() {
         if (markAsRead) {
           console.log('✅ Mensajes marcados como leídos')
           hasMarkedAsReadRef.current = true
-          
-          // 🔴 DISPARO NUCLEAR: Actualizar lista de conversaciones
           localStorage.setItem('chat_refresh', Date.now().toString())
           window.dispatchEvent(new CustomEvent('refreshConversations'))
         }
@@ -76,7 +74,6 @@ export default function AgentChatPage() {
     return () => {
       if (id && hasMarkedAsReadRef.current) {
         console.log('👋 Saliendo de conversación, refrescando lista...')
-        // Marcar como leído al salir
         fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
           cache: 'no-store'
         })
@@ -102,7 +99,6 @@ export default function AgentChatPage() {
     
     const pollForMessages = async () => {
       try {
-        // Siempre marcar como leído en el polling
         const res = await fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
           cache: 'no-store',
           headers: { 'Cache-Control': 'no-cache' }
@@ -121,7 +117,6 @@ export default function AgentChatPage() {
               setConversation(data.conversation)
             }
             
-            // 🔴 DISPARO NUCLEAR: Notificar actualización de conversaciones
             localStorage.setItem('chat_refresh', Date.now().toString())
             window.dispatchEvent(new CustomEvent('refreshConversations'))
           }
@@ -131,7 +126,6 @@ export default function AgentChatPage() {
       }
     }
     
-    // Polling cada 2 segundos
     pollingIntervalRef.current = setInterval(pollForMessages, 2000)
     
     return () => {
@@ -188,19 +182,9 @@ export default function AgentChatPage() {
           return newMessages
         })
         
-        // 🔴 DISPARO NUCLEAR MÚLTIPLE para asegurar actualización
+        // ✅ SOLO UN DISPARO - Sin setTimeout múltiples
         localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
-        
-        setTimeout(() => {
-          localStorage.setItem('chat_refresh', Date.now().toString())
-          window.dispatchEvent(new CustomEvent('refreshConversations'))
-        }, 100)
-        
-        setTimeout(() => {
-          localStorage.setItem('chat_refresh', Date.now().toString())
-          window.dispatchEvent(new CustomEvent('refreshConversations'))
-        }, 500)
       } else {
         setMessages(prev => {
           const filtered = prev.filter(m => m.id !== tempMessage.id)
@@ -279,7 +263,7 @@ export default function AgentChatPage() {
             return newMessages
           })
           
-          // 🔴 DISPARO NUCLEAR
+          // ✅ SOLO UN DISPARO
           localStorage.setItem('chat_refresh', Date.now().toString())
           window.dispatchEvent(new CustomEvent('refreshConversations'))
         } else {
@@ -309,8 +293,6 @@ export default function AgentChatPage() {
       const data = await res.json()
       if (data.success) {
         await loadMessages()
-        
-        // 🔴 DISPARO NUCLEAR
         localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
       }
@@ -322,12 +304,11 @@ export default function AgentChatPage() {
   const deleteConversation = async () => {
     if (!confirm('¿Eliminar permanentemente esta conversación? Esta acción no se puede deshacer.')) return
     try {
-      const res = await fetch(`/api/chat/delete?id=${id}`, {
+      const res = await fetch(`/api/chat/delete/${id}`, {
         method: 'DELETE',
       })
       const data = await res.json()
       if (data.success) {
-        // 🔴 DISPARO NUCLEAR
         localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
         router.push('/admin/chat')
@@ -387,21 +368,15 @@ export default function AgentChatPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => {
-              // Marcar como leído antes de salir
               fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
                 cache: 'no-store'
               })
                 .then(res => res.json())
                 .then(data => {
                   if (data.success) {
-                    // 🔴 DISPARO NUCLEAR antes de salir
                     localStorage.setItem('chat_refresh', Date.now().toString())
                     window.dispatchEvent(new CustomEvent('refreshConversations'))
-                    
-                    // Pequeño delay para asegurar que se procese
-                    setTimeout(() => {
-                      router.push('/admin/chat')
-                    }, 100)
+                    setTimeout(() => router.push('/admin/chat'), 100)
                   } else {
                     router.push('/admin/chat')
                   }
