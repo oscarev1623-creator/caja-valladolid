@@ -22,20 +22,15 @@ function getAgentGradient(color: string | undefined) {
   return gradients[color || 'green'] || 'from-green-600 to-emerald-600'
 }
 
-// 🔗 Función para convertir URLs en enlaces clickeables (VERSIÓN MEJORADA)
+// 🔗 Función para convertir URLs en enlaces clickeables
 const linkify = (text: string, isAgent: boolean) => {
   if (!text) return text
   
-  // Regex que detecta:
-  // - https://ejemplo.com
-  // - http://ejemplo.com  
-  // - www.ejemplo.com
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
   const parts = text.split(urlRegex)
   
   return parts.map((part, index) => {
     if (part.match(urlRegex)) {
-      // Si empieza con www., agregar https://
       const href = part.startsWith('www.') ? `https://${part}` : part
       return (
         <a
@@ -124,78 +119,127 @@ export default function ChatWidget() {
     }
   }
 
-  const startConversation = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formData.name || !formData.email) return
+const startConversation = async (e: React.FormEvent) => {
+  e.preventDefault()
+  if (!formData.name || !formData.email) return
 
-    setIsLoading(true)
-    try {
-      const leadResponse = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: formData.name,
-          email: formData.email,
-          phone: formData.phone || '',
-          estimatedAmount: 0,
-          creditType: 'TRADITIONAL',
-          status: 'PENDING_CONTACT',
-          message: `Cliente inició conversación por chat. Teléfono: ${formData.phone || 'No proporcionado'}`
-        })
+  setIsLoading(true)
+  try {
+    // 1. Crear lead
+    const leadResponse = await fetch('/api/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: formData.name,
+        email: formData.email,
+        phone: formData.phone || '',
+        estimatedAmount: 0,
+        creditType: 'TRADITIONAL',
+        status: 'PENDING_CONTACT',
+        message: `Cliente inició conversación por chat. Teléfono: ${formData.phone || 'No proporcionado'}`
       })
+    })
 
-      await leadResponse.json()
-      
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Lead', {
-          content_name: 'Chat Iniciado',
-          content_category: 'Oficina Virtual',
-          value: 1,
-          currency: 'MXN'
-        })
-      }
-
-      const res = await fetch('/api/chat/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone
-        })
-      })
-      const data = await res.json()
-
-      if (data.success) {
-        setConversationId(data.conversationId)
-        localStorage.setItem('chat_conversation_id', data.conversationId)
+    const leadData = await leadResponse.json()
+    console.log('✅ Lead creado:', leadData)
+    
+    // ✅ USAR EL ENDPOINT EXISTENTE: generate-link
+    let documentLink = ''
+    if (leadData.success && leadData.data?.id) {
+      try {
+        const baseUrl = window.location.origin
         
-        const assignRes = await fetch('/api/chat/assign', {
+        const ticketRes = await fetch('/api/leads/generate-link', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ conversationId: data.conversationId })
+          credentials: 'include', // ← Necesario para la cookie de sesión
+          body: JSON.stringify({ 
+            leadId: leadData.data.id,
+            baseUrl: baseUrl
+          })
         })
-        const assignData = await assignRes.json()
+        const ticketData = await ticketRes.json()
         
-        if (assignData.success) {
-          setAssignedAgent(assignData.agent)
+        if (ticketData.success) {
+          documentLink = ticketData.data.url
+          console.log('✅ Enlace generado:', documentLink)
         }
-        
-        setStep('chat')
-        setMessages([{
-          id: 'welcome',
-          message: `Hola ${formData.name}, ¡bienvenido! Un asesor te atenderá en breve.`,
-          senderType: 'system',
-          createdAt: new Date().toISOString()
-        }])
+      } catch (err) {
+        console.error('Error generando enlace:', err)
       }
-    } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setIsLoading(false)
     }
-  }
+    
+    // 2. Facebook Pixel
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'Lead', {
+        content_name: 'Chat Iniciado',
+        content_category: 'Oficina Virtual',
+        value: 1,
+        currency: 'MXN'
+      })
+    }
 
+    // 3. Iniciar conversación de chat
+    const res = await fetch('/api/chat/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone
+      })
+    })
+    const data = await res.json()
+
+    if (data.success) {
+      setConversationId(data.conversationId)
+      localStorage.setItem('chat_conversation_id', data.conversationId)
+      
+      // 4. Asignar asesor
+      const assignRes = await fetch('/api/chat/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: data.conversationId })
+      })
+      const assignData = await assignRes.json()
+      
+      if (assignData.success) {
+        setAssignedAgent(assignData.agent)
+      }
+      
+      setStep('chat')
+      
+      // 5. Mensaje de bienvenida + enlace de documentos (si se generó)
+      const welcomeMessage = documentLink 
+        ? `Hola ${formData.name}, ¡bienvenido! Un asesor te atenderá en breve.`
+        : `Hola ${formData.name}, ¡bienvenido! Un asesor te atenderá en breve.`
+      
+      setMessages([{
+        id: 'welcome',
+        message: welcomeMessage,
+        senderType: 'system',
+        createdAt: new Date().toISOString()
+      }])
+      
+      // 6. Enviar mensaje del sistema con el enlace (si se generó)
+      if (documentLink) {
+        await fetch('/api/chat/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: data.conversationId,
+            message: `📎 Enlace para subir documentos: ${documentLink}`,
+            senderType: 'system'
+          })
+        })
+      }
+    }
+  } catch (error) {
+    console.error('Error:', error)
+  } finally {
+    setIsLoading(false)
+  }
+}
   const sendMessage = async () => {
     if (!input.trim() || !conversationId) return
 
@@ -345,7 +389,6 @@ export default function ChatWidget() {
         transition={{ duration: 0.2 }}
         className="fixed inset-0 md:inset-auto md:bottom-6 md:right-6 z-50 md:w-[380px] md:h-[550px] bg-white md:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col"
       >
-        {/* Header */}
         <div className={`bg-gradient-to-r ${getAgentGradient(assignedAgent?.color)} px-4 py-3 flex items-center justify-between shrink-0`}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -415,7 +458,6 @@ export default function ChatWidget() {
                     {messages.map((msg) => (
                       <div key={msg.id} className={`flex ${msg.senderType === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${msg.senderType === 'user' ? 'bg-green-600 text-white rounded-br-none' : msg.senderType === 'system' ? 'bg-gray-100 text-gray-500 italic' : 'bg-gray-100 text-gray-800 rounded-bl-none'}`}>
-                          {/* 🔗 ENLACES CLICKEABLES */}
                           {linkify(msg.message, msg.senderType === 'user')}
                           {renderFilePreview(msg)}
                           <div className={`text-[10px] mt-1 ${msg.senderType === 'user' ? 'text-green-200' : 'text-gray-400'}`}>
