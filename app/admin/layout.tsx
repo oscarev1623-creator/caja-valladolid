@@ -75,7 +75,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Conversaciones', href: '/admin/chat' }, 
     { name: 'Tickets', href: '/admin/tickets' },
     { name: 'Documentos', href: '/admin/documents' },
-    { name: 'Mensajes', href: '/admin/messages' },
     { name: 'Asesores', href: '/admin/agents' },  // 👈 CORREGIDO (sin icon)
     { name: 'Administradores', href: '/admin/users' },
   ]
