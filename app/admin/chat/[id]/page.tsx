@@ -89,53 +89,61 @@ export default function AgentChatPage() {
     }
   }, [id])
 
-  // Polling optimizado - Marcar como leído en cada poll
-  useEffect(() => {
-    if (!id) return
-    
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current)
-    }
-    
-    const pollForMessages = async () => {
-      try {
-        const res = await fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
-          cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache' }
-        })
-        const data = await res.json()
+// Polling optimizado - SOLO marcar como leído si hay mensajes nuevos
+useEffect(() => {
+  if (!id) return
+  
+  if (pollingIntervalRef.current) {
+    clearInterval(pollingIntervalRef.current)
+  }
+  
+  const pollForMessages = async () => {
+    try {
+      // 👈 NO marcar como leído en cada poll
+      const res = await fetch(`/api/chat/messages?conversationId=${id}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      })
+      const data = await res.json()
+      
+      if (data.success) {
+        const newMessageCount = data.messages.length
         
-        if (data.success) {
-          const newMessageCount = data.messages.length
+        if (newMessageCount !== lastMessageCountRef.current) {
+          console.log(`📨 Mensajes actualizados: ${newMessageCount}`)
+          setMessages(data.messages)
+          lastMessageCountRef.current = newMessageCount
           
-          if (newMessageCount !== lastMessageCountRef.current) {
-            console.log(`📨 Mensajes actualizados: ${newMessageCount} (antes: ${lastMessageCountRef.current})`)
-            setMessages(data.messages)
-            lastMessageCountRef.current = newMessageCount
-            
-            if (data.conversation) {
-              setConversation(data.conversation)
-            }
-            
+          if (data.conversation) {
+            setConversation(data.conversation)
+          }
+          
+          // Solo marcar como leído si hay mensajes NUEVOS del usuario
+          const hasNewUserMessages = data.messages.some((m: any) => 
+            m.senderType === 'user' && !m.isRead
+          )
+          
+          if (hasNewUserMessages) {
+            await fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
             localStorage.setItem('chat_refresh', Date.now().toString())
             window.dispatchEvent(new CustomEvent('refreshConversations'))
           }
         }
-      } catch (error) {
-        console.error('Error en polling:', error)
       }
+    } catch (error) {
+      console.error('Error en polling:', error)
     }
-    
-    pollingIntervalRef.current = setInterval(pollForMessages, 2000)
-    
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
-        pollingIntervalRef.current = null
-      }
+  }
+  
+  pollingIntervalRef.current = setInterval(pollForMessages, 3000) // 3 segundos es suficiente
+  
+  return () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
     }
-  }, [id])
-
+  }
+}, [id])
   // Scroll automático
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
