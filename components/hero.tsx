@@ -95,45 +95,54 @@ export default function Hero() {
         </div>
       </nav>
 
-      {/* Sección Hero - CON VIDEO DE YOUTUBE */}
+      {/* Sección Hero - VIDEO OPTIMIZADO */}
       <section
         id="inicio"
         className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden"
       >
-{/* Video de fondo desde YouTube */}
-<div className="absolute inset-0 z-0">
-  {/* Video para DESKTOP (horizontal 16:9) */}
-  <iframe
-    className="hidden md:block absolute top-0 left-0 w-full h-full pointer-events-none"
-    src="https://www.youtube.com/embed/x472zBmlxqo?autoplay=1&mute=1&loop=1&playlist=x472zBmlxqo&controls=0&showinfo=0&modestbranding=1&rel=0"
-    title="Caja Valladolid - Créditos"
-    frameBorder="0"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-    allowFullScreen
-    onLoad={() => setIsVideoLoaded(true)}
-  />
-  
-  {/* Video para MÓVIL (vertical 9:16 - SHORT) */}
-  <iframe
-    className="block md:hidden absolute top-0 left-0 w-full h-full pointer-events-none"
-    src="https://www.youtube.com/embed/VtQzqk2kk3k?autoplay=1&mute=1&loop=1&playlist=VtQzqk2kk3k&controls=0&showinfo=0&modestbranding=1&rel=0"
-    title="Caja Valladolid - Short"
-    frameBorder="0"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-    allowFullScreen
-    onLoad={() => setIsVideoLoaded(true)}
-  />
-  
-  {/* Overlay para mejorar legibilidad del texto */}
-  <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
-  
-  {/* Loader mientras carga el video */}
-  {!isVideoLoaded && (
-    <div className="absolute inset-0 bg-gradient-to-br from-green-900 to-green-800 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-400 border-t-transparent"></div>
-    </div>
-  )}
-</div>
+        {/* Video de fondo OPTIMIZADO */}
+        <div className="absolute inset-0 z-0">
+          {/* Video para DESKTOP (horizontal 16:9) - con parámetros mejorados */}
+          <div className="hidden md:block absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[300%] h-[300%]">
+            <iframe
+              className="absolute top-0 left-0 w-full h-full"
+              src="https://www.youtube.com/embed/x472zBmlxqo?autoplay=1&mute=1&loop=1&playlist=x472zBmlxqo&controls=0&showinfo=0&modestbranding=1&rel=0&vq=hd1080&version=3&enablejsapi=1&iv_load_policy=3"
+              title="Caja Valladolid - Créditos"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              onLoad={() => setIsVideoLoaded(true)}
+              style={{ pointerEvents: 'none' }}
+            />
+          </div>
+          
+          {/* Video para MÓVIL (vertical 9:16 - SHORT) - con parámetros mejorados */}
+          <div className="block md:hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[300%] h-[300%]">
+            <iframe
+              className="absolute top-0 left-0 w-full h-full"
+              src="https://www.youtube.com/embed/VtQzqk2kk3k?autoplay=1&mute=1&loop=1&playlist=VtQzqk2kk3k&controls=0&showinfo=0&modestbranding=1&rel=0&vq=hd1080&version=3&enablejsapi=1&iv_load_policy=3"
+              title="Caja Valladolid - Short"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              onLoad={() => setIsVideoLoaded(true)}
+              style={{ pointerEvents: 'none' }}
+            />
+          </div>
+          
+          {/* Overlay mejorado para legibilidad */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
+          
+          {/* Loader mejorado */}
+          {!isVideoLoaded && (
+            <div className="absolute inset-0 bg-gradient-to-br from-green-900 to-green-800 flex items-center justify-center z-10">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-400 border-t-transparent mx-auto mb-4"></div>
+                <p className="text-white/80 text-sm">Cargando video...</p>
+              </div>
+            </div>
+          )}
+        </div>
         
         {/* Contenido */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-32 text-center">
