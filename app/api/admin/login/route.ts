@@ -1,74 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
-
-const prisma = new PrismaClient()
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { success: false, error: 'Email y contraseña requeridos' },
-        { status: 400 }
-      )
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: email.trim().toLowerCase() }
+    // Buscar usuario sin importar mayúsculas/minúsculas
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email.trim(),
+          mode: 'insensitive'
+        }
+      }
     })
 
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Credenciales incorrectas' },
+        { success: false, error: 'Usuario no encontrado' },
         { status: 401 }
       )
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password)
-    if (!isValidPassword) {
+    // Verificar contraseña
+    const isValid = await bcrypt.compare(password, user.password)
+    
+    if (!isValid) {
       return NextResponse.json(
-        { success: false, error: 'Credenciales incorrectas' },
+        { success: false, error: 'Contraseña incorrecta' },
         { status: 401 }
       )
     }
 
-    // 🔴 CORREGIDO: case-insensitive
-    if (user.role.toLowerCase() !== 'admin') {
+    // Verificar rol (case-insensitive)
+    const role = user.role.toLowerCase()
+    if (role !== 'admin' && role !== 'agent') {
       return NextResponse.json(
         { success: false, error: 'Acceso no autorizado' },
         { status: 403 }
       )
     }
 
+    // Login exitoso
     const response = NextResponse.json({
       success: true,
-      message: 'Login exitoso',
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: role
       }
     })
 
+    // Cookie de sesión
     response.cookies.set('admin_session', 'authenticated', {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7
     })
 
+    // Cookie para frontend
     response.cookies.set('admin_user', JSON.stringify({
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role
+      role: role
     }), {
       httpOnly: false,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7
@@ -79,10 +81,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json(
-      { success: false, error: 'Error interno' },
+      { success: false, error: 'Error interno del servidor' },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }
