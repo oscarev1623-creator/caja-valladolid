@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2, FileCheck, MoreVertical, X } from 'lucide-react'
+import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2, FileCheck, MoreVertical } from 'lucide-react'
 
-// 🔗 Función para convertir URLs en enlaces clickeables
+// 🔗 Función linkify (igual)
 const linkify = (text: string, isAgent: boolean) => {
   if (!text) return text
-  
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
   const parts = text.split(urlRegex)
   
@@ -49,6 +48,9 @@ export default function AgentChatPage() {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const hasMarkedAsReadRef = useRef<boolean>(false)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // ... (loadMessages y useEffects IGUAL que antes)
 
   const loadMessages = useCallback(async (markAsRead = false) => {
     if (!id) return
@@ -98,9 +100,7 @@ export default function AgentChatPage() {
   useEffect(() => {
     return () => {
       if (id && hasMarkedAsReadRef.current) {
-        fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
-          cache: 'no-store'
-        })
+        fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, { cache: 'no-store' })
           .then(res => res.json())
           .then(data => {
             if (data.success) {
@@ -116,9 +116,7 @@ export default function AgentChatPage() {
   useEffect(() => {
     if (!id) return
     
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current)
-    }
+    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
     
     const pollForMessages = async () => {
       try {
@@ -135,9 +133,7 @@ export default function AgentChatPage() {
             setMessages(data.messages)
             lastMessageCountRef.current = newMessageCount
             
-            if (data.conversation) {
-              setConversation(data.conversation)
-            }
+            if (data.conversation) setConversation(data.conversation)
             
             const hasNewUserMessages = data.messages.some((m: any) => 
               m.senderType === 'user' && !m.isRead
@@ -156,28 +152,26 @@ export default function AgentChatPage() {
     }
     
     pollingIntervalRef.current = setInterval(pollForMessages, 3000)
-    
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
-        pollingIntervalRef.current = null
-      }
-    }
+    return () => clearInterval(pollingIntervalRef.current!)
   }, [id])
 
   useEffect(() => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-    }, 50)
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 50)
   }, [messages])
 
   useEffect(() => {
     if (!loading && messages.length > 0) {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-      }, 100)
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }), 100)
     }
   }, [loading])
+
+  // Auto-ajustar altura del textarea
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto'
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px'
+    }
+  }, [input])
 
   const sendMessage = async () => {
     if (!input.trim() || !id) return
@@ -192,22 +186,15 @@ export default function AgentChatPage() {
       createdAt: new Date().toISOString()
     }
     
-    setMessages(prev => {
-      const newMessages = [...prev, tempMessage]
-      lastMessageCountRef.current = newMessages.length
-      return newMessages
-    })
+    setMessages(prev => [...prev, tempMessage])
+    lastMessageCountRef.current = messages.length + 1
     setInput('')
 
     try {
       const res = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: id,
-          message: messageText,
-          senderType: 'agent'
-        })
+        body: JSON.stringify({ conversationId: id, message: messageText, senderType: 'agent' })
       })
       
       const data = await res.json()
@@ -215,29 +202,18 @@ export default function AgentChatPage() {
       if (data.success) {
         setMessages(prev => {
           const filtered = prev.filter(m => m.id !== tempMessage.id)
-          const newMessages = [...filtered, data.message]
-          lastMessageCountRef.current = newMessages.length
-          return newMessages
+          return [...filtered, data.message]
         })
-        
+        lastMessageCountRef.current = data.messages?.length || messages.length
         localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
       } else {
-        setMessages(prev => {
-          const filtered = prev.filter(m => m.id !== tempMessage.id)
-          lastMessageCountRef.current = filtered.length
-          return filtered
-        })
+        setMessages(prev => prev.filter(m => m.id !== tempMessage.id))
         setInput(messageText)
         alert('Error al enviar mensaje')
       }
     } catch (error) {
-      console.error('Error sending message:', error)
-      setMessages(prev => {
-        const filtered = prev.filter(m => m.id !== tempMessage.id)
-        lastMessageCountRef.current = filtered.length
-        return filtered
-      })
+      setMessages(prev => prev.filter(m => m.id !== tempMessage.id))
       setInput(messageText)
       alert('Error al enviar mensaje')
     } finally {
@@ -247,37 +223,17 @@ export default function AgentChatPage() {
 
   const uploadFile = async (file: File) => {
     if (!id) return
-
     setIsUploading(true)
     const formData = new FormData()
     formData.append('file', file)
     formData.append('conversationId', id)
 
     try {
-      const uploadRes = await fetch('/api/chat/upload', {
-        method: 'POST',
-        body: formData
-      })
+      const uploadRes = await fetch('/api/chat/upload', { method: 'POST', body: formData })
       const uploadData = await uploadRes.json()
 
       if (uploadData.success) {
         const isImage = file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-        
-        const tempFileMessage = {
-          id: `temp-file-${Date.now()}`,
-          message: isImage ? '' : `📎 ${file.name}`,
-          senderType: 'agent',
-          fileUrl: uploadData.url,
-          fileType: uploadData.fileType,
-          fileName: file.name,
-          createdAt: new Date().toISOString()
-        }
-        
-        setMessages(prev => {
-          const newMessages = [...prev, tempFileMessage]
-          lastMessageCountRef.current = newMessages.length
-          return newMessages
-        })
         
         const sendRes = await fetch('/api/chat/send', {
           method: 'POST',
@@ -295,21 +251,9 @@ export default function AgentChatPage() {
         const sendData = await sendRes.json()
         
         if (sendData.success) {
-          setMessages(prev => {
-            const filtered = prev.filter(m => m.id !== tempFileMessage.id)
-            const newMessages = [...filtered, sendData.message]
-            lastMessageCountRef.current = newMessages.length
-            return newMessages
-          })
-          
+          setMessages(prev => [...prev, sendData.message])
           localStorage.setItem('chat_refresh', Date.now().toString())
           window.dispatchEvent(new CustomEvent('refreshConversations'))
-        } else {
-          setMessages(prev => {
-            const filtered = prev.filter(m => m.id !== tempFileMessage.id)
-            lastMessageCountRef.current = filtered.length
-            return filtered
-          })
         }
       }
     } catch (error) {
@@ -323,81 +267,62 @@ export default function AgentChatPage() {
   const closeConversation = async () => {
     if (!confirm('¿Cerrar esta conversación?')) return
     try {
-      const res = await fetch('/api/chat/close', {
+      await fetch('/api/chat/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId: id })
       })
-      const data = await res.json()
-      if (data.success) {
-        await loadMessages()
-        localStorage.setItem('chat_refresh', Date.now().toString())
-        window.dispatchEvent(new CustomEvent('refreshConversations'))
-      }
+      await loadMessages()
+      localStorage.setItem('chat_refresh', Date.now().toString())
+      window.dispatchEvent(new CustomEvent('refreshConversations'))
     } catch (error) {
       console.error('Error closing conversation:', error)
     }
   }
 
   const deleteConversation = async () => {
-    if (!confirm('¿Eliminar permanentemente esta conversación?')) return
+    if (!confirm('¿Eliminar permanentemente?')) return
     try {
-      const res = await fetch(`/api/chat/delete/${id}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(`/api/chat/delete/${id}`, { method: 'DELETE' })
       const data = await res.json()
       if (data.success) {
         localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
         router.push('/admin/chat')
       } else {
-        alert(data.error || 'Error al eliminar la conversación')
+        alert(data.error || 'Error al eliminar')
       }
     } catch (error) {
-      console.error('Error deleting conversation:', error)
       alert('Error al eliminar')
     }
   }
 
   const generateDocumentLink = async () => {
-    if (!conversation?.userEmail) {
-      alert('No hay email asociado a esta conversación')
-      return
-    }
-
+    if (!conversation?.userEmail) return alert('No hay email asociado')
     setIsGeneratingDocLink(true)
     try {
       const leadsRes = await fetch(`/api/leads?email=${encodeURIComponent(conversation.userEmail)}`)
       const leadsData = await leadsRes.json()
+      if (!leadsData.success || !leadsData.data?.length) return alert('Lead no encontrado')
       
-      if (!leadsData.success || !leadsData.data?.length) {
-        alert('No se encontró un lead asociado a este email')
-        return
-      }
-
       const lead = leadsData.data[0]
-      const baseUrl = window.location.origin
-      
       const linkRes = await fetch('/api/leads/generate-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ leadId: lead.id, baseUrl })
+        body: JSON.stringify({ leadId: lead.id, baseUrl: window.location.origin })
       })
       
       const linkData = await linkRes.json()
-      
       if (linkData.success) {
-        const documentLink = linkData.data.url
-        await navigator.clipboard.writeText(documentLink)
-        setInput(documentLink)
+        await navigator.clipboard.writeText(linkData.data.url)
+        setInput(linkData.data.url)
         alert('✅ Enlace copiado al input')
       } else {
-        alert('Error: ' + (linkData.error || 'Error desconocido'))
+        alert('Error: ' + linkData.error)
       }
     } catch (error) {
-      console.error('Error generando enlace:', error)
-      alert('Error al generar el enlace')
+      alert('Error al generar enlace')
     } finally {
       setIsGeneratingDocLink(false)
       setShowMenu(false)
@@ -405,44 +330,31 @@ export default function AgentChatPage() {
   }
 
   const generateCalculatorLink = async () => {
-    if (!conversation?.userEmail) {
-      alert('No hay email asociado a esta conversación')
-      return
-    }
-
+    if (!conversation?.userEmail) return alert('No hay email asociado')
     setIsGeneratingCalculatorLink(true)
     try {
       const leadsRes = await fetch(`/api/leads?email=${encodeURIComponent(conversation.userEmail)}`)
       const leadsData = await leadsRes.json()
+      if (!leadsData.success || !leadsData.data?.length) return alert('Lead no encontrado')
       
-      if (!leadsData.success || !leadsData.data?.length) {
-        alert('No se encontró un lead asociado a este email')
-        return
-      }
-
       const lead = leadsData.data[0]
-      const baseUrl = window.location.origin
-      
       const linkRes = await fetch('/api/leads/generate-calculator-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ leadId: lead.id, baseUrl })
+        body: JSON.stringify({ leadId: lead.id, baseUrl: window.location.origin })
       })
       
       const linkData = await linkRes.json()
-      
       if (linkData.success) {
-        const calculatorLink = linkData.data.url
-        await navigator.clipboard.writeText(calculatorLink)
-        setInput(calculatorLink)
+        await navigator.clipboard.writeText(linkData.data.url)
+        setInput(linkData.data.url)
         alert('✅ Enlace copiado al input')
       } else {
-        alert('Error: ' + (linkData.error || 'Error desconocido'))
+        alert('Error: ' + linkData.error)
       }
     } catch (error) {
-      console.error('Error generando enlace:', error)
-      alert('Error al generar el enlace')
+      alert('Error al generar enlace')
     } finally {
       setIsGeneratingCalculatorLink(false)
       setShowMenu(false)
@@ -451,7 +363,6 @@ export default function AgentChatPage() {
 
   const renderFilePreview = (msg: any) => {
     if (!msg.fileUrl) return null
-    
     const fileName = msg.fileName || ''
     const isImage = msg.fileType === 'image' || fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)
     
@@ -483,32 +394,19 @@ export default function AgentChatPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
+      <div className="h-screen flex items-center justify-center bg-gray-100">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-600 border-t-transparent"></div>
       </div>
     )
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
-      {/* Header OPTIMIZADO PARA MÓVIL */}
-      <div className="bg-white border-b px-3 py-2 flex items-center justify-between shrink-0">
+    <div className="h-screen flex flex-col bg-gray-100 fixed inset-0 md:relative">
+      {/* Header - Sticky */}
+      <div className="bg-white border-b px-3 py-2 flex items-center justify-between shrink-0 safe-top">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <button
-            onClick={() => {
-              fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, { cache: 'no-store' })
-                .then(res => res.json())
-                .then(data => {
-                  if (data.success) {
-                    localStorage.setItem('chat_refresh', Date.now().toString())
-                    window.dispatchEvent(new CustomEvent('refreshConversations'))
-                    router.push('/admin/chat')
-                  } else {
-                    router.push('/admin/chat')
-                  }
-                })
-                .catch(() => router.push('/admin/chat'))
-            }}
+            onClick={() => router.push('/admin/chat')}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -516,12 +414,7 @@ export default function AgentChatPage() {
           
           <div className="min-w-0 flex-1">
             <h1 className="font-bold text-sm truncate">{conversation?.userName || conversation?.userEmail}</h1>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className="truncate">{conversation?.userEmail}</span>
-              {conversation?.userPhone && (
-                <span className="shrink-0">{conversation.userPhone}</span>
-              )}
-            </div>
+            <p className="text-xs text-gray-500 truncate">{conversation?.userEmail}</p>
           </div>
         </div>
         
@@ -530,13 +423,11 @@ export default function AgentChatPage() {
             <button
               onClick={closeConversation}
               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              title="Cerrar chat"
             >
               <XCircle className="w-5 h-5" />
             </button>
           )}
           
-          {/* Menú desplegable para más opciones */}
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
@@ -580,11 +471,17 @@ export default function AgentChatPage() {
         </div>
       </div>
 
-      {/* Messages - OCUPA TODO EL ESPACIO DISPONIBLE */}
+      {/* Messages - ÁREA DE SCROLL */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-3 space-y-3"
+        className="flex-1 overflow-y-auto px-3 py-2 space-y-3 overscroll-contain"
       >
+        {messages.length === 0 && !loading && (
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+            No hay mensajes aún
+          </div>
+        )}
+        
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] px-3 py-2 rounded-lg ${
@@ -611,20 +508,22 @@ export default function AgentChatPage() {
             </div>
           </div>
         ))}
+        
         {isSending && (
           <div className="flex justify-end">
-            <div className="bg-gray-200 p-3 rounded-lg flex items-center gap-2">
+            <div className="bg-gray-200 px-3 py-2 rounded-lg flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin text-green-600" />
               <span className="text-sm text-gray-500">Enviando...</span>
             </div>
           </div>
         )}
+        
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input OPTIMIZADO */}
+      {/* Input - Sticky abajo */}
       {conversation?.status === 'active' && (
-        <div className="bg-white border-t p-2 shrink-0">
+        <div className="bg-white border-t p-2 shrink-0 safe-bottom">
           <div className="flex items-end gap-2">
             <input
               type="file"
@@ -643,14 +542,11 @@ export default function AgentChatPage() {
               className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
               disabled={isUploading || isSending}
             >
-              {isUploading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Paperclip className="w-5 h-5" />
-              )}
+              {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
             </button>
             
             <textarea
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -659,11 +555,10 @@ export default function AgentChatPage() {
                   sendMessage()
                 }
               }}
-              placeholder="Escribe tu respuesta..."
-              className="flex-1 px-3 py-2 border rounded-xl text-sm focus:ring-1 focus:ring-green-500 focus:border-transparent outline-none resize-none bg-gray-50 max-h-24"
+              placeholder="Escribe un mensaje..."
+              className="flex-1 px-3 py-2 border rounded-xl text-sm focus:ring-1 focus:ring-green-500 focus:border-transparent outline-none resize-none bg-gray-50"
               rows={1}
               disabled={isSending}
-              style={{ minHeight: '42px' }}
             />
             
             <button
