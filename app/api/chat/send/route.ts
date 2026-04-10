@@ -1,4 +1,3 @@
-// app/api/chat/send/route.ts
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendChatNotificationEmail } from '@/lib/email'
@@ -41,7 +40,17 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, message: newMessage })
+    // 🔴 AGREGADO: Headers anti-caché
+    return NextResponse.json(
+      { success: true, message: newMessage },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
+    )
   } catch (error) {
     console.error('Error sending message:', error)
     return NextResponse.json({ success: false, error: 'Error al enviar' }, { status: 500 })

@@ -18,9 +18,10 @@ export async function POST(req: Request) {
   try {
     const { conversationId } = await req.json()
 
+    // 🔴 CORREGIDO: Buscar 'agent' en minúsculas
     const agents = await prisma.user.findMany({
       where: {
-        role: 'AGENT',
+        role: 'agent',
         isActive: true
       }
     })
@@ -41,8 +42,9 @@ export async function POST(req: Request) {
       agentsWithLoad.sort((a, b) => a.currentLoad - b.currentLoad)
       selectedAgent = agentsWithLoad[0]
     } else {
+      // 🔴 CORREGIDO: Buscar 'admin' en minúsculas
       const admin = await prisma.user.findFirst({
-        where: { role: 'ADMIN' }
+        where: { role: 'admin' }
       })
       
       if (admin) {
@@ -76,7 +78,7 @@ export async function POST(req: Request) {
     await prisma.chatMessage.create({
       data: {
         conversationId,
-        message: `Asignado a ${selectedAgent.name}${selectedAgent.role === 'ADMIN' ? ' (Administrador)' : ''}`,
+        message: `Asignado a ${selectedAgent.name}${selectedAgent.role === 'admin' ? ' (Administrador)' : ''}`,
         senderType: 'system',
         isRead: true
       }

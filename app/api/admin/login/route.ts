@@ -1,4 +1,3 @@
-// app/api/admin/login/route.ts - VERSIÓN CORREGIDA
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
@@ -35,6 +34,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 🔴 CORREGIDO: case-insensitive
     if (user.role.toLowerCase() !== 'admin') {
       return NextResponse.json(
         { success: false, error: 'Acceso no autorizado' },
@@ -53,17 +53,14 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // ✅ COOKIE PARA PROXY (httpOnly) - SIN domain
     response.cookies.set('admin_session', 'authenticated', {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-      // ⚠️ ELIMINADO: domain: 'localhost'
+      maxAge: 60 * 60 * 24 * 7
     })
 
-    // ✅ COOKIE PARA FRONTEND (no-httpOnly) - SIN domain
     response.cookies.set('admin_user', JSON.stringify({
       id: user.id,
       email: user.email,
@@ -74,8 +71,7 @@ export async function POST(request: NextRequest) {
       secure: false,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-      // ⚠️ ELIMINADO: domain: 'localhost'
+      maxAge: 60 * 60 * 24 * 7
     })
 
     return response
