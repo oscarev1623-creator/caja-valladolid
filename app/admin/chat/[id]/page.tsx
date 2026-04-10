@@ -144,10 +144,40 @@ useEffect(() => {
     }
   }
 }, [id])
-  // Scroll automático
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+// Scroll automático - CORREGIDO
+useEffect(() => {
+  // Pequeño delay para asegurar que el DOM se actualizó
+  setTimeout(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' }) // 'auto' en lugar de 'smooth'
+  }, 50)
+}, [messages])
+
+// También hacer scroll cuando se carga la conversación por primera vez
+useEffect(() => {
+  if (!loading && messages.length > 0) {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+    }, 100)
+  }
+}, [loading])
+
+// Referencia para mantener la posición del scroll
+const scrollPositionRef = useRef<number>(0)
+const messagesContainerRef = useRef<HTMLDivElement>(null)
+
+// Guardar posición antes de actualizar mensajes
+const saveScrollPosition = () => {
+  if (messagesContainerRef.current) {
+    scrollPositionRef.current = messagesContainerRef.current.scrollTop
+  }
+}
+
+// Restaurar posición después de actualizar
+const restoreScrollPosition = () => {
+  if (messagesContainerRef.current) {
+    messagesContainerRef.current.scrollTop = scrollPositionRef.current
+  }
+}
 
   const sendMessage = async () => {
     if (!input.trim() || !id) return
@@ -431,7 +461,10 @@ useEffect(() => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div 
+  ref={messagesContainerRef}
+  className="flex-1 overflow-y-auto p-6 space-y-4"
+>
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[70%] px-4 py-2 rounded-lg ${
