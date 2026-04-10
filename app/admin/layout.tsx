@@ -174,7 +174,6 @@ function getIcon(name: string): string {
     'Conversaciones': '💬',
     'Tickets': '🎫',
     'Documentos': '📄',
-    'Mensajes': '✉️',
     'Asesores': '👥',
     'Administradores': '👤',
   }
