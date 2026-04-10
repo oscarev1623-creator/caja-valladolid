@@ -4,6 +4,31 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2 } from 'lucide-react'
 
+// 🔗 Función para convertir URLs en enlaces clickeables
+const linkify = (text: string, isAgent: boolean) => {
+  if (!text) return text
+  
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const parts = text.split(urlRegex)
+  
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`underline hover:opacity-80 break-all ${isAgent ? 'text-green-200' : 'text-blue-600'}`}
+        >
+          {part}
+        </a>
+      )
+    }
+    return <span key={index}>{part}</span>
+  })
+}
+
 export default function AgentChatPage() {
   const params = useParams()
   const router = useRouter()
@@ -20,7 +45,6 @@ export default function AgentChatPage() {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const hasMarkedAsReadRef = useRef<boolean>(false)
 
-  // Función para cargar mensajes
   const loadMessages = useCallback(async (markAsRead = false) => {
     if (!id) return
     
@@ -61,7 +85,6 @@ export default function AgentChatPage() {
     return false
   }, [id, messages])
 
-  // Cargar conversación inicial y marcar como leída
   useEffect(() => {
     if (id) {
       setLoading(true)
@@ -69,7 +92,6 @@ export default function AgentChatPage() {
     }
   }, [id, loadMessages])
 
-  // Marcar como leído al SALIR de la página
   useEffect(() => {
     return () => {
       if (id && hasMarkedAsReadRef.current) {
@@ -89,7 +111,6 @@ export default function AgentChatPage() {
     }
   }, [id])
 
-  // Polling optimizado - SOLO marcar como leído si hay mensajes nuevos
   useEffect(() => {
     if (!id) return
     
@@ -143,7 +164,6 @@ export default function AgentChatPage() {
     }
   }, [id])
 
-  // Scroll automático
   useEffect(() => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
@@ -457,7 +477,12 @@ export default function AgentChatPage() {
               {msg.senderType === 'system' && (
                 <div className="text-xs mb-1">📢 Sistema</div>
               )}
-              {msg.message && <p className="text-sm whitespace-pre-wrap">{msg.message}</p>}
+              {msg.message && (
+                <p className="text-sm whitespace-pre-wrap break-all">
+                  {/* 🔗 ENLACES CLICKEABLES */}
+                  {linkify(msg.message, msg.senderType === 'agent')}
+                </p>
+              )}
               {renderFilePreview(msg)}
               <div className={`text-[10px] mt-1 ${
                 msg.senderType === 'agent' ? 'text-green-200' : 'text-gray-400'
@@ -478,17 +503,17 @@ export default function AgentChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-{/* 🎯 FOOTER - SOLO VOLVER (OPTIMIZADO PARA MÓVIL) */}
-<div className="bg-white border-t px-3 py-2 md:px-4 md:py-2 flex items-center">
-  <button
-    onClick={() => router.push('/admin/chat')}
-    className="text-gray-600 hover:text-gray-800 flex items-center gap-2 text-xs md:text-sm transition-colors"
-  >
-    <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
-    <span className="hidden xs:inline">Volver a conversaciones</span>
-    <span className="xs:hidden">Volver</span>
-  </button>
-</div>
+      {/* 🎯 FOOTER - SOLO VOLVER */}
+      <div className="bg-white border-t px-3 py-2 md:px-4 md:py-2 flex items-center">
+        <button
+          onClick={() => router.push('/admin/chat')}
+          className="text-gray-600 hover:text-gray-800 flex items-center gap-2 text-xs md:text-sm transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
+          <span className="hidden xs:inline">Volver a conversaciones</span>
+          <span className="xs:hidden">Volver</span>
+        </button>
+      </div>
 
       {/* Input */}
       {conversation?.status === 'active' && (

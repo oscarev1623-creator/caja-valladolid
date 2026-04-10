@@ -22,6 +22,31 @@ function getAgentGradient(color: string | undefined) {
   return gradients[color || 'green'] || 'from-green-600 to-emerald-600'
 }
 
+// 🔗 Función para convertir URLs en enlaces clickeables
+const linkify = (text: string, isUser: boolean) => {
+  if (!text) return text
+  
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const parts = text.split(urlRegex)
+  
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`underline hover:opacity-80 break-all ${isUser ? 'text-green-200' : 'text-blue-600'}`}
+        >
+          {part}
+        </a>
+      )
+    }
+    return <span key={index}>{part}</span>
+  })
+}
+
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
@@ -384,7 +409,8 @@ export default function ChatWidget() {
                     {messages.map((msg) => (
                       <div key={msg.id} className={`flex ${msg.senderType === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${msg.senderType === 'user' ? 'bg-green-600 text-white rounded-br-none' : msg.senderType === 'system' ? 'bg-gray-100 text-gray-500 italic' : 'bg-gray-100 text-gray-800 rounded-bl-none'}`}>
-                          {msg.message}
+                          {/* 🔗 ENLACES CLICKEABLES */}
+                          {linkify(msg.message, msg.senderType === 'user')}
                           {renderFilePreview(msg)}
                           <div className={`text-[10px] mt-1 ${msg.senderType === 'user' ? 'text-green-200' : 'text-gray-400'}`}>
                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
