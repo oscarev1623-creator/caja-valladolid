@@ -147,15 +147,15 @@ export async function sendConfirmationEmail({ to, nombre, leadId }: { to: string
       </table>
     </div>
 
-    <div style="background-color: #eff6ff; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-      <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 16px;">📱 ¿Tienes dudas?</h3>
-      <p style="color: #1e40af; margin: 0 0 16px 0;">Puedes contactarnos directamente por WhatsApp o usar nuestra Oficina Virtual:</p>
-      <div style="text-align: center;">
-        <a href="${whatsappLink}" style="background-color: #25D366; color: white; padding: 10px 24px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">
-          💬 Contactar por WhatsApp
-        </a>
-      </div>
-    </div>
+<div style="background-color: #eff6ff; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+  <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 16px;">💬 Oficina Virtual</h3>
+  <p style="color: #1e40af; margin: 0 0 16px 0;">Habla directamente con un asesor en tiempo real:</p>
+  <div style="text-align: center;">
+    <a href="${baseUrl}" style="background: linear-gradient(135deg, #059669, #047857); color: white; padding: 12px 32px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block; font-size: 16px;">
+      💬 Abrir Oficina Virtual
+    </a>
+  </div>
+</div>
 
     <div style="background-color: #f0fdf4; border-radius: 12px; padding: 16px; text-align: center;">
       <p style="color: #065f46; margin: 0; font-size: 14px;">
