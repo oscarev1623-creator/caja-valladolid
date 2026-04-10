@@ -15,7 +15,7 @@ async function getBestAgent() {
   
   const agents = await prisma.user.findMany({
     where: {
-      role: 'AGENT',
+      role: 'agent',
       isActive: true
     }
   })
