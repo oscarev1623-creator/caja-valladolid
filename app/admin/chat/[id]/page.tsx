@@ -478,33 +478,17 @@ export default function AgentChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 🎯 FOOTER CON ACCIONES - NUEVO */}
-      <div className="bg-white border-t px-4 py-2 flex items-center justify-between">
-        <button
-          onClick={() => router.push('/admin/chat')}
-          className="text-gray-600 hover:text-gray-800 flex items-center gap-2 text-sm"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver a conversaciones
-        </button>
-        
-        <div className="flex gap-3">
-          {conversation?.status === 'active' ? (
-            <button
-              onClick={closeConversation}
-              className="text-red-600 hover:text-red-800 flex items-center gap-2 text-sm"
-            >
-              <XCircle className="w-4 h-4" />
-              Cerrar chat
-            </button>
-          ) : (
-            <span className="text-gray-400 flex items-center gap-2 text-sm">
-              <CheckCircle className="w-4 h-4" />
-              Chat cerrado
-            </span>
-          )}
-        </div>
-      </div>
+{/* 🎯 FOOTER - SOLO VOLVER (OPTIMIZADO PARA MÓVIL) */}
+<div className="bg-white border-t px-3 py-2 md:px-4 md:py-2 flex items-center">
+  <button
+    onClick={() => router.push('/admin/chat')}
+    className="text-gray-600 hover:text-gray-800 flex items-center gap-2 text-xs md:text-sm transition-colors"
+  >
+    <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
+    <span className="hidden xs:inline">Volver a conversaciones</span>
+    <span className="xs:hidden">Volver</span>
+  </button>
+</div>
 
       {/* Input */}
       {conversation?.status === 'active' && (
