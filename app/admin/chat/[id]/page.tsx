@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2, FileCheck } from 'lucide-react'
+import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2, FileCheck, MoreVertical, X } from 'lucide-react'
 
 // 🔗 Función para convertir URLs en enlaces clickeables
 const linkify = (text: string, isAgent: boolean) => {
@@ -42,11 +42,13 @@ export default function AgentChatPage() {
   const [isSending, setIsSending] = useState(false)
   const [isGeneratingDocLink, setIsGeneratingDocLink] = useState(false)
   const [isGeneratingCalculatorLink, setIsGeneratingCalculatorLink] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastMessageCountRef = useRef<number>(0)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const hasMarkedAsReadRef = useRef<boolean>(false)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   const loadMessages = useCallback(async (markAsRead = false) => {
     if (!id) return
@@ -64,7 +66,6 @@ export default function AgentChatPage() {
       
       if (data.success) {
         if (JSON.stringify(data.messages) !== JSON.stringify(messages)) {
-          console.log('📩 Actualizando mensajes:', data.messages.length)
           setMessages(data.messages)
           lastMessageCountRef.current = data.messages.length
         }
@@ -74,7 +75,6 @@ export default function AgentChatPage() {
         }
         
         if (markAsRead) {
-          console.log('✅ Mensajes marcados como leídos')
           hasMarkedAsReadRef.current = true
           localStorage.setItem('chat_refresh', Date.now().toString())
           window.dispatchEvent(new CustomEvent('refreshConversations'))
@@ -98,7 +98,6 @@ export default function AgentChatPage() {
   useEffect(() => {
     return () => {
       if (id && hasMarkedAsReadRef.current) {
-        console.log('👋 Saliendo de conversación, refrescando lista...')
         fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
           cache: 'no-store'
         })
@@ -133,7 +132,6 @@ export default function AgentChatPage() {
           const newMessageCount = data.messages.length
           
           if (newMessageCount !== lastMessageCountRef.current) {
-            console.log(`📨 Mensajes actualizados: ${newMessageCount}`)
             setMessages(data.messages)
             lastMessageCountRef.current = newMessageCount
             
@@ -180,9 +178,6 @@ export default function AgentChatPage() {
       }, 100)
     }
   }, [loading])
-
-  const scrollPositionRef = useRef<number>(0)
-  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   const sendMessage = async () => {
     if (!input.trim() || !id) return
@@ -250,81 +245,80 @@ export default function AgentChatPage() {
     }
   }
 
-const uploadFile = async (file: File) => {
-  if (!id) return
+  const uploadFile = async (file: File) => {
+    if (!id) return
 
-  setIsUploading(true)
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('conversationId', id)
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('conversationId', id)
 
-  try {
-    const uploadRes = await fetch('/api/chat/upload', {
-      method: 'POST',
-      body: formData
-    })
-    const uploadData = await uploadRes.json()
-
-    if (uploadData.success) {
-      // ✅ Determinar si es imagen
-      const isImage = file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-      
-      const tempFileMessage = {
-        id: `temp-file-${Date.now()}`,
-        message: isImage ? '' : `📎 ${file.name}`, // ← SOLO texto si NO es imagen
-        senderType: 'agent',
-        fileUrl: uploadData.url,
-        fileType: uploadData.fileType,
-        fileName: file.name,
-        createdAt: new Date().toISOString()
-      }
-      
-      setMessages(prev => {
-        const newMessages = [...prev, tempFileMessage]
-        lastMessageCountRef.current = newMessages.length
-        return newMessages
-      })
-      
-      const sendRes = await fetch('/api/chat/send', {
+    try {
+      const uploadRes = await fetch('/api/chat/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId: id,
-          message: isImage ? '' : `📎 ${file.name}`, // ← SOLO texto si NO es imagen
+        body: formData
+      })
+      const uploadData = await uploadRes.json()
+
+      if (uploadData.success) {
+        const isImage = file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+        
+        const tempFileMessage = {
+          id: `temp-file-${Date.now()}`,
+          message: isImage ? '' : `📎 ${file.name}`,
           senderType: 'agent',
           fileUrl: uploadData.url,
           fileType: uploadData.fileType,
-          fileName: file.name
-        })
-      })
-      
-      const sendData = await sendRes.json()
-      
-      if (sendData.success) {
+          fileName: file.name,
+          createdAt: new Date().toISOString()
+        }
+        
         setMessages(prev => {
-          const filtered = prev.filter(m => m.id !== tempFileMessage.id)
-          const newMessages = [...filtered, sendData.message]
+          const newMessages = [...prev, tempFileMessage]
           lastMessageCountRef.current = newMessages.length
           return newMessages
         })
         
-        localStorage.setItem('chat_refresh', Date.now().toString())
-        window.dispatchEvent(new CustomEvent('refreshConversations'))
-      } else {
-        setMessages(prev => {
-          const filtered = prev.filter(m => m.id !== tempFileMessage.id)
-          lastMessageCountRef.current = filtered.length
-          return filtered
+        const sendRes = await fetch('/api/chat/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId: id,
+            message: isImage ? '' : `📎 ${file.name}`,
+            senderType: 'agent',
+            fileUrl: uploadData.url,
+            fileType: uploadData.fileType,
+            fileName: file.name
+          })
         })
+        
+        const sendData = await sendRes.json()
+        
+        if (sendData.success) {
+          setMessages(prev => {
+            const filtered = prev.filter(m => m.id !== tempFileMessage.id)
+            const newMessages = [...filtered, sendData.message]
+            lastMessageCountRef.current = newMessages.length
+            return newMessages
+          })
+          
+          localStorage.setItem('chat_refresh', Date.now().toString())
+          window.dispatchEvent(new CustomEvent('refreshConversations'))
+        } else {
+          setMessages(prev => {
+            const filtered = prev.filter(m => m.id !== tempFileMessage.id)
+            lastMessageCountRef.current = filtered.length
+            return filtered
+          })
+        }
       }
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      alert('Error al subir archivo')
+    } finally {
+      setIsUploading(false)
     }
-  } catch (error) {
-    console.error('Error uploading file:', error)
-    alert('Error al subir archivo')
-  } finally {
-    setIsUploading(false)
   }
-}
 
   const closeConversation = async () => {
     if (!confirm('¿Cerrar esta conversación?')) return
@@ -346,7 +340,7 @@ const uploadFile = async (file: File) => {
   }
 
   const deleteConversation = async () => {
-    if (!confirm('¿Eliminar permanentemente esta conversación? Esta acción no se puede deshacer.')) return
+    if (!confirm('¿Eliminar permanentemente esta conversación?')) return
     try {
       const res = await fetch(`/api/chat/delete/${id}`, {
         method: 'DELETE',
@@ -365,7 +359,6 @@ const uploadFile = async (file: File) => {
     }
   }
 
-  // 🔗 Generar enlace para DOCUMENTOS
   const generateDocumentLink = async () => {
     if (!conversation?.userEmail) {
       alert('No hay email asociado a esta conversación')
@@ -398,7 +391,7 @@ const uploadFile = async (file: File) => {
         const documentLink = linkData.data.url
         await navigator.clipboard.writeText(documentLink)
         setInput(documentLink)
-        alert('✅ Enlace de DOCUMENTOS generado y copiado al input.')
+        alert('✅ Enlace copiado al input')
       } else {
         alert('Error: ' + (linkData.error || 'Error desconocido'))
       }
@@ -407,10 +400,10 @@ const uploadFile = async (file: File) => {
       alert('Error al generar el enlace')
     } finally {
       setIsGeneratingDocLink(false)
+      setShowMenu(false)
     }
   }
 
-  // 🧮 Generar enlace para CALCULADORA
   const generateCalculatorLink = async () => {
     if (!conversation?.userEmail) {
       alert('No hay email asociado a esta conversación')
@@ -443,7 +436,7 @@ const uploadFile = async (file: File) => {
         const calculatorLink = linkData.data.url
         await navigator.clipboard.writeText(calculatorLink)
         setInput(calculatorLink)
-        alert('✅ Enlace de CALCULADORA generado y copiado al input.')
+        alert('✅ Enlace copiado al input')
       } else {
         alert('Error: ' + (linkData.error || 'Error desconocido'))
       }
@@ -452,6 +445,7 @@ const uploadFile = async (file: File) => {
       alert('Error al generar el enlace')
     } finally {
       setIsGeneratingCalculatorLink(false)
+      setShowMenu(false)
     }
   }
 
@@ -482,14 +476,14 @@ const uploadFile = async (file: File) => {
         className="mt-2 flex items-center gap-2 p-2 bg-gray-100 rounded-lg text-sm text-blue-600 hover:bg-gray-200"
       >
         <FileText className="w-4 h-4" />
-        <span>{fileName}</span>
+        <span className="truncate">{fileName}</span>
       </a>
     )
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-screen bg-gray-100">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-600 border-t-transparent"></div>
       </div>
     )
@@ -497,109 +491,107 @@ const uploadFile = async (file: File) => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-      {/* Header */}
-      <div className="bg-white border-b px-3 md:px-6 py-3 md:py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3 md:gap-4">
+      {/* Header OPTIMIZADO PARA MÓVIL */}
+      <div className="bg-white border-b px-3 py-2 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <button
             onClick={() => {
-              fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
-                cache: 'no-store'
-              })
+              fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, { cache: 'no-store' })
                 .then(res => res.json())
                 .then(data => {
                   if (data.success) {
                     localStorage.setItem('chat_refresh', Date.now().toString())
                     window.dispatchEvent(new CustomEvent('refreshConversations'))
-                    setTimeout(() => router.push('/admin/chat'), 100)
+                    router.push('/admin/chat')
                   } else {
                     router.push('/admin/chat')
                   }
                 })
                 .catch(() => router.push('/admin/chat'))
             }}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="font-bold text-base md:text-lg">{conversation?.userName || conversation?.userEmail}</h1>
-            <div className="flex items-center gap-3 text-xs md:text-sm text-gray-500">
-              <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {conversation?.userEmail}</span>
+          
+          <div className="min-w-0 flex-1">
+            <h1 className="font-bold text-sm truncate">{conversation?.userName || conversation?.userEmail}</h1>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span className="truncate">{conversation?.userEmail}</span>
               {conversation?.userPhone && (
-                <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {conversation?.userPhone}</span>
+                <span className="shrink-0">{conversation.userPhone}</span>
               )}
             </div>
           </div>
         </div>
         
-        <div className="flex gap-1 md:gap-2">
-          {/* ✅ BOTÓN PARA ENLACE DE DOCUMENTOS */}
-          <button
-            onClick={generateDocumentLink}
-            disabled={isGeneratingDocLink}
-            className="px-2 md:px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs md:text-sm hover:bg-blue-700 flex items-center gap-1 disabled:opacity-50 transition-colors"
-            title="Generar enlace para DOCUMENTOS"
-          >
-            {isGeneratingDocLink ? (
-              <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
-            ) : (
-              <FileText className="w-3 h-3 md:w-4 md:h-4" />
-            )}
-            <span className="hidden sm:inline">Docs</span>
-          </button>
-
-          {/* ✅ BOTÓN PARA ENLACE DE CALCULADORA */}
-          <button
-            onClick={generateCalculatorLink}
-            disabled={isGeneratingCalculatorLink}
-            className="px-2 md:px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs md:text-sm hover:bg-purple-700 flex items-center gap-1 disabled:opacity-50 transition-colors"
-            title="Generar enlace para CALCULADORA"
-          >
-            {isGeneratingCalculatorLink ? (
-              <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
-            ) : (
-              <FileCheck className="w-3 h-3 md:w-4 md:h-4" />
-            )}
-            <span className="hidden sm:inline">Calc</span>
-          </button>
-
-          {conversation?.status === 'active' ? (
+        <div className="flex items-center gap-1 shrink-0">
+          {conversation?.status === 'active' && (
             <button
               onClick={closeConversation}
-              className="px-2 md:px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs md:text-sm hover:bg-red-700 flex items-center gap-1 transition-colors"
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Cerrar chat"
             >
-              <XCircle className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Cerrar</span>
+              <XCircle className="w-5 h-5" />
             </button>
-          ) : (
-            <span className="px-2 md:px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-xs md:text-sm flex items-center gap-1">
-              <CheckCircle className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Cerrada</span>
-            </span>
           )}
           
-          <button
-            onClick={deleteConversation}
-            className="px-2 md:px-3 py-1.5 bg-red-700 text-white rounded-lg text-xs md:text-sm hover:bg-red-800 flex items-center gap-1 transition-colors"
-          >
-            <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
-            <span className="hidden sm:inline">Eliminar</span>
-          </button>
+          {/* Menú desplegable para más opciones */}
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  <button
+                    onClick={generateDocumentLink}
+                    disabled={isGeneratingDocLink}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    {isGeneratingDocLink ? 'Generando...' : 'Enlace Docs'}
+                  </button>
+                  <button
+                    onClick={generateCalculatorLink}
+                    disabled={isGeneratingCalculatorLink}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <FileCheck className="w-4 h-4 text-purple-600" />
+                    {isGeneratingCalculatorLink ? 'Generando...' : 'Enlace Calc'}
+                  </button>
+                  <hr className="my-1" />
+                  <button
+                    onClick={deleteConversation}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages - OCUPA TODO EL ESPACIO DISPONIBLE */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4"
+        className="flex-1 overflow-y-auto p-3 space-y-3"
       >
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2 rounded-lg ${
+            <div className={`max-w-[85%] px-3 py-2 rounded-lg ${
               msg.senderType === 'agent'
                 ? 'bg-green-600 text-white rounded-br-none'
                 : msg.senderType === 'system'
-                ? 'bg-gray-200 text-gray-500 italic'
+                ? 'bg-gray-200 text-gray-500 italic text-xs'
                 : 'bg-white text-gray-800 rounded-bl-none shadow'
             }`}>
               {msg.senderType === 'system' && (
@@ -630,22 +622,10 @@ const uploadFile = async (file: File) => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Footer - Solo Volver */}
-      <div className="bg-white border-t px-3 py-2 md:px-4 md:py-2 flex items-center">
-        <button
-          onClick={() => router.push('/admin/chat')}
-          className="text-gray-600 hover:text-gray-800 flex items-center gap-2 text-xs md:text-sm transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4" />
-          <span className="hidden xs:inline">Volver a conversaciones</span>
-          <span className="xs:hidden">Volver</span>
-        </button>
-      </div>
-
-      {/* Input */}
+      {/* Input OPTIMIZADO */}
       {conversation?.status === 'active' && (
-        <div className="bg-white border-t p-3 md:p-4">
-          <div className="flex gap-2">
+        <div className="bg-white border-t p-2 shrink-0">
+          <div className="flex items-end gap-2">
             <input
               type="file"
               ref={fileInputRef}
@@ -660,16 +640,16 @@ const uploadFile = async (file: File) => {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors"
-              title="Adjuntar archivo"
+              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
               disabled={isUploading || isSending}
             >
               {isUploading ? (
-                <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <Paperclip className="w-4 h-4 md:w-5 md:h-5" />
+                <Paperclip className="w-5 h-5" />
               )}
             </button>
+            
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -680,21 +660,20 @@ const uploadFile = async (file: File) => {
                 }
               }}
               placeholder="Escribe tu respuesta..."
-              className="flex-1 px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
-              rows={2}
+              className="flex-1 px-3 py-2 border rounded-xl text-sm focus:ring-1 focus:ring-green-500 focus:border-transparent outline-none resize-none bg-gray-50 max-h-24"
+              rows={1}
               disabled={isSending}
+              style={{ minHeight: '42px' }}
             />
+            
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isSending}
-              className="bg-green-600 text-white px-3 md:px-4 py-2 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 self-end"
+              className="p-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 shrink-0"
             >
-              <Send className="w-4 h-4 md:w-5 md:h-5" />
+              <Send className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2">
-            Presiona Enter para enviar, Shift+Enter para nueva línea
-          </p>
         </div>
       )}
     </div>
