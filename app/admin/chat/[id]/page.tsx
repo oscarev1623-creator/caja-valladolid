@@ -2,23 +2,17 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2 } from 'lucide-react'
+import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2, FileCheck } from 'lucide-react'
 
 // 🔗 Función para convertir URLs en enlaces clickeables
-// 🔗 Función para convertir URLs en enlaces clickeables (VERSIÓN MEJORADA)
 const linkify = (text: string, isAgent: boolean) => {
   if (!text) return text
   
-  // Regex que detecta:
-  // - https://ejemplo.com
-  // - http://ejemplo.com  
-  // - www.ejemplo.com
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
   const parts = text.split(urlRegex)
   
   return parts.map((part, index) => {
     if (part.match(urlRegex)) {
-      // Si empieza con www., agregar https://
       const href = part.startsWith('www.') ? `https://${part}` : part
       return (
         <a
@@ -46,6 +40,8 @@ export default function AgentChatPage() {
   const [loading, setLoading] = useState(true)
   const [isUploading, setIsUploading] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [isGeneratingDocLink, setIsGeneratingDocLink] = useState(false)
+  const [isGeneratingCalculatorLink, setIsGeneratingCalculatorLink] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastMessageCountRef = useRef<number>(0)
@@ -366,6 +362,96 @@ export default function AgentChatPage() {
     }
   }
 
+  // 🔗 Generar enlace para DOCUMENTOS
+  const generateDocumentLink = async () => {
+    if (!conversation?.userEmail) {
+      alert('No hay email asociado a esta conversación')
+      return
+    }
+
+    setIsGeneratingDocLink(true)
+    try {
+      const leadsRes = await fetch(`/api/leads?email=${encodeURIComponent(conversation.userEmail)}`)
+      const leadsData = await leadsRes.json()
+      
+      if (!leadsData.success || !leadsData.data?.length) {
+        alert('No se encontró un lead asociado a este email')
+        return
+      }
+
+      const lead = leadsData.data[0]
+      const baseUrl = window.location.origin
+      
+      const linkRes = await fetch('/api/leads/generate-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ leadId: lead.id, baseUrl })
+      })
+      
+      const linkData = await linkRes.json()
+      
+      if (linkData.success) {
+        const documentLink = linkData.data.url
+        await navigator.clipboard.writeText(documentLink)
+        setInput(documentLink)
+        alert('✅ Enlace de DOCUMENTOS generado y copiado al input.')
+      } else {
+        alert('Error: ' + (linkData.error || 'Error desconocido'))
+      }
+    } catch (error) {
+      console.error('Error generando enlace:', error)
+      alert('Error al generar el enlace')
+    } finally {
+      setIsGeneratingDocLink(false)
+    }
+  }
+
+  // 🧮 Generar enlace para CALCULADORA
+  const generateCalculatorLink = async () => {
+    if (!conversation?.userEmail) {
+      alert('No hay email asociado a esta conversación')
+      return
+    }
+
+    setIsGeneratingCalculatorLink(true)
+    try {
+      const leadsRes = await fetch(`/api/leads?email=${encodeURIComponent(conversation.userEmail)}`)
+      const leadsData = await leadsRes.json()
+      
+      if (!leadsData.success || !leadsData.data?.length) {
+        alert('No se encontró un lead asociado a este email')
+        return
+      }
+
+      const lead = leadsData.data[0]
+      const baseUrl = window.location.origin
+      
+      const linkRes = await fetch('/api/leads/generate-calculator-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ leadId: lead.id, baseUrl })
+      })
+      
+      const linkData = await linkRes.json()
+      
+      if (linkData.success) {
+        const calculatorLink = linkData.data.url
+        await navigator.clipboard.writeText(calculatorLink)
+        setInput(calculatorLink)
+        alert('✅ Enlace de CALCULADORA generado y copiado al input.')
+      } else {
+        alert('Error: ' + (linkData.error || 'Error desconocido'))
+      }
+    } catch (error) {
+      console.error('Error generando enlace:', error)
+      alert('Error al generar el enlace')
+    } finally {
+      setIsGeneratingCalculatorLink(false)
+    }
+  }
+
   const renderFilePreview = (msg: any) => {
     if (!msg.fileUrl) return null
     
@@ -409,8 +495,8 @@ export default function AgentChatPage() {
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="bg-white border-b px-3 md:px-6 py-3 md:py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3 md:gap-4">
           <button
             onClick={() => {
               fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`, {
@@ -433,8 +519,8 @@ export default function AgentChatPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="font-bold text-lg">{conversation?.userName || conversation?.userEmail}</h1>
-            <div className="flex items-center gap-3 text-sm text-gray-500">
+            <h1 className="font-bold text-base md:text-lg">{conversation?.userName || conversation?.userEmail}</h1>
+            <div className="flex items-center gap-3 text-xs md:text-sm text-gray-500">
               <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {conversation?.userEmail}</span>
               {conversation?.userPhone && (
                 <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {conversation?.userPhone}</span>
@@ -442,27 +528,59 @@ export default function AgentChatPage() {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        
+        <div className="flex gap-1 md:gap-2">
+          {/* ✅ BOTÓN PARA ENLACE DE DOCUMENTOS */}
+          <button
+            onClick={generateDocumentLink}
+            disabled={isGeneratingDocLink}
+            className="px-2 md:px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs md:text-sm hover:bg-blue-700 flex items-center gap-1 disabled:opacity-50 transition-colors"
+            title="Generar enlace para DOCUMENTOS"
+          >
+            {isGeneratingDocLink ? (
+              <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
+            ) : (
+              <FileText className="w-3 h-3 md:w-4 md:h-4" />
+            )}
+            <span className="hidden sm:inline">Docs</span>
+          </button>
+
+          {/* ✅ BOTÓN PARA ENLACE DE CALCULADORA */}
+          <button
+            onClick={generateCalculatorLink}
+            disabled={isGeneratingCalculatorLink}
+            className="px-2 md:px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs md:text-sm hover:bg-purple-700 flex items-center gap-1 disabled:opacity-50 transition-colors"
+            title="Generar enlace para CALCULADORA"
+          >
+            {isGeneratingCalculatorLink ? (
+              <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
+            ) : (
+              <FileCheck className="w-3 h-3 md:w-4 md:h-4" />
+            )}
+            <span className="hidden sm:inline">Calc</span>
+          </button>
+
           {conversation?.status === 'active' ? (
             <button
               onClick={closeConversation}
-              className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 flex items-center gap-1"
+              className="px-2 md:px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs md:text-sm hover:bg-red-700 flex items-center gap-1 transition-colors"
             >
-              <XCircle className="w-4 h-4" />
-              Cerrar chat
+              <XCircle className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Cerrar</span>
             </button>
           ) : (
-            <span className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-sm flex items-center gap-1">
-              <CheckCircle className="w-4 h-4" />
-              Conversación cerrada
+            <span className="px-2 md:px-3 py-1.5 bg-gray-200 text-gray-600 rounded-lg text-xs md:text-sm flex items-center gap-1">
+              <CheckCircle className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="hidden sm:inline">Cerrada</span>
             </span>
           )}
+          
           <button
             onClick={deleteConversation}
-            className="px-3 py-1.5 bg-red-700 text-white rounded-lg text-sm hover:bg-red-800 flex items-center gap-1"
+            className="px-2 md:px-3 py-1.5 bg-red-700 text-white rounded-lg text-xs md:text-sm hover:bg-red-800 flex items-center gap-1 transition-colors"
           >
-            <Trash2 className="w-4 h-4" />
-            Eliminar
+            <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Eliminar</span>
           </button>
         </div>
       </div>
@@ -470,34 +588,34 @@ export default function AgentChatPage() {
       {/* Messages */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-6 space-y-4"
+        className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4"
       >
-{messages.map((msg) => (
-  <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
-    <div className={`max-w-[70%] px-4 py-2 rounded-lg ${
-      msg.senderType === 'agent'
-        ? 'bg-green-600 text-white rounded-br-none'
-        : msg.senderType === 'system'
-        ? 'bg-gray-200 text-gray-500 italic'
-        : 'bg-white text-gray-800 rounded-bl-none shadow'
-    }`}>
-      {msg.senderType === 'system' && (
-        <div className="text-xs mb-1">📢 Sistema</div>
-      )}
-      {msg.message && (
-        <p className="text-sm whitespace-pre-wrap break-all">
-          {linkify(msg.message, msg.senderType === 'agent')}
-        </p>
-      )}
-      {renderFilePreview(msg)}
-      <div className={`text-[10px] mt-1 ${
-        msg.senderType === 'agent' ? 'text-green-200' : 'text-gray-400'
-      }`}>
-        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </div>
-    </div>
-  </div>
-))}
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2 rounded-lg ${
+              msg.senderType === 'agent'
+                ? 'bg-green-600 text-white rounded-br-none'
+                : msg.senderType === 'system'
+                ? 'bg-gray-200 text-gray-500 italic'
+                : 'bg-white text-gray-800 rounded-bl-none shadow'
+            }`}>
+              {msg.senderType === 'system' && (
+                <div className="text-xs mb-1">📢 Sistema</div>
+              )}
+              {msg.message && (
+                <p className="text-sm whitespace-pre-wrap break-all">
+                  {linkify(msg.message, msg.senderType === 'agent')}
+                </p>
+              )}
+              {renderFilePreview(msg)}
+              <div className={`text-[10px] mt-1 ${
+                msg.senderType === 'agent' ? 'text-green-200' : 'text-gray-400'
+              }`}>
+                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          </div>
+        ))}
         {isSending && (
           <div className="flex justify-end">
             <div className="bg-gray-200 p-3 rounded-lg flex items-center gap-2">
@@ -509,7 +627,7 @@ export default function AgentChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 🎯 FOOTER - SOLO VOLVER */}
+      {/* Footer - Solo Volver */}
       <div className="bg-white border-t px-3 py-2 md:px-4 md:py-2 flex items-center">
         <button
           onClick={() => router.push('/admin/chat')}
@@ -523,7 +641,7 @@ export default function AgentChatPage() {
 
       {/* Input */}
       {conversation?.status === 'active' && (
-        <div className="bg-white border-t p-4">
+        <div className="bg-white border-t p-3 md:p-4">
           <div className="flex gap-2">
             <input
               type="file"
@@ -544,9 +662,9 @@ export default function AgentChatPage() {
               disabled={isUploading || isSending}
             >
               {isUploading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
               ) : (
-                <Paperclip className="w-5 h-5" />
+                <Paperclip className="w-4 h-4 md:w-5 md:h-5" />
               )}
             </button>
             <textarea
@@ -566,9 +684,9 @@ export default function AgentChatPage() {
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isSending}
-              className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 self-end"
+              className="bg-green-600 text-white px-3 md:px-4 py-2 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 self-end"
             >
-              <Send className="w-5 h-5" />
+              <Send className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-2">
