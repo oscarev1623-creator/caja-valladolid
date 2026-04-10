@@ -23,7 +23,7 @@ function getAgentGradient(color: string | undefined) {
 }
 
 // 🔗 Función para convertir URLs en enlaces clickeables
-const linkify = (text: string, isAgent: boolean) => {
+const linkify = (text: string, isUser: boolean) => {
   if (!text) return text
   
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
@@ -38,7 +38,7 @@ const linkify = (text: string, isAgent: boolean) => {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className={`underline hover:opacity-80 break-all ${isAgent ? 'text-green-200' : 'text-blue-600'}`}
+          className={`underline hover:opacity-80 break-all ${isUser ? 'text-green-200' : 'text-blue-600'}`}
         >
           {part}
         </a>
@@ -69,13 +69,73 @@ export default function ChatWidget() {
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // ✅ Detectar token en URL al cargar la página
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const chatToken = urlParams.get('chat_token')
+    
+    if (chatToken) {
+      console.log('🔐 Token detectado en URL:', chatToken)
+      
+      fetch(`/api/chat/token?token=${chatToken}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            console.log('✅ Token validado:', data)
+            
+            // Guardar datos del lead
+            if (data.lead) {
+              localStorage.setItem('chat_user_name', data.lead.name)
+              localStorage.setItem('chat_user_email', data.lead.email)
+              localStorage.setItem('chat_user_phone', data.lead.phone || '')
+              
+              setFormData({
+                name: data.lead.name || '',
+                email: data.lead.email || '',
+                phone: data.lead.phone || ''
+              })
+            }
+            
+            // Si hay conversación, cargarla
+            if (data.conversationId) {
+              localStorage.setItem('chat_conversation_id', data.conversationId)
+              loadConversation(data.conversationId)
+            }
+            
+            // Abrir el chat
+            setIsOpen(true)
+            setStep('chat')
+            
+            // Limpiar token de la URL
+            window.history.replaceState({}, document.title, window.location.pathname)
+          }
+        })
+        .catch(err => console.error('Error validando token:', err))
+    }
+  }, [])
+
+  // ✅ Cargar datos guardados al iniciar
+  useEffect(() => {
+    const savedName = localStorage.getItem('chat_user_name')
+    const savedEmail = localStorage.getItem('chat_user_email')
+    const savedPhone = localStorage.getItem('chat_user_phone')
+    
+    if (savedName && savedEmail) {
+      setFormData({
+        name: savedName,
+        email: savedEmail,
+        phone: savedPhone || ''
+      })
+    }
+  }, [])
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
   useEffect(() => {
     const savedId = localStorage.getItem('chat_conversation_id')
-    if (savedId) {
+    if (savedId && !conversationId) {
       loadConversation(savedId)
       setIsOpen(true)
     }
@@ -125,6 +185,11 @@ export default function ChatWidget() {
 
     setIsLoading(true)
     try {
+      // Guardar datos en localStorage
+      localStorage.setItem('chat_user_name', formData.name)
+      localStorage.setItem('chat_user_email', formData.email)
+      localStorage.setItem('chat_user_phone', formData.phone)
+
       // 1. Crear lead
       const leadResponse = await fetch('/api/leads', {
         method: 'POST',
@@ -428,17 +493,41 @@ export default function ChatWidget() {
                     <form onSubmit={startConversation} className="space-y-3">
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input type="text" placeholder="Tu nombre *" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
+                        <input 
+                          type="text" 
+                          placeholder="Tu nombre *" 
+                          value={formData.name} 
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                          required 
+                          className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" 
+                        />
                       </div>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input type="email" placeholder="Tu correo *" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
+                        <input 
+                          type="email" 
+                          placeholder="Tu correo *" 
+                          value={formData.email} 
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+                          required 
+                          className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" 
+                        />
                       </div>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input type="tel" placeholder="Tu teléfono" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" />
+                        <input 
+                          type="tel" 
+                          placeholder="Tu teléfono" 
+                          value={formData.phone} 
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })} 
+                          className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none" 
+                        />
                       </div>
-                      <button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50">
+                      <button 
+                        type="submit" 
+                        disabled={isLoading} 
+                        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50"
+                      >
                         {isLoading ? 'Conectando...' : 'Iniciar conversación'}
                       </button>
                     </form>
