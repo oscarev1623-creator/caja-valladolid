@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import { Menu, X, ChevronDown, ShieldCheck, TrendingUp, Award, Clock } from "lucide-react"
 import { motion } from "framer-motion"
 import { ContactFormModal } from "./contact-form-modal"
@@ -95,18 +95,18 @@ export default function Hero() {
         </div>
       </nav>
 
-      {/* Sección Hero - VIDEO OPTIMIZADO */}
+      {/* Sección Hero */}
       <section
         id="inicio"
         className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden"
       >
-        {/* Video de fondo OPTIMIZADO */}
-        <div className="absolute inset-0 z-0">
-          {/* Video para DESKTOP (horizontal 16:9) - con parámetros mejorados */}
-          <div className="hidden md:block absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[300%] h-[300%]">
+        {/* Video de fondo OPTIMIZADO - SIN PIXELADO */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* Desktop */}
+          <div className="hidden md:block absolute inset-0">
             <iframe
-              className="absolute top-0 left-0 w-full h-full"
-              src="https://www.youtube.com/embed/x472zBmlxqo?autoplay=1&mute=1&loop=1&playlist=x472zBmlxqo&controls=0&showinfo=0&modestbranding=1&rel=0&vq=hd1080&version=3&enablejsapi=1&iv_load_policy=3"
+              className="absolute top-1/2 left-1/2 w-[177.78vh] h-[100vw] min-w-[100%] min-h-[100%] transform -translate-x-1/2 -translate-y-1/2"
+              src="https://www.youtube.com/embed/x472zBmlxqo?autoplay=1&mute=1&loop=1&playlist=x472zBmlxqo&controls=0&showinfo=0&modestbranding=1&rel=0&vq=hd1080&version=3&enablejsapi=1&iv_load_policy=3&cc_load_policy=0"
               title="Caja Valladolid - Créditos"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -116,11 +116,11 @@ export default function Hero() {
             />
           </div>
           
-          {/* Video para MÓVIL (vertical 9:16 - SHORT) - con parámetros mejorados */}
-          <div className="block md:hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[300%] h-[300%]">
+          {/* Móvil */}
+          <div className="block md:hidden absolute inset-0">
             <iframe
-              className="absolute top-0 left-0 w-full h-full"
-              src="https://www.youtube.com/embed/VtQzqk2kk3k?autoplay=1&mute=1&loop=1&playlist=VtQzqk2kk3k&controls=0&showinfo=0&modestbranding=1&rel=0&vq=hd1080&version=3&enablejsapi=1&iv_load_policy=3"
+              className="absolute top-1/2 left-1/2 w-[177.78vh] h-[100vw] min-w-[100%] min-h-[100%] transform -translate-x-1/2 -translate-y-1/2"
+              src="https://www.youtube.com/embed/VtQzqk2kk3k?autoplay=1&mute=1&loop=1&playlist=VtQzqk2kk3k&controls=0&showinfo=0&modestbranding=1&rel=0&vq=hd1080&version=3&enablejsapi=1&iv_load_policy=3&cc_load_policy=0"
               title="Caja Valladolid - Short"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -130,10 +130,10 @@ export default function Hero() {
             />
           </div>
           
-          {/* Overlay mejorado para legibilidad */}
+          {/* Overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
           
-          {/* Loader mejorado */}
+          {/* Loader */}
           {!isVideoLoaded && (
             <div className="absolute inset-0 bg-gradient-to-br from-green-900 to-green-800 flex items-center justify-center z-10">
               <div className="text-center">
@@ -151,7 +151,6 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            {/* Badge superior */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -164,7 +163,6 @@ export default function Hero() {
               </div>
             </motion.div>
 
-            {/* Título principal */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-balance leading-tight text-white drop-shadow-xl">
               Tu crédito hecho{" "}
               <span className="text-green-300 drop-shadow-lg">
@@ -172,18 +170,16 @@ export default function Hero() {
               </span>
             </h1>
 
-            {/* Subtítulo */}
             <p className="text-xl sm:text-2xl md:text-3xl text-white/95 mb-10 max-w-3xl mx-auto font-medium drop-shadow-lg">
               Financiamiento confiable para tu casa, auto y más
             </p>
 
-            {/* CTA - Dos botones */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <motion.button
                 onClick={scrollToCalculator}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-lg sm:text-xl px-8 sm:px-10 py-3 sm:py-4 rounded-xl shadow-2xl transition-all transform hover:shadow-3xl"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold text-lg sm:text-xl px-8 sm:px-10 py-3 sm:py-4 rounded-xl shadow-2xl transition-all"
               >
                 Usar Calculadora
               </motion.button>
@@ -192,14 +188,13 @@ export default function Hero() {
                 onClick={() => setIsModalOpen(true)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white font-bold text-lg sm:text-xl px-8 sm:px-10 py-3 sm:py-4 rounded-xl shadow-2xl transition-all transform hover:shadow-3xl border border-white/30"
+                className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white font-bold text-lg sm:text-xl px-8 sm:px-10 py-3 sm:py-4 rounded-xl shadow-2xl transition-all border border-white/30"
               >
                 Solicitar Crédito
               </motion.button>
             </div>
           </motion.div>
 
-          {/* Features */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -222,7 +217,6 @@ export default function Hero() {
               ))}
             </div>
 
-            {/* Registro */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -235,7 +229,6 @@ export default function Hero() {
             </motion.div>
           </motion.div>
 
-          {/* Flecha indicadora de scroll */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -253,7 +246,6 @@ export default function Hero() {
         </div>
       </section>
 
-      {/* Modal de contacto */}
       <ContactFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>
   )
