@@ -10,7 +10,7 @@ export async function PUT(req: Request) {
       name, 
       email, 
       color,
-      role: 'AGENT'  // 👈 Asegurar que siga siendo AGENT
+      role: 'agent'  
     }
     
     if (password) {
