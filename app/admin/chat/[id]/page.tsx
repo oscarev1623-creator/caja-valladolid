@@ -57,6 +57,7 @@ export default function AgentChatPage() {
     if (!id) return
     
     try {
+      
       const url = markAsRead 
         ? `/api/chat/messages?conversationId=${id}&markAsRead=true`
         : `/api/chat/messages?conversationId=${id}`
@@ -155,6 +156,12 @@ export default function AgentChatPage() {
       inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 120) + 'px'
     }
   }, [input])
+
+  const handleFocus = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 300)
+  }
 
   const sendMessage = async () => {
     if (!input.trim() || !id) return
@@ -468,7 +475,8 @@ export default function AgentChatPage() {
             
             <div className="flex-1 bg-gray-100 rounded-3xl px-4 py-2">
               <textarea
-                ref={inputRef}
+               ref={inputRef}
+               onFocus={handleFocus} 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
