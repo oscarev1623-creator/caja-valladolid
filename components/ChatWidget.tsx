@@ -67,8 +67,59 @@ export default function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+// ✅ Función para auto-iniciar conversación
+const autoStartConversation = async (name: string, email: string) => {
+  console.log('🚀 Auto-iniciando conversación para:', email)
+  
+  setIsLoading(true)
+  try {
+    // 1. Iniciar conversación
+    const res = await fetch('/api/chat/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phone: '' })
+    })
+    const data = await res.json()
+    
+    console.log('📦 Start response:', data)
 
+    if (data.success && data.conversationId) {
+      setConversationId(data.conversationId)
+      localStorage.setItem('chat_conversation_id', data.conversationId)
+      
+      // 2. Asignar asesor
+      try {
+        const assignRes = await fetch('/api/chat/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId: data.conversationId })
+        })
+        const assignData = await assignRes.json()
+        if (assignData.success && assignData.agent) {
+          setAssignedAgent(assignData.agent)
+        }
+      } catch (err) {
+        console.error('Error asignando:', err)
+      }
+      
+      // 3. Ir al chat DIRECTAMENTE
+      setStep('chat')
+      setMessages([{
+        id: 'welcome',
+        message: `Hola ${name}, ¡bienvenido! Un asesor te atenderá en breve.`,
+        senderType: 'system',
+        createdAt: new Date().toISOString()
+      }])
+    }
+  } catch (error) {
+    console.error('❌ Error:', error)
+  } finally {
+    setIsLoading(false)
+  }
+}
   // ✅ Detectar token en URL al cargar la página
+// ✅ Detectar parámetros en URL y AUTO-INICIAR conversación
+// ✅ Detectar parámetros en URL y AUTO-INICIAR conversación
 useEffect(() => {
   const urlParams = new URLSearchParams(window.location.search)
   const chatName = urlParams.get('chat_name')
@@ -90,6 +141,25 @@ useEffect(() => {
     
     // Abrir el chat
     setIsOpen(true)
+    
+    // 🚀 FORZAR inicio de conversación después de un delay
+    setTimeout(() => {
+      // Verificar si ya hay conversación guardada
+      const savedId = localStorage.getItem('chat_conversation_id')
+      
+if (savedId) {
+  console.log('📂 Cargando conversación existente:', savedId)
+  // Dar tiempo a que el estado se actualice
+  setTimeout(() => {
+    loadConversation(savedId)
+    setStep('chat')
+  }, 300)
+} else {
+        console.log('🆕 Iniciando nueva conversación...')
+        // 👇 FORZAR inicio manual
+        autoStartConversation(chatName, chatEmail)
+      }
+    }, 500) // Delay de 500ms
     
     // Limpiar URL
     window.history.replaceState({}, document.title, window.location.pathname)
@@ -144,22 +214,29 @@ useEffect(() => {
     return () => window.removeEventListener('reloadConversation', handleReloadConversation)
   }, [])
 
-  const loadConversation = async (id: string) => {
-    try {
-      const res = await fetch(`/api/chat/messages?conversationId=${id}`)
-      const data = await res.json()
-      if (data.success) {
-        setConversationId(id)
-        setMessages(data.messages)
-        setStep('chat')
-        if (data.conversation?.assignedTo) {
-          setAssignedAgent(data.conversation.assignedTo)
-        }
+ const loadConversation = async (id: string) => {
+  try {
+    const res = await fetch(`/api/chat/messages?conversationId=${id}`)
+    const data = await res.json()
+    
+    if (data.success) {
+      setConversationId(id)
+      setMessages(data.messages)
+      setStep('chat')
+      if (data.conversation?.assignedTo) {
+        setAssignedAgent(data.conversation.assignedTo)
       }
-    } catch (error) {
-      console.error('Error loading conversation:', error)
+    } else if (data.error === 'Conversation not found') {
+      // ✅ Si la conversación no existe, limpiar el ID inválido
+      console.log('🗑️ Conversación no encontrada, limpiando ID inválido')
+      localStorage.removeItem('chat_conversation_id')
+      setConversationId(null)
+      setStep('form')
     }
+  } catch (error) {
+    console.error('Error loading conversation:', error)
   }
+}
 
   // ✅ Iniciar conversación automáticamente con los datos del lead
   const startConversationAutomatically = async (lead: any) => {
