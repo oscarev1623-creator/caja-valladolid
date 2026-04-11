@@ -141,6 +141,13 @@ useEffect(() => {
     
     // Abrir el chat
     setIsOpen(true)
+
+    // 🚀 INICIAR CONVERSACIÓN AUTOMÁTICAMENTE (sin que el usuario haga clic)
+setTimeout(() => {
+  // Simular el clic en "Iniciar conversación"
+  const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+  startConversation(fakeEvent)
+}, 500)
     
     // 🚀 FORZAR inicio de conversación después de un delay
     setTimeout(() => {
