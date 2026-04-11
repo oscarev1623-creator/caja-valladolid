@@ -343,14 +343,14 @@ export default function AgentChatPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#f0f2f5]">
+      <div className="h-[100dvh] flex items-center justify-center bg-[#f0f2f5]">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-600 border-t-transparent"></div>
       </div>
     )
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#f0f2f5] fixed inset-0 md:relative">
+    <div className="h-[100dvh] flex flex-col bg-[#f0f2f5] fixed inset-0 md:relative">
       {/* Header - Estilo WhatsApp */}
       <div className="bg-[#075e54] text-white px-3 py-2 flex items-center justify-between shrink-0 safe-top">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -407,7 +407,7 @@ export default function AgentChatPage() {
       {/* Messages - SCROLL ULTRA FLUIDO */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-3 py-3 space-y-2 overscroll-contain will-change-scroll"
+        className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-2 overscroll-contain"
         style={{ 
           WebkitOverflowScrolling: 'touch',
           scrollBehavior: 'smooth'
