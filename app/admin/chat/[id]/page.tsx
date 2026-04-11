@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, ArrowLeft, Mail, Phone, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2, FileCheck, MoreVertical } from 'lucide-react'
+import { Send, ArrowLeft, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2, FileCheck, MoreVertical, Phone, Mail } from 'lucide-react'
 
-// 🔗 Función linkify (igual)
+// 🔗 Función linkify (optimizada)
 const linkify = (text: string, isAgent: boolean) => {
   if (!text) return text
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
@@ -50,8 +50,6 @@ export default function AgentChatPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // ... (loadMessages y useEffects IGUAL que antes)
-
   const loadMessages = useCallback(async (markAsRead = false) => {
     if (!id) return
     
@@ -60,10 +58,7 @@ export default function AgentChatPage() {
         ? `/api/chat/messages?conversationId=${id}&markAsRead=true`
         : `/api/chat/messages?conversationId=${id}`
       
-      const res = await fetch(url, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
-      })
+      const res = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
       const data = await res.json()
       
       if (data.success) {
@@ -71,17 +66,12 @@ export default function AgentChatPage() {
           setMessages(data.messages)
           lastMessageCountRef.current = data.messages.length
         }
-        
-        if (data.conversation) {
-          setConversation(data.conversation)
-        }
-        
+        if (data.conversation) setConversation(data.conversation)
         if (markAsRead) {
           hasMarkedAsReadRef.current = true
           localStorage.setItem('chat_refresh', Date.now().toString())
           window.dispatchEvent(new CustomEvent('refreshConversations'))
         }
-        
         return true
       }
     } catch (error) {
@@ -115,30 +105,21 @@ export default function AgentChatPage() {
 
   useEffect(() => {
     if (!id) return
-    
     if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
     
     const pollForMessages = async () => {
       try {
-        const res = await fetch(`/api/chat/messages?conversationId=${id}`, {
-          cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache' }
-        })
+        const res = await fetch(`/api/chat/messages?conversationId=${id}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
         const data = await res.json()
         
         if (data.success) {
           const newMessageCount = data.messages.length
-          
           if (newMessageCount !== lastMessageCountRef.current) {
             setMessages(data.messages)
             lastMessageCountRef.current = newMessageCount
-            
             if (data.conversation) setConversation(data.conversation)
             
-            const hasNewUserMessages = data.messages.some((m: any) => 
-              m.senderType === 'user' && !m.isRead
-            )
-            
+            const hasNewUserMessages = data.messages.some((m: any) => m.senderType === 'user' && !m.isRead)
             if (hasNewUserMessages) {
               await fetch(`/api/chat/messages?conversationId=${id}&markAsRead=true`)
               localStorage.setItem('chat_refresh', Date.now().toString())
@@ -165,7 +146,6 @@ export default function AgentChatPage() {
     }
   }, [loading])
 
-  // Auto-ajustar altura del textarea
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = 'auto'
@@ -175,17 +155,10 @@ export default function AgentChatPage() {
 
   const sendMessage = async () => {
     if (!input.trim() || !id) return
-
     const messageText = input.trim()
     setIsSending(true)
     
-    const tempMessage = {
-      id: `temp-${Date.now()}`,
-      message: messageText,
-      senderType: 'agent',
-      createdAt: new Date().toISOString()
-    }
-    
+    const tempMessage = { id: `temp-${Date.now()}`, message: messageText, senderType: 'agent', createdAt: new Date().toISOString() }
     setMessages(prev => [...prev, tempMessage])
     lastMessageCountRef.current = messages.length + 1
     setInput('')
@@ -196,14 +169,10 @@ export default function AgentChatPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId: id, message: messageText, senderType: 'agent' })
       })
-      
       const data = await res.json()
       
       if (data.success) {
-        setMessages(prev => {
-          const filtered = prev.filter(m => m.id !== tempMessage.id)
-          return [...filtered, data.message]
-        })
+        setMessages(prev => { const filtered = prev.filter(m => m.id !== tempMessage.id); return [...filtered, data.message] })
         lastMessageCountRef.current = data.messages?.length || messages.length
         localStorage.setItem('chat_refresh', Date.now().toString())
         window.dispatchEvent(new CustomEvent('refreshConversations'))
@@ -231,25 +200,14 @@ export default function AgentChatPage() {
     try {
       const uploadRes = await fetch('/api/chat/upload', { method: 'POST', body: formData })
       const uploadData = await uploadRes.json()
-
       if (uploadData.success) {
         const isImage = file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-        
         const sendRes = await fetch('/api/chat/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: id,
-            message: isImage ? '' : `📎 ${file.name}`,
-            senderType: 'agent',
-            fileUrl: uploadData.url,
-            fileType: uploadData.fileType,
-            fileName: file.name
-          })
+          body: JSON.stringify({ conversationId: id, message: isImage ? '' : `📎 ${file.name}`, senderType: 'agent', fileUrl: uploadData.url, fileType: uploadData.fileType, fileName: file.name })
         })
-        
         const sendData = await sendRes.json()
-        
         if (sendData.success) {
           setMessages(prev => [...prev, sendData.message])
           localStorage.setItem('chat_refresh', Date.now().toString())
@@ -267,11 +225,7 @@ export default function AgentChatPage() {
   const closeConversation = async () => {
     if (!confirm('¿Cerrar esta conversación?')) return
     try {
-      await fetch('/api/chat/close', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId: id })
-      })
+      await fetch('/api/chat/close', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conversationId: id }) })
       await loadMessages()
       localStorage.setItem('chat_refresh', Date.now().toString())
       window.dispatchEvent(new CustomEvent('refreshConversations'))
@@ -312,7 +266,6 @@ export default function AgentChatPage() {
         credentials: 'include',
         body: JSON.stringify({ leadId: lead.id, baseUrl: window.location.origin })
       })
-      
       const linkData = await linkRes.json()
       if (linkData.success) {
         await navigator.clipboard.writeText(linkData.data.url)
@@ -344,7 +297,6 @@ export default function AgentChatPage() {
         credentials: 'include',
         body: JSON.stringify({ leadId: lead.id, baseUrl: window.location.origin })
       })
-      
       const linkData = await linkRes.json()
       if (linkData.success) {
         await navigator.clipboard.writeText(linkData.data.url)
@@ -378,14 +330,8 @@ export default function AgentChatPage() {
         </div>
       )
     }
-    
     return (
-      <a 
-        href={msg.fileUrl} 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        className="mt-2 flex items-center gap-2 p-2 bg-gray-100 rounded-lg text-sm text-blue-600 hover:bg-gray-200"
-      >
+      <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center gap-2 p-2 bg-gray-100 rounded-lg text-sm text-blue-600 hover:bg-gray-200">
         <FileText className="w-4 h-4" />
         <span className="truncate">{fileName}</span>
       </a>
@@ -394,75 +340,59 @@ export default function AgentChatPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-100">
+      <div className="h-screen flex items-center justify-center bg-[#f0f2f5]">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-600 border-t-transparent"></div>
       </div>
     )
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 fixed inset-0 md:relative">
-      {/* Header - Sticky */}
-      <div className="bg-white border-b px-3 py-2 flex items-center justify-between shrink-0 safe-top">
+    <div className="h-screen flex flex-col bg-[#f0f2f5] fixed inset-0 md:relative">
+      {/* Header - Estilo WhatsApp */}
+      <div className="bg-[#075e54] text-white px-3 py-2 flex items-center justify-between shrink-0 safe-top">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <button
-            onClick={() => router.push('/admin/chat')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
-          >
+          <button onClick={() => router.push('/admin/chat')} className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
           
           <div className="min-w-0 flex-1">
-            <h1 className="font-bold text-sm truncate">{conversation?.userName || conversation?.userEmail}</h1>
-            <p className="text-xs text-gray-500 truncate">{conversation?.userEmail}</p>
+            <h1 className="font-medium text-base truncate">{conversation?.userName || conversation?.userEmail}</h1>
+            <p className="text-xs text-white/70 truncate flex items-center gap-1">
+              {conversation?.userPhone && <><Phone className="w-3 h-3" /> {conversation.userPhone}</>}
+              {conversation?.userPhone && conversation?.userEmail && <span className="mx-1">•</span>}
+              {conversation?.userEmail && <><Mail className="w-3 h-3" /> {conversation.userEmail}</>}
+            </p>
           </div>
         </div>
         
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
           {conversation?.status === 'active' && (
-            <button
-              onClick={closeConversation}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
+            <button onClick={closeConversation} className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Cerrar chat">
               <XCircle className="w-5 h-5" />
             </button>
           )}
           
           <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
+            <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
               <MoreVertical className="w-5 h-5" />
             </button>
             
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                  <button
-                    onClick={generateDocumentLink}
-                    disabled={isGeneratingDocLink}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
-                  >
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+                  <button onClick={generateDocumentLink} disabled={isGeneratingDocLink} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50">
                     <FileText className="w-4 h-4 text-blue-600" />
                     {isGeneratingDocLink ? 'Generando...' : 'Enlace Docs'}
                   </button>
-                  <button
-                    onClick={generateCalculatorLink}
-                    disabled={isGeneratingCalculatorLink}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
-                  >
+                  <button onClick={generateCalculatorLink} disabled={isGeneratingCalculatorLink} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50">
                     <FileCheck className="w-4 h-4 text-purple-600" />
                     {isGeneratingCalculatorLink ? 'Generando...' : 'Enlace Calc'}
                   </button>
                   <hr className="my-1" />
-                  <button
-                    onClick={deleteConversation}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
-                  >
+                  <button onClick={deleteConversation} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3 text-red-600">
                     <Trash2 className="w-4 h-4" />
-                    Eliminar
+                    Eliminar conversación
                   </button>
                 </div>
               </>
@@ -471,39 +401,42 @@ export default function AgentChatPage() {
         </div>
       </div>
 
-      {/* Messages - ÁREA DE SCROLL */}
+      {/* Messages - SCROLL ULTRA FLUIDO */}
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto px-3 py-2 space-y-3 overscroll-contain"
+        className="flex-1 overflow-y-auto px-3 py-3 space-y-2 overscroll-contain will-change-scroll"
+        style={{ 
+          WebkitOverflowScrolling: 'touch',
+          scrollBehavior: 'smooth'
+        }}
       >
         {messages.length === 0 && !loading && (
           <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-            No hay mensajes aún
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                <MessageCircle className="w-8 h-8 text-gray-400" />
+              </div>
+              <p>No hay mensajes aún</p>
+              <p className="text-xs mt-1">Envía un mensaje para comenzar</p>
+            </div>
           </div>
         )}
         
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] px-3 py-2 rounded-lg ${
+            <div className={`max-w-[80%] px-3.5 py-2 rounded-lg ${
               msg.senderType === 'agent'
-                ? 'bg-green-600 text-white rounded-br-none'
+                ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none'
                 : msg.senderType === 'system'
-                ? 'bg-gray-200 text-gray-500 italic text-xs'
-                : 'bg-white text-gray-800 rounded-bl-none shadow'
+                ? 'bg-gray-200 text-gray-600 italic text-xs text-center w-full max-w-full'
+                : 'bg-white text-gray-800 rounded-tl-none shadow-sm'
             }`}>
-              {msg.senderType === 'system' && (
-                <div className="text-xs mb-1">📢 Sistema</div>
-              )}
-              {msg.message && (
-                <p className="text-sm whitespace-pre-wrap break-all">
-                  {linkify(msg.message, msg.senderType === 'agent')}
-                </p>
-              )}
+              {msg.senderType === 'system' && <div className="text-xs mb-1">📢 Sistema</div>}
+              {msg.message && <p className="text-sm whitespace-pre-wrap break-all">{linkify(msg.message, msg.senderType === 'agent')}</p>}
               {renderFilePreview(msg)}
-              <div className={`text-[10px] mt-1 ${
-                msg.senderType === 'agent' ? 'text-green-200' : 'text-gray-400'
-              }`}>
+              <div className={`text-[11px] mt-1 ${msg.senderType === 'agent' ? 'text-gray-500' : 'text-gray-400'} flex items-center gap-1`}>
                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {msg.senderType === 'agent' && <CheckCircle className="w-3 h-3 text-gray-400" />}
               </div>
             </div>
           </div>
@@ -511,8 +444,8 @@ export default function AgentChatPage() {
         
         {isSending && (
           <div className="flex justify-end">
-            <div className="bg-gray-200 px-3 py-2 rounded-lg flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-green-600" />
+            <div className="bg-[#d9fdd3] px-3.5 py-2 rounded-lg rounded-tr-none flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
               <span className="text-sm text-gray-500">Enviando...</span>
             </div>
           </div>
@@ -521,51 +454,34 @@ export default function AgentChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input - Sticky abajo */}
+      {/* Input - Estilo WhatsApp */}
       {conversation?.status === 'active' && (
-        <div className="bg-white border-t p-2 shrink-0 safe-bottom">
+        <div className="bg-white border-t border-gray-200 p-2 shrink-0 safe-bottom">
           <div className="flex items-end gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*,.pdf,.doc,.docx"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files?.[0]) {
-                  uploadFile(e.target.files[0])
-                  e.target.value = ''
-                }
-              }}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
-              disabled={isUploading || isSending}
-            >
+            <input type="file" ref={fileInputRef} accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={(e) => { if (e.target.files?.[0]) { uploadFile(e.target.files[0]); e.target.value = '' } }} />
+            <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors shrink-0" disabled={isUploading || isSending}>
               {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
             </button>
             
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  sendMessage()
-                }
-              }}
-              placeholder="Escribe un mensaje..."
-              className="flex-1 px-3 py-2 border rounded-xl text-sm focus:ring-1 focus:ring-green-500 focus:border-transparent outline-none resize-none bg-gray-50"
-              rows={1}
-              disabled={isSending}
-            />
+            <div className="flex-1 bg-gray-100 rounded-3xl px-4 py-2">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    sendMessage()
+                  }
+                }}
+                placeholder="Escribe un mensaje"
+                className="w-full bg-transparent text-sm outline-none resize-none placeholder-gray-500"
+                rows={1}
+                disabled={isSending}
+              />
+            </div>
             
-            <button
-              onClick={sendMessage}
-              disabled={!input.trim() || isSending}
-              className="p-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 shrink-0"
-            >
+            <button onClick={sendMessage} disabled={!input.trim() || isSending} className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors disabled:opacity-40 shrink-0">
               <Send className="w-5 h-5" />
             </button>
           </div>
