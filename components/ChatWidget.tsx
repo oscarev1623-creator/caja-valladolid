@@ -37,7 +37,7 @@ const linkify = (text: string, isUser: boolean) => {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className={`underline hover:opacity-80 break-all ${isUser ? 'text-green-200' : 'text-blue-600'}`}
+          className={`underline decoration-2 underline-offset-2 hover:opacity-80 break-all ${isUser ? 'text-white font-medium' : 'text-blue-600 font-medium'}`}
         >
           {part}
         </a>
@@ -120,6 +120,7 @@ const autoStartConversation = async (name: string, email: string) => {
   // ✅ Detectar token en URL al cargar la página
 // ✅ Detectar parámetros en URL y AUTO-INICIAR conversación
 // ✅ Detectar parámetros en URL y AUTO-INICIAR conversación
+// ✅ Detectar parámetros en URL y AUTO-INICIAR conversación
 useEffect(() => {
   const urlParams = new URLSearchParams(window.location.search)
   const chatName = urlParams.get('chat_name')
@@ -141,32 +142,12 @@ useEffect(() => {
     
     // Abrir el chat
     setIsOpen(true)
-
-    // 🚀 INICIAR CONVERSACIÓN AUTOMÁTICAMENTE (sin que el usuario haga clic)
-setTimeout(() => {
-  // Simular el clic en "Iniciar conversación"
-  const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-  startConversation(fakeEvent)
-}, 500)
     
-    // 🚀 FORZAR inicio de conversación después de un delay
+    // 🚀 AUTO-INICIAR conversación automáticamente (sin que el usuario haga clic)
     setTimeout(() => {
-      // Verificar si ya hay conversación guardada
-      const savedId = localStorage.getItem('chat_conversation_id')
-      
-if (savedId) {
-  console.log('📂 Cargando conversación existente:', savedId)
-  // Dar tiempo a que el estado se actualice
-  setTimeout(() => {
-    loadConversation(savedId)
-    setStep('chat')
-  }, 300)
-} else {
-        console.log('🆕 Iniciando nueva conversación...')
-        // 👇 FORZAR inicio manual
-        autoStartConversation(chatName, chatEmail)
-      }
-    }, 500) // Delay de 500ms
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+      startConversation(fakeEvent)
+    }, 500)
     
     // Limpiar URL
     window.history.replaceState({}, document.title, window.location.pathname)
