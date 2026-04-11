@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Send, ArrowLeft, CheckCircle, XCircle, Paperclip, FileText, Trash2, Loader2, FileCheck, MoreVertical, Phone, Mail } from 'lucide-react'
+import { 
+  Send, ArrowLeft, CheckCircle, XCircle, Paperclip, FileText, Trash2, 
+  Loader2, FileCheck, MoreVertical, Phone, Mail, MessageCircle 
+} from 'lucide-react'
 
 // 🔗 Función linkify (optimizada)
 const linkify = (text: string, isAgent: boolean) => {
