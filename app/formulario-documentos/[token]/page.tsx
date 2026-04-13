@@ -110,11 +110,10 @@ export default function DocumentosPage() {
   const validateRequiredDocuments = (): boolean => {
     const errors: string[] = []
     const required = [
-      { field: 'ineFront', name: 'INE/IFE Frontal' },
-      { field: 'ineBack', name: 'INE/IFE Trasera' },
-      { field: 'comprobanteDomicilio', name: 'Comprobante de Domicilio' },
-      { field: 'constanciaLaboral', name: 'Constancia Laboral' }
-    ]
+  { field: 'ineFront', name: 'INE/IFE Frontal' },
+  { field: 'ineBack', name: 'INE/IFE Trasera' },
+  { field: 'comprobanteDomicilio', name: 'Comprobante de Domicilio' }
+]
     
     required.forEach(({ field, name }) => {
       if (!documents[field as keyof Documents]) {
@@ -600,31 +599,27 @@ export default function DocumentosPage() {
                 </div>
               </div>
               
-              {/* Constancia laboral */}
-              <div className={`border-2 border-dashed rounded-xl p-6 transition-colors ${
-                validationErrors.includes('Constancia Laboral') 
-                  ? 'border-red-400 bg-red-50' 
-                  : 'border-gray-300 hover:border-green-400'
-              }`}>
-                <label className="block mb-2">
-                  <span className="font-medium text-gray-900">Constancia Laboral o Comprobante de Ingresos</span>
-                  <span className="text-red-500 ml-1">*</span>
-                  <p className="text-sm text-gray-500 mt-1">Carta de empleo, estados de cuenta, recibos de nómina</p>
-                </label>
-                <div className="mt-2">
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => handleFileChange('constanciaLaboral', e.target.files?.[0] || null)}
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                  />
-                  {documents.constanciaLaboral && (
-                    <p className="mt-2 text-sm text-green-600">
-                      ✅ Archivo seleccionado: {documents.constanciaLaboral.name} ({formatFileSize(documents.constanciaLaboral.size)})
-                    </p>
-                  )}
-                </div>
-              </div>
+{/* Constancia laboral - AHORA OPCIONAL */}
+<div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-green-400 transition-colors">
+  <label className="block mb-2">
+    <span className="font-medium text-gray-900">Constancia Laboral o Comprobante de Ingresos</span>
+    <span className="text-gray-400 ml-1 text-xs">(Opcional)</span>
+    <p className="text-sm text-gray-500 mt-1">Carta de empleo, estados de cuenta, recibos de nómina</p>
+  </label>
+  <div className="mt-2">
+    <input
+      type="file"
+      accept=".pdf,.jpg,.jpeg,.png"
+      onChange={(e) => handleFileChange('constanciaLaboral', e.target.files?.[0] || null)}
+      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+    />
+    {documents.constanciaLaboral && (
+      <p className="mt-2 text-sm text-green-600">
+        ✅ Archivo seleccionado: {documents.constanciaLaboral.name} ({formatFileSize(documents.constanciaLaboral.size)})
+      </p>
+    )}
+  </div>
+</div>
             </div>
           </div>
           
