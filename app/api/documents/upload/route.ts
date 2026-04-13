@@ -147,6 +147,20 @@ export async function POST(request: NextRequest) {
       })
       
       console.log('✅ Lead actualizado. Documentos:', uploadedDocuments.length)
+      
+      // ✅ NUEVO: Enviar correo de confirmación de documentos recibidos
+      try {
+        const { sendDocumentsReceivedEmail } = await import('@/lib/email')
+        await sendDocumentsReceivedEmail({
+          to: lead.email!,
+          nombre: lead.fullName,
+          leadId: lead.id
+        })
+        console.log('✅ Correo de documentos enviado a:', lead.email)
+      } catch (emailError) {
+        console.error('❌ Error enviando correo de documentos:', emailError)
+        // No fallar la petición si el correo falla
+      }
     }
 
     return NextResponse.json({
