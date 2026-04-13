@@ -13,23 +13,31 @@ interface CreditCalculatorSimpleProps {
 
 const CreditCalculatorSimple = ({ 
   initialMonto = 50000, 
-  initialPlazo = 8,
+  initialPlazo = 12,
   leadId,
   token,
   onClose 
 }: CreditCalculatorSimpleProps) => {
   const [creditAmount, setCreditAmount] = useState(initialMonto);
-  const [years, setYears] = useState(initialPlazo);
+  const [months, setMonths] = useState(initialPlazo);
   const [isLoading, setIsLoading] = useState(false);
   const [monthlyPayment, setMonthlyPayment] = useState(0);
 
   const interestRate = 11 / 100 / 12;
-  const yearOptions = [4, 6, 8, 10, 12, 16, 20];
+
+  // ✅ NUEVAS OPCIONES DE PLAZO (en meses)
+  const plazoOptions = [
+    { label: '6 meses', value: 6 },
+    { label: '1 año', value: 12 },
+    { label: '2 años', value: 24 },
+    { label: '3 años', value: 36 },
+    { label: '4 años', value: 48 },
+    { label: '5 años', value: 60 }
+  ];
 
   // Calcular préstamo (sin anticipo)
   const calculateLoan = () => {
     const netAmount = creditAmount;
-    const months = years * 12;
     
     if (netAmount <= 0) {
       setMonthlyPayment(0);
@@ -43,7 +51,7 @@ const CreditCalculatorSimple = ({
 
   useEffect(() => {
     calculateLoan();
-  }, [creditAmount, years]);
+  }, [creditAmount, months]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -63,7 +71,7 @@ const CreditCalculatorSimple = ({
         body: JSON.stringify({
           token,
           estimatedAmount: creditAmount,
-          plazo: years * 12,
+          plazo: months,
           creditType: 'TRADITIONAL'
         })
       });
@@ -120,23 +128,23 @@ const CreditCalculatorSimple = ({
             </div>
           </div>
 
-          {/* Plazo */}
+          {/* ✅ Plazo - NUEVAS OPCIONES */}
           <div className="mb-8">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Plazo (años)
+              Plazo
             </label>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-3">
-              {yearOptions.map((year) => (
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+              {plazoOptions.map((option) => (
                 <button
-                  key={year}
-                  onClick={() => setYears(year)}
+                  key={option.value}
+                  onClick={() => setMonths(option.value)}
                   className={`py-3 px-2 rounded-lg transition-all ${
-                    years === year
+                    months === option.value
                       ? 'bg-green-600 text-white shadow-md'
                       : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  {year} años
+                  {option.label}
                 </button>
               ))}
             </div>
@@ -149,7 +157,7 @@ const CreditCalculatorSimple = ({
               {formatCurrency(monthlyPayment)}
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              Plazo: {years} años ({years * 12} meses)
+              Plazo: {months} meses
             </p>
           </div>
 

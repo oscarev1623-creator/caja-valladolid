@@ -28,7 +28,9 @@ const CryptoCalculatorSimple = ({
   const [monthlyPayment, setMonthlyPayment] = useState(0);
 
   const interestRate = 5.4 / 100 / 12;
-  const monthOptions = [6, 12, 18, 24, 36, 48];
+
+  // ✅ NUEVAS OPCIONES DE PLAZO
+  const monthOptions = [6, 12, 24, 36, 48, 60];
 
   // Calcular préstamo (sin anticipo)
   const calculateLoan = () => {
@@ -129,7 +131,7 @@ const CryptoCalculatorSimple = ({
             </div>
           </div>
 
-          {/* Plazo */}
+          {/* ✅ Plazo - NUEVAS OPCIONES */}
           <div className="mb-8">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Plazo (meses)

@@ -25,7 +25,7 @@ interface CreditCalculatorProps {
 
 const CreditCalculator = ({ 
   initialMonto = 50000, 
-  initialPlazo = 8,
+  initialPlazo = 1,
   leadId,
   token,
   onClose 
@@ -47,8 +47,15 @@ const CreditCalculator = ({
   // Tasa de interés 11% anual
   const interestRate = 11 / 100 / 12; // 11% anual -> mensual
 
-  // Opciones de plazo
-  const yearOptions = [4, 6, 8, 10, 12, 16, 20];
+  // ✅ NUEVAS OPCIONES DE PLAZO
+  const plazoOptions = [
+    { label: '6 meses', value: 0.5 },
+    { label: '1 año', value: 1 },
+    { label: '2 años', value: 2 },
+    { label: '3 años', value: 3 },
+    { label: '4 años', value: 4 },
+    { label: '5 años', value: 5 }
+  ];
 
   // Calcular préstamo (sin anticipo)
   const calculateLoan = () => {
@@ -173,7 +180,7 @@ const CreditCalculator = ({
           <div class="summary">
             <p><strong>Monto solicitado:</strong> ${formatCurrency(creditAmount)}</p>
             <p><strong>Rango de crédito:</strong> ${getCurrentRange(creditAmount)}</p>
-            <p><strong>Plazo:</strong> ${years} años (${years * 12} meses)</p>
+            <p><strong>Plazo:</strong> ${years} año(s) (${years * 12} meses)</p>
             <p><strong>Mensualidad:</strong> ${formatCurrency(results.monthlyPayment)}</p>
             <p><strong>Interés total:</strong> ${formatCurrency(results.totalInterest)}</p>
             <p><strong>Total a pagar:</strong> ${formatCurrency(creditAmount + results.totalInterest)}</p>
@@ -321,27 +328,27 @@ const CreditCalculator = ({
               </div>
             </div>
 
-            {/* Plazo */}
+            {/* ✅ Plazo - NUEVAS OPCIONES */}
             <div className="mb-10">
               <div className="flex items-center gap-2 mb-6">
                 <Calendar className="w-5 h-5 text-gray-600" />
                 <label className="text-lg font-semibold text-gray-800">
-                  Plazo (años)
+                  Plazo
                 </label>
               </div>
               
-              <div className="grid grid-cols-4 sm:grid-cols-7 gap-3">
-                {yearOptions.map((year) => (
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                {plazoOptions.map((option) => (
                   <button
-                    key={year}
-                    onClick={() => setYears(year)}
+                    key={option.value}
+                    onClick={() => setYears(option.value)}
                     className={`py-3 px-2 rounded-lg transition-all ${
-                      years === year
+                      years === option.value
                         ? 'bg-green-600 text-white shadow-md'
                         : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    {year} años
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -406,7 +413,7 @@ const CreditCalculator = ({
                   {formatCurrency(creditAmount)}
                 </div>
                 <div className="text-gray-500 text-sm">
-                  Plazo: <span className="font-semibold">{years} años</span>
+                  Plazo: <span className="font-semibold">{years} año(s)</span>
                 </div>
                 <div className="text-xs text-gray-400 mt-2">
                   {getCurrentRange(creditAmount)}
@@ -519,7 +526,7 @@ const CreditCalculator = ({
                   Tabla de Amortización
                 </h3>
                 <p className="text-green-100 mt-1">
-                  {formatCurrency(creditAmount)} a {years} años • Tasa {interestRate * 12}% anual
+                  {formatCurrency(creditAmount)} a {years} año(s) • Tasa {interestRate * 12}% anual
                 </p>
               </div>
               <button

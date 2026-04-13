@@ -25,7 +25,7 @@ const CryptoCreditCalculator = ({
   // Estados
   const [creditAmount, setCreditAmount] = useState(initialMonto);
   const [selectedCrypto, setSelectedCrypto] = useState('BTC');
-  const [years, setYears] = useState(initialPlazo);
+  const [months, setMonths] = useState(initialPlazo);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   
@@ -41,8 +41,15 @@ const CryptoCreditCalculator = ({
   // Constantes
   const interestRate = 5.4 / 100 / 12; // 5.4% anual -> mensual
 
-  // Opciones de plazo
-  const yearOptions = [6, 12, 18, 24, 36, 48];
+  // ✅ NUEVAS OPCIONES DE PLAZO (en meses)
+  const plazoOptions = [
+    { label: '6 meses', value: 6 },
+    { label: '1 año', value: 12 },
+    { label: '2 años', value: 24 },
+    { label: '3 años', value: 36 },
+    { label: '4 años', value: 48 },
+    { label: '5 años', value: 60 }
+  ];
 
   // Criptomonedas disponibles para crédito
   const cryptocurrencies = [
@@ -109,7 +116,6 @@ const CryptoCreditCalculator = ({
   // Calcular préstamo (sin anticipo)
   const calculateLoan = () => {
     const netAmount = creditAmount;
-    const months = years;
     
     const monthlyPayment = (netAmount * interestRate * Math.pow(1 + interestRate, months)) / 
                            (Math.pow(1 + interestRate, months) - 1);
@@ -125,7 +131,7 @@ const CryptoCreditCalculator = ({
   // Calcular al cambiar valores
   useEffect(() => {
     calculateLoan();
-  }, [creditAmount, years]);
+  }, [creditAmount, months]);
 
   // Manejar cálculo con animación
   const handleCalculate = () => {
@@ -161,7 +167,7 @@ const CryptoCreditCalculator = ({
           body: JSON.stringify({
             token,
             estimatedAmount: creditAmount,
-            plazo: years,
+            plazo: months,
             creditType: 'CRYPTO',
             selectedCrypto: selectedCrypto
           })
@@ -356,27 +362,27 @@ const CryptoCreditCalculator = ({
               </div>
             </div>
 
-            {/* Plazo del crédito */}
+            {/* ✅ Plazo - NUEVAS OPCIONES */}
             <div className="mb-10">
               <div className="flex items-center gap-2 mb-6">
                 <Zap className="w-5 h-5 text-gray-600" />
                 <label className="text-lg font-semibold text-gray-800">
-                  Plazo del crédito (meses)
+                  Plazo del crédito
                 </label>
               </div>
               
               <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                {yearOptions.map((months) => (
+                {plazoOptions.map((option) => (
                   <button
-                    key={months}
-                    onClick={() => setYears(months)}
+                    key={option.value}
+                    onClick={() => setMonths(option.value)}
                     className={`py-3 px-2 rounded-lg transition-all ${
-                      years === months
+                      months === option.value
                         ? 'bg-green-600 text-white shadow-md'
                         : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    {months} meses
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -441,7 +447,7 @@ const CryptoCreditCalculator = ({
                   {formatCrypto(creditAmount)}
                 </div>
                 <div className="text-gray-500 text-sm">
-                  Plazo: {years} meses
+                  Plazo: {months} meses
                 </div>
               </div>
 
@@ -593,7 +599,7 @@ const CryptoCreditCalculator = ({
         isOpen={isLeadFormOpen} 
         onClose={() => setIsLeadFormOpen(false)}
         selectedCrypto={selectedCrypto}
-        plazo={years}
+        plazo={months}
         monto={creditAmount}
       />
 
