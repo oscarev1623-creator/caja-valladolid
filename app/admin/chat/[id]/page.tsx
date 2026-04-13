@@ -387,26 +387,37 @@ export default function AgentChatPage() {
               <MoreVertical className="w-5 h-5" />
             </button>
             
-            {showMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
-                  <button onClick={generateDocumentLink} disabled={isGeneratingDocLink} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50">
-                    <FileText className="w-4 h-4 text-blue-600" />
-                    {isGeneratingDocLink ? 'Generando...' : 'Enlace Docs'}
-                  </button>
-                  <button onClick={generateCalculatorLink} disabled={isGeneratingCalculatorLink} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50">
-                    <FileCheck className="w-4 h-4 text-purple-600" />
-                    {isGeneratingCalculatorLink ? 'Generando...' : 'Enlace Calc'}
-                  </button>
-                  <hr className="my-1" />
-                  <button onClick={deleteConversation} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3 text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                    Eliminar conversación
-                  </button>
-                </div>
-              </>
-            )}
+{showMenu && (
+  <>
+    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+    <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+      <button 
+        onClick={generateDocumentLink} 
+        disabled={isGeneratingDocLink} 
+        className="w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50"
+      >
+        <FileText className="w-4 h-4 text-blue-600" />
+        {isGeneratingDocLink ? 'Generando...' : 'Enlace Docs'}
+      </button>
+      <button 
+        onClick={generateCalculatorLink} 
+        disabled={isGeneratingCalculatorLink} 
+        className="w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50"
+      >
+        <FileCheck className="w-4 h-4 text-purple-600" />
+        {isGeneratingCalculatorLink ? 'Generando...' : 'Enlace Calc'}
+      </button>
+      <hr className="my-1" />
+      <button 
+        onClick={deleteConversation} 
+        className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
+      >
+        <Trash2 className="w-4 h-4" />
+        Eliminar conversación
+      </button>
+    </div>
+  </>
+)}
           </div>
         </div>
       </div>
