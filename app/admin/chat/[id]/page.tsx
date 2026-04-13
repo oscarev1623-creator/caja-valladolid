@@ -17,13 +17,13 @@ const linkify = (text: string, isAgent: boolean) => {
     if (part.match(urlRegex)) {
       const href = part.startsWith('www.') ? `https://${part}` : part
       return (
-        <a
-          key={index}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`underline hover:opacity-80 break-all ${isAgent ? 'text-green-200' : 'text-blue-600'}`}
-        >
+<a
+  key={index}
+  href={href}
+  target="_blank"
+  rel="noopener noreferrer"
+  className={`underline decoration-2 underline-offset-2 hover:opacity-80 break-all font-medium ${isAgent ? 'text-blue-700' : 'text-blue-600'}`}
+>
           {part}
         </a>
       )
