@@ -301,11 +301,12 @@ export async function sendDocumentsReceivedEmail({
 // 3. CORREO DE NOTIFICACIÓN DE CHAT (ASESOR RESPONDE)
 // ============================================
 export async function sendChatNotificationEmail({ to, name, message, conversationId }: { to: string; name: string; message: string; conversationId: string }) {
-  console.log('📧 Enviando notificación de chat vía Zoho a:', to)
+  console.log('📧 Enviando notificación de chat con conversationId:', conversationId) // ← AGREGAR ESTE LOG
   
-  // ✅ CORREGIDO: Incluir conversationId en el enlace
   const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(name)}&chat_email=${encodeURIComponent(to)}&conversation_id=${conversationId}`
-
+  
+  console.log('🔗 chatUrl generado:', chatUrl) // ← AGREGAR ESTE LOG
+  
   const content = `
     <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
       <tr>

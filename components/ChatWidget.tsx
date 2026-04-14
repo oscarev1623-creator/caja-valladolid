@@ -116,41 +116,47 @@ export default function ChatWidget() {
     }
   }
 
-  // ✅ DETECCIÓN DE PARÁMETROS EN URL - VERSIÓN MEJORADA
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const urlParams = new URLSearchParams(window.location.search)
-      const chatName = urlParams.get('chat_name')
-      const chatEmail = urlParams.get('chat_email')
-      
-      console.log('🔍 [ChatWidget] Verificando parámetros:', { chatName, chatEmail })
-      
-      if (chatName && chatEmail) {
-        console.log('📧 [ChatWidget] Abriendo chat desde correo para:', chatEmail)
-        
-        setFormData({
-          name: chatName,
-          email: chatEmail,
-          phone: ''
-        })
-        
-        localStorage.setItem('chat_user_name', chatName)
-        localStorage.setItem('chat_user_email', chatEmail)
-        
-        setIsOpen(true)
-        
-        setTimeout(() => {
-          console.log('🚀 [ChatWidget] Iniciando conversación automática...')
-          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-          startConversation(fakeEvent)
-        }, 800)
-        
-        window.history.replaceState({}, document.title, window.location.pathname)
-      }
-    }, 300)
+  // ✅ DETECCIÓN DE PARÁMETROS EN URL - VERSIÓN FINAL CORREGIDA
+useEffect(() => {
+  const timer = setTimeout(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const chatName = urlParams.get('chat_name')
+    const chatEmail = urlParams.get('chat_email')
+    const conversationIdParam = urlParams.get('conversation_id')
     
-    return () => clearTimeout(timer)
-  }, [])
+    console.log('🔍 [ChatWidget] Parámetros:', { chatName, chatEmail, conversationId: conversationIdParam })
+    
+    if (chatName && chatEmail) {
+      // ✅ SI HAY conversationId, CARGAR ESA CONVERSACIÓN
+      if (conversationIdParam) {
+        console.log('📂 [ChatWidget] CARGANDO conversación existente:', conversationIdParam)
+        localStorage.setItem('chat_conversation_id', conversationIdParam)
+        setConversationId(conversationIdParam)
+        
+        // NO iniciar nueva conversación, cargar la existente
+        fetch(`/api/chat/messages?conversationId=${conversationIdParam}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              setMessages(data.messages)
+              setStep('chat')
+              setIsOpen(true)
+            } else {
+              console.error('❌ Conversación no encontrada:', data.error)
+            }
+          })
+      } else {
+        // Si NO hay conversationId, abrir formulario
+        console.log('📝 [ChatWidget] Sin conversationId, abriendo formulario')
+        setIsOpen(true)
+      }
+      
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, 300)
+  
+  return () => clearTimeout(timer)
+}, [])
 
   // ✅ Cargar datos guardados
   useEffect(() => {
@@ -220,6 +226,52 @@ export default function ChatWidget() {
       }
     } catch (error) {
       console.error('Error loading conversation:', error)
+    }
+  }
+
+  // ✅ Iniciar conversación automáticamente con los datos del lead
+  const startConversationAutomatically = async (lead: any) => {
+    if (!lead || !lead.email || !lead.name) return
+    
+    console.log('🚀 Iniciando conversación automática para:', lead.email)
+    
+    setIsLoading(true)
+    try {
+      const res = await fetch('/api/chat/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone || ''
+        })
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setConversationId(data.conversationId)
+        localStorage.setItem('chat_conversation_id', data.conversationId)
+        
+        const assignRes = await fetch('/api/chat/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId: data.conversationId })
+        })
+        const assignData = await assignRes.json()
+        if (assignData.success) setAssignedAgent(assignData.agent)
+        
+        setStep('chat')
+        setMessages([{
+          id: 'welcome',
+          message: `Hola ${lead.name}, ¡bienvenido de nuevo! Tu asesor te atenderá en breve.`,
+          senderType: 'system',
+          createdAt: new Date().toISOString()
+        }])
+      }
+    } catch (error) {
+      console.error('Error iniciando conversación automática:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
