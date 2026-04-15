@@ -35,6 +35,7 @@ model Lead {
   creditType         String     @default("TRADITIONAL")
   message            String?
   uniqueToken        String?    @unique
+  chatToken        String?   @unique
   tokenExpiresAt     DateTime?
   tokenGeneratedAt   DateTime?
   firstName          String?
@@ -72,6 +73,7 @@ model Lead {
   tickets            Ticket[]
   calculatorToken           String?   @unique
   calculatorTokenExpiresAt  DateTime?
+  lastReminderSentAt   DateTime?
 
   @@index([email])
   @@index([phone])

@@ -111,11 +111,11 @@ const CreditCalculatorSimple = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Monto solicitado (MXN)
             </label>
-            <input
-              type="range"
-              min="50000"
-              max="5000000"
-              step="50000"
+          <input
+  type="range"
+  min="20000"
+  max="5000000"
+  step="5000"
               value={creditAmount}
               onChange={(e) => setCreditAmount(parseInt(e.target.value))}
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"

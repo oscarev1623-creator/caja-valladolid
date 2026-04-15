@@ -5,7 +5,6 @@ import { sendConfirmationEmail } from '@/lib/email'
 
 const prisma = new PrismaClient()
 
-// Función para obtener el asesor con menos leads asignados
 async function getBestAgent() {
   console.log('🔍 Buscando el mejor asesor para el lead...')
   
@@ -49,6 +48,7 @@ export async function POST(request: NextRequest) {
 
     const fullName = `${firstName} ${lastName}`.trim()
     const uniqueToken = uuidv4()
+    const chatToken = uuidv4() // ✅ Token para chat automático
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
 
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
         creditType: mappedCreditType,
         message: message || '',
         uniqueToken,
+        chatToken, // ✅ Guardar token
         tokenExpiresAt: expiresAt,
         status: 'PENDING_DOCUMENTS',
         source: 'CALCULATOR',
@@ -99,20 +100,20 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Ticket creado')
 
-    // Enviar correo de confirmación
+    // Enviar correo de confirmación con token
     console.log('📧 Llamando a sendConfirmationEmail...')
     try {
-await sendConfirmationEmail({
-  to: email,
-  nombre: fullName,
-  leadId: lead.id,
-  monto: estimatedAmount,      // ← NUEVO
-  tipoCredito: creditType       // ← NUEVO
-})
+      await sendConfirmationEmail({
+        to: email,
+        nombre: fullName,
+        leadId: lead.id,
+        monto: estimatedAmount,
+        tipoCredito: creditType,
+        chatToken: chatToken // ✅ Enviar token en el email
+      })
       console.log('✅ sendConfirmationEmail completado')
     } catch (emailError: any) {
       console.error('❌ Error en sendConfirmationEmail:', emailError.message)
-      // No lanzar error para que el lead se cree igual
     }
 
     return NextResponse.json({

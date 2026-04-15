@@ -304,10 +304,10 @@ const CryptoCreditCalculator = ({
               </div>
               
               <input
-                type="range"
-                min="1000"
-                max="1000000"
-                step="1000"
+  type="range"
+  min="500"   // ~$10,000 MXN
+  max="1000000"
+  step="500"
                 value={creditAmount}
                 onChange={(e) => setCreditAmount(parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-green"

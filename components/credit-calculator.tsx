@@ -312,18 +312,18 @@ const CreditCalculator = ({
                 </div>
               </div>
               
-              <input
-                type="range"
-                min="50000"
-                max="5000000"
-                step="50000"
+                <input
+  type="range"
+  min="20000"
+  max="5000000"
+  step="5000"
                 value={creditAmount}
                 onChange={(e) => setCreditAmount(parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-green"
               />
               
               <div className="flex justify-between text-sm text-gray-500 mt-3">
-                <span>$50,000 MXN</span>
+                <span>$20,000 MXN</span>
                 <span>$5,000,000 MXN</span>
               </div>
             </div>
