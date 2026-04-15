@@ -396,94 +396,12 @@ span[style*="position:relative"] > img[style*="position:absolute"] {
 /* 🔥 NEGRITA EN MENSAJES DE CHAT - FIX DEFINITIVO */
 /* ============================================ */
 
-/* Asegurar que los strong y b se vean en negrita */
-.whitespace-pre-wrap strong,
-.whitespace-pre-wrap b,
-p strong,
-p b,
-span strong,
-span b,
-.message-content strong,
-.message-content b,
-[class*="message"] strong,
-[class*="message"] b {
-  font-weight: 700 !important;
-  color: inherit !important;
-}
-
-/* Cursiva */
-.whitespace-pre-wrap em,
-.whitespace-pre-wrap i,
-p em,
-p i {
-  font-style: italic !important;
-}
-
-/* Tachado */
-.whitespace-pre-wrap del,
-.whitespace-pre-wrap s,
-p del,
-p s {
-  text-decoration: line-through !important;
-}
-
-/* Subrayado */
-.whitespace-pre-wrap u,
-p u {
-  text-decoration: underline !important;
-}
-
-/* Código inline */
-.whitespace-pre-wrap code,
-p code {
-  background-color: rgba(0, 0, 0, 0.05) !important;
-  padding: 0.125rem 0.25rem !important;
-  border-radius: 0.25rem !important;
-  font-family: var(--font-mono), monospace !important;
-  font-size: 0.875rem !important;
-}
-
-.dark .whitespace-pre-wrap code,
-.dark p code {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* Enlaces en mensajes */
-.whitespace-pre-wrap a,
-p a {
-  color: var(--primary) !important;
-  text-decoration: underline !important;
-  text-underline-offset: 2px !important;
-  font-weight: 500 !important;
-}
-
-.whitespace-pre-wrap a:hover,
-p a:hover {
-  color: var(--accent) !important;
-}
-
-/* Asegurar que el texto en negrita se vea en mensajes de agente y usuario */
-.bg-\\[\\#d9fdd3\\] strong,
-.bg-white strong {
-  font-weight: 700 !important;
-  color: #1a1a1a !important;
-}
-
-.dark .bg-\\[\\#d9fdd3\\] strong,
-.dark .bg-white strong {
-  color: #ffffff !important;
-}
-
-/* ============================================ */
-/* 🔥 NEGRITA EN MENSAJES DE CHAT - FIX DEFINITIVO */
-/* ============================================ */
-
 /* Asegurar que los strong y b se vean en negrita en TODOS los mensajes */
 strong, b {
   font-weight: 700 !important;
 }
 
-/* Mensajes del usuario (fondo verde) */
+/* Mensajes del usuario (fondo verde) - CHAT WIDGET */
 .bg-green-600 strong,
 .bg-green-600 b,
 [class*="bg-green"] strong,
@@ -503,7 +421,7 @@ strong, b {
   color: #1a1a1a !important;
 }
 
-/* Mensajes dentro de párrafos */
+/* Mensajes dentro de párrafos y spans */
 p strong,
 p b,
 .whitespace-pre-wrap strong,
@@ -537,8 +455,18 @@ code {
   font-size: 0.875rem !important;
 }
 
-/* Enlaces */
-a {
+.dark code {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Enlaces SOLO en mensajes de chat */
+.whitespace-pre-wrap a {
   text-decoration: underline !important;
   text-underline-offset: 2px !important;
+  font-weight: 500 !important;
+  color: var(--primary) !important;
+}
+
+.whitespace-pre-wrap a:hover {
+  color: var(--accent) !important;
 }
