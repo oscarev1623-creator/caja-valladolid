@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   MessageCircle, X, Send, User, Mail, Phone, 
-  Minimize2, Paperclip, FileText, Loader2
+  Minimize2, Paperclip, FileText, Loader2, Smile
 } from 'lucide-react'
 
 function getAgentGradient(color: string | undefined) {
@@ -23,7 +23,16 @@ function getAgentGradient(color: string | undefined) {
 }
 
 // ============================================
-// 🎨 FUNCIÓN PARA FORMATEAR TEXTO CON MARKDOWN SIMPLE
+// 😊 LISTA DE EMOJIS COMUNES
+// ============================================
+const EMOJI_LIST = [
+  '😊', '😂', '❤️', '👍', '🙏', '🎉', '🔥', '💯', '✅', '⭐',
+  '🤔', '👋', '💪', '🙌', '👏', '💸', '💰', '📄', '📱', '💻',
+  '🏠', '🚗', '📈', '📉', '💡', '🔒', '⚠️', '❌', '✔️', 'ℹ️'
+]
+
+// ============================================
+// 🎨 FUNCIÓN PARA FORMATEAR TEXTO CON MARKDOWN
 // ============================================
 const formatMessage = (text: string) => {
   if (!text) return text
@@ -31,17 +40,11 @@ const formatMessage = (text: string) => {
   let formattedText = text
   
   // Patrones de markdown
-  const patterns = [
-    { regex: /\*\*(.+?)\*\*/g, replace: (m: string, p1: string) => `<strong>${p1}</strong>` },
-    { regex: /\*(.+?)\*/g, replace: (m: string, p1: string) => `<em>${p1}</em>` },
-    { regex: /__(.+?)__/g, replace: (m: string, p1: string) => `<u>${p1}</u>` },
-    { regex: /~~(.+?)~~/g, replace: (m: string, p1: string) => `<del>${p1}</del>` },
-    { regex: /`(.+?)`/g, replace: (m: string, p1: string) => `<code class="bg-gray-200 px-1 py-0.5 rounded text-sm">${p1}</code>` },
-  ]
-  
-  patterns.forEach(({ regex, replace }) => {
-    formattedText = formattedText.replace(regex, replace)
-  })
+  formattedText = formattedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  formattedText = formattedText.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  formattedText = formattedText.replace(/__(.+?)__/g, '<u>$1</u>')
+  formattedText = formattedText.replace(/~~(.+?)~~/g, '<del>$1</del>')
+  formattedText = formattedText.replace(/`(.+?)`/g, '<code class="bg-gray-200 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
   
   // Convertir URLs en enlaces
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
@@ -54,7 +57,7 @@ const formatMessage = (text: string) => {
 }
 
 // ============================================
-// 🔗 FUNCIÓN LINKIFY MEJORADA (CON FORMATO)
+// 🔗 FUNCIÓN LINKIFY MEJORADA
 // ============================================
 const linkify = (text: string, isUser: boolean) => {
   if (!text) return text
@@ -75,6 +78,7 @@ export default function ChatWidget() {
   const [isLoading, setIsLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isLoadingConversation, setIsLoadingConversation] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -84,6 +88,27 @@ export default function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const emojiPickerRef = useRef<HTMLDivElement>(null)
+
+  // Cerrar emoji picker al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // ============================================
+  // 😊 INSERTAR EMOJI
+  // ============================================
+  const insertEmoji = (emoji: string) => {
+    setInput(prev => prev + emoji)
+    setShowEmojiPicker(false)
+    inputRef.current?.focus()
+  }
   
   // ✅ Función para auto-iniciar conversación (respaldo)
   const autoStartConversation = async (name: string, email: string) => {
@@ -661,15 +686,46 @@ export default function ChatWidget() {
                     <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">
                       <Paperclip className="w-4 h-4" />
                     </button>
-                    <input 
-                      ref={inputRef} 
-                      type="text" 
-                      value={input} 
-                      onChange={(e) => setInput(e.target.value)} 
-                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()} 
-                      placeholder="Escribe tu mensaje... (**negrita**, *cursiva*, 😊)" 
-                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white" 
-                    />
+                    
+                    <div className="flex-1 bg-gray-100 rounded-3xl px-4 py-2 relative">
+                      <input 
+                        ref={inputRef} 
+                        type="text" 
+                        value={input} 
+                        onChange={(e) => setInput(e.target.value)} 
+                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()} 
+                        placeholder="Escribe un mensaje..." 
+                        className="w-full bg-transparent text-sm outline-none placeholder-gray-500 pr-8" 
+                      />
+                      
+                      {/* Botón de emojis */}
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2" ref={emojiPickerRef}>
+                        <button
+                          type="button"
+                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                        >
+                          <Smile className="w-4 h-4 text-gray-500" />
+                        </button>
+                        
+                        {showEmojiPicker && (
+                          <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 w-64 z-50">
+                            <div className="grid grid-cols-8 gap-1">
+                              {EMOJI_LIST.map((emoji, index) => (
+                                <button
+                                  key={index}
+                                  onClick={() => insertEmoji(emoji)}
+                                  className="p-1.5 text-xl hover:bg-gray-100 rounded transition-colors"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
                     <button onClick={sendMessage} disabled={!input.trim()} className="bg-green-600 text-white p-2 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50">
                       <Send className="w-4 h-4" />
                     </button>
