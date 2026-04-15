@@ -4,36 +4,23 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { 
   Send, ArrowLeft, CheckCircle, XCircle, Paperclip, FileText, Trash2, 
-  Loader2, FileCheck, MoreVertical, Phone, Mail, MessageCircle, X
+  Loader2, FileCheck, MoreVertical, Phone, Mail, MessageCircle, X, Smile
 } from 'lucide-react'
 
 // ============================================
-// 🎨 FUNCIÓN PARA FORMATEAR TEXTO CON MARKDOWN SIMPLE
+// 🎨 FUNCIÓN PARA FORMATEAR TEXTO (CORREGIDA)
 // ============================================
 const formatMessage = (text: string) => {
   if (!text) return text
   
-  // Convertir emojis de texto a emojis reales (opcional)
-  // Los emojis Unicode funcionan directamente 😊
-  
-  // Dividir por partes
-  const parts = []
-  let currentIndex = 0
-  
-  // Patrones
-  const patterns = [
-    { regex: /\*\*(.+?)\*\*/g, replace: (m: string, p1: string) => `<strong>${p1}</strong>` },
-    { regex: /\*(.+?)\*/g, replace: (m: string, p1: string) => `<em>${p1}</em>` },
-    { regex: /__(.+?)__/g, replace: (m: string, p1: string) => `<u>${p1}</u>` },
-    { regex: /~~(.+?)~~/g, replace: (m: string, p1: string) => `<del>${p1}</del>` },
-    { regex: /`(.+?)`/g, replace: (m: string, p1: string) => `<code class="bg-gray-200 px-1 py-0.5 rounded text-sm">${p1}</code>` },
-  ]
-  
   let formattedText = text
   
-  patterns.forEach(({ regex, replace }) => {
-    formattedText = formattedText.replace(regex, replace)
-  })
+  // Patrones de markdown
+  formattedText = formattedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  formattedText = formattedText.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  formattedText = formattedText.replace(/__(.+?)__/g, '<u>$1</u>')
+  formattedText = formattedText.replace(/~~(.+?)~~/g, '<del>$1</del>')
+  formattedText = formattedText.replace(/`(.+?)`/g, '<code class="bg-gray-200 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
   
   // Convertir URLs en enlaces
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
@@ -46,12 +33,20 @@ const formatMessage = (text: string) => {
 }
 
 // ============================================
-// 🔗 FUNCIÓN LINKIFY (COMPATIBLE CON FORMATO)
+// 😊 LISTA DE EMOJIS COMUNES
+// ============================================
+const EMOJI_LIST = [
+  '😊', '😂', '❤️', '👍', '🙏', '🎉', '🔥', '💯', '✅', '⭐',
+  '🤔', '👋', '💪', '🙌', '👏', '💸', '💰', '📄', '📱', '💻',
+  '🏠', '🚗', '📈', '📉', '💡', '🔒', '⚠️', '❌', '✔️', 'ℹ️'
+]
+
+// ============================================
+// 🔗 FUNCIÓN LINKIFY MEJORADA
 // ============================================
 const linkify = (text: string, isAgent: boolean) => {
   if (!text) return text
   
-  // Primero aplicar formato markdown
   const formattedText = formatMessage(text)
   
   return <span dangerouslySetInnerHTML={{ __html: formattedText }} />
@@ -70,6 +65,7 @@ export default function AgentChatPage() {
   const [isGeneratingDocLink, setIsGeneratingDocLink] = useState(false)
   const [isGeneratingCalculatorLink, setIsGeneratingCalculatorLink] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -78,6 +74,18 @@ export default function AgentChatPage() {
   const hasMarkedAsReadRef = useRef<boolean>(false)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const emojiPickerRef = useRef<HTMLDivElement>(null)
+
+  // Cerrar emoji picker al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // ============================================
   // 📋 CARGAR MENSAJES
@@ -192,6 +200,15 @@ export default function AgentChatPage() {
   }
 
   // ============================================
+  // 😊 INSERTAR EMOJI
+  // ============================================
+  const insertEmoji = (emoji: string) => {
+    setInput(prev => prev + emoji)
+    setShowEmojiPicker(false)
+    inputRef.current?.focus()
+  }
+
+  // ============================================
   // 📤 ENVIAR MENSAJE
   // ============================================
   const sendMessage = async () => {
@@ -302,7 +319,7 @@ export default function AgentChatPage() {
   }
 
   // ============================================
-  // 🗑️ ELIMINAR MENSAJE INDIVIDUAL (NUEVO)
+  // 🗑️ ELIMINAR MENSAJE INDIVIDUAL
   // ============================================
   const deleteMessage = async (messageId: string) => {
     if (!confirm('¿Eliminar este mensaje?')) return
@@ -330,22 +347,27 @@ export default function AgentChatPage() {
   // ============================================
   // 🔗 GENERAR ENLACE DE DOCUMENTOS (CORREGIDO)
   // ============================================
-  const generateDocumentLink = async () => {
-    if (!conversation?.userEmail) return alert('No hay email asociado')
-    setIsGeneratingDocLink(true)
-    try {
-      // ✅ Buscar TODOS los leads con ese email, ordenados por fecha (más reciente primero)
-      const leadsRes = await fetch(`/api/leads?email=${encodeURIComponent(conversation.userEmail)}&limit=50`)
-      const leadsData = await leadsRes.json()
+const generateDocumentLink = async () => {
+  if (!conversation?.userEmail) return alert('No hay email asociado')
+  setIsGeneratingDocLink(true)
+  try {
+    // ✅ Buscar el lead MÁS RECIENTE asociado a este email
+    const leadsRes = await fetch(`/api/leads?email=${encodeURIComponent(conversation.userEmail)}&limit=50`)
+    const leadsData = await leadsRes.json()
+    
+    if (!leadsData.success || !leadsData.data?.length) {
+      // Si no encuentra por email, buscar por el nombre también
+      console.log('⚠️ No se encontró lead por email, buscando por nombre...')
+      const leadsByNameRes = await fetch(`/api/leads?search=${encodeURIComponent(conversation.userName || conversation.userEmail)}&limit=50`)
+      const leadsByNameData = await leadsByNameRes.json()
       
-      if (!leadsData.success || !leadsData.data?.length) {
-        return alert('No se encontró un lead asociado a este email')
+      if (!leadsByNameData.success || !leadsByNameData.data?.length) {
+        return alert('No se encontró un lead asociado a este cliente')
       }
-
-      // ✅ Tomar el lead MÁS RECIENTE (el primero del array ordenado por createdAt desc)
-      const lead = leadsData.data[0]
       
-      console.log('📋 Lead seleccionado:', { id: lead.id, email: lead.email, createdAt: lead.createdAt })
+      // Tomar el más reciente
+      const lead = leadsByNameData.data[0]
+      console.log('📋 Lead seleccionado (por nombre):', { id: lead.id, email: lead.email, createdAt: lead.createdAt })
       
       const linkRes = await fetch('/api/leads/generate-link', {
         method: 'POST',
@@ -363,14 +385,38 @@ export default function AgentChatPage() {
       } else {
         alert('Error: ' + (linkData.error || 'Error desconocido'))
       }
-    } catch (error) {
-      console.error('Error generando enlace:', error)
-      alert('Error al generar el enlace')
-    } finally {
-      setIsGeneratingDocLink(false)
-      setShowMenu(false)
+      return
     }
+
+    // ✅ Tomar el lead MÁS RECIENTE (el primero del array ya viene ordenado por createdAt desc)
+    const lead = leadsData.data[0]
+    
+    console.log('📋 Lead seleccionado:', { id: lead.id, email: lead.email, fullName: lead.fullName, createdAt: lead.createdAt })
+    
+    const linkRes = await fetch('/api/leads/generate-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ leadId: lead.id, baseUrl: window.location.origin })
+    })
+    
+    const linkData = await linkRes.json()
+    
+    if (linkData.success) {
+      await navigator.clipboard.writeText(linkData.data.url)
+      setInput(linkData.data.url)
+      alert('✅ Enlace copiado al input')
+    } else {
+      alert('Error: ' + (linkData.error || 'Error desconocido'))
+    }
+  } catch (error) {
+    console.error('Error generando enlace:', error)
+    alert('Error al generar el enlace')
+  } finally {
+    setIsGeneratingDocLink(false)
+    setShowMenu(false)
   }
+}
 
   // ============================================
   // 🧮 GENERAR ENLACE DE CALCULADORA
@@ -537,7 +583,7 @@ export default function AgentChatPage() {
               </div>
             </div>
             
-            {/* ✅ BOTÓN PARA ELIMINAR MENSAJE (solo asesor y solo sus mensajes) */}
+            {/* Botón para eliminar mensaje */}
             {msg.senderType === 'agent' && (
               <button
                 onClick={() => deleteMessage(msg.id)}
@@ -567,17 +613,7 @@ export default function AgentChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Guía rápida de formato */}
-      <div className="bg-white/80 backdrop-blur-sm px-3 py-1 text-[10px] text-gray-400 border-t border-gray-100 flex gap-3 flex-wrap">
-        <span><strong>**negrita**</strong></span>
-        <span><em>*cursiva*</em></span>
-        <span><u>__subrayado__</u></span>
-        <span><del>~~tachado~~</del></span>
-        <span><code>`código`</code></span>
-        <span>😊 emojis</span>
-      </div>
-
-      {/* Input - Estilo WhatsApp */}
+      {/* Input - Estilo WhatsApp con selector de emojis */}
       {conversation?.status === 'active' && (
         <div className="bg-white border-t border-gray-200 p-2 shrink-0 safe-bottom">
           <div className="flex items-end gap-2">
@@ -586,7 +622,7 @@ export default function AgentChatPage() {
               {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
             </button>
             
-            <div className="flex-1 bg-gray-100 rounded-3xl px-4 py-2">
+            <div className="flex-1 bg-gray-100 rounded-3xl px-4 py-2 relative">
               <textarea
                 ref={inputRef}
                 onFocus={handleFocus}
@@ -598,11 +634,38 @@ export default function AgentChatPage() {
                     sendMessage()
                   }
                 }}
-                placeholder="Escribe un mensaje... (**negrita**, *cursiva*, 😊)"
-                className="w-full bg-transparent text-sm outline-none resize-none placeholder-gray-500"
+                placeholder="Escribe un mensaje..."
+                className="w-full bg-transparent text-sm outline-none resize-none placeholder-gray-500 pr-8"
                 rows={1}
                 disabled={isSending}
               />
+              
+              {/* Botón de emojis */}
+              <div className="absolute right-2 bottom-2" ref={emojiPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <Smile className="w-4 h-4 text-gray-500" />
+                </button>
+                
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 w-64 z-50">
+                    <div className="grid grid-cols-8 gap-1">
+                      {EMOJI_LIST.map((emoji, index) => (
+                        <button
+                          key={index}
+                          onClick={() => insertEmoji(emoji)}
+                          className="p-1.5 text-xl hover:bg-gray-100 rounded transition-colors"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             
             <button onClick={sendMessage} disabled={!input.trim() || isSending} className="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors disabled:opacity-40 shrink-0">
