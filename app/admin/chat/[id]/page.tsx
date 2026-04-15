@@ -8,26 +8,35 @@ import {
 } from 'lucide-react'
 
 // ============================================
-// 🎨 FUNCIÓN PARA FORMATEAR TEXTO (CORREGIDA)
+// 🎨 FUNCIÓN PARA FORMATEAR TEXTO (CORREGIDA - NEGRITA FUNCIONA)
 // ============================================
 const formatMessage = (text: string) => {
   if (!text) return text
   
   let formattedText = text
   
-  // Patrones de markdown
-  formattedText = formattedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-  formattedText = formattedText.replace(/\*(.+?)\*/g, '<em>$1</em>')
-  formattedText = formattedText.replace(/__(.+?)__/g, '<u>$1</u>')
-  formattedText = formattedText.replace(/~~(.+?)~~/g, '<del>$1</del>')
-  formattedText = formattedText.replace(/`(.+?)`/g, '<code class="bg-gray-200 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+  // 1. Escapar HTML primero para evitar inyección
+  formattedText = formattedText
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
   
-  // Convertir URLs en enlaces
+  // 2. Aplicar formato Markdown
+  formattedText = formattedText.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  formattedText = formattedText.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  formattedText = formattedText.replace(/__([^_]+)__/g, '<u>$1</u>')
+  formattedText = formattedText.replace(/~~([^~]+)~~/g, '<del>$1</del>')
+  formattedText = formattedText.replace(/`([^`]+)`/g, '<code class="bg-gray-200 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+  
+  // 3. Convertir URLs en enlaces
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
   formattedText = formattedText.replace(urlRegex, (url) => {
     const href = url.startsWith('www.') ? `https://${url}` : url
     return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="underline decoration-2 underline-offset-2 text-blue-600 font-medium">${url}</a>`
   })
+  
+  // 4. Convertir saltos de línea en <br>
+  formattedText = formattedText.replace(/\n/g, '<br>')
   
   return formattedText
 }
@@ -42,13 +51,11 @@ const EMOJI_LIST = [
 ]
 
 // ============================================
-// 🔗 FUNCIÓN LINKIFY MEJORADA
+// 🔗 FUNCIÓN LINKIFY
 // ============================================
 const linkify = (text: string, isAgent: boolean) => {
   if (!text) return text
-  
   const formattedText = formatMessage(text)
-  
   return <span dangerouslySetInnerHTML={{ __html: formattedText }} />
 }
 
@@ -199,18 +206,12 @@ export default function AgentChatPage() {
     }, 300)
   }
 
-  // ============================================
-  // 😊 INSERTAR EMOJI
-  // ============================================
   const insertEmoji = (emoji: string) => {
     setInput(prev => prev + emoji)
     setShowEmojiPicker(false)
     inputRef.current?.focus()
   }
 
-  // ============================================
-  // 📤 ENVIAR MENSAJE
-  // ============================================
   const sendMessage = async () => {
     if (!input.trim() || !id) return
     const messageText = input.trim()
@@ -248,9 +249,6 @@ export default function AgentChatPage() {
     }
   }
 
-  // ============================================
-  // 📎 SUBIR ARCHIVO
-  // ============================================
   const uploadFile = async (file: File) => {
     if (!id) return
     setIsUploading(true)
@@ -283,9 +281,6 @@ export default function AgentChatPage() {
     }
   }
 
-  // ============================================
-  // ❌ CERRAR CONVERSACIÓN
-  // ============================================
   const closeConversation = async () => {
     if (!confirm('¿Cerrar esta conversación?')) return
     try {
@@ -298,9 +293,6 @@ export default function AgentChatPage() {
     }
   }
 
-  // ============================================
-  // 🗑️ ELIMINAR CONVERSACIÓN
-  // ============================================
   const deleteConversation = async () => {
     if (!confirm('¿Eliminar permanentemente?')) return
     try {
@@ -318,9 +310,6 @@ export default function AgentChatPage() {
     }
   }
 
-  // ============================================
-  // 🗑️ ELIMINAR MENSAJE INDIVIDUAL
-  // ============================================
   const deleteMessage = async (messageId: string) => {
     if (!confirm('¿Eliminar este mensaje?')) return
     
@@ -347,52 +336,84 @@ export default function AgentChatPage() {
   // ============================================
   // 🔗 GENERAR ENLACE DE DOCUMENTOS (CORREGIDO)
   // ============================================
+  // ============================================
+// 🔗 GENERAR ENLACE DE DOCUMENTOS (VERSIÓN FINAL - BUSCA POR TODO)
+// ============================================
 const generateDocumentLink = async () => {
-  if (!conversation?.userEmail) return alert('No hay email asociado')
+  if (!conversation) return alert('No hay información del cliente')
+  
   setIsGeneratingDocLink(true)
   try {
-    // ✅ Buscar el lead MÁS RECIENTE asociado a este email
-    const leadsRes = await fetch(`/api/leads?email=${encodeURIComponent(conversation.userEmail)}&limit=50`)
+    const searchParams = new URLSearchParams()
+    
+    // Construir búsqueda con todos los datos disponibles
+    if (conversation.userName) searchParams.append('search', conversation.userName)
+    if (conversation.userEmail) searchParams.append('email', conversation.userEmail)
+    if (conversation.userPhone) searchParams.append('phone', conversation.userPhone)
+    searchParams.append('limit', '50')
+    
+    console.log('🔍 Buscando lead con:', {
+      nombre: conversation.userName,
+      email: conversation.userEmail,
+      telefono: conversation.userPhone
+    })
+    
+    // Buscar leads
+    const leadsRes = await fetch(`/api/leads?${searchParams.toString()}`)
     const leadsData = await leadsRes.json()
+    console.log('📦 Leads encontrados:', leadsData)
     
-    if (!leadsData.success || !leadsData.data?.length) {
-      // Si no encuentra por email, buscar por el nombre también
-      console.log('⚠️ No se encontró lead por email, buscando por nombre...')
-      const leadsByNameRes = await fetch(`/api/leads?search=${encodeURIComponent(conversation.userName || conversation.userEmail)}&limit=50`)
-      const leadsByNameData = await leadsByNameRes.json()
+    let lead = null
+    
+    if (leadsData.success && leadsData.data?.length > 0) {
+      // Si hay resultados, buscar el mejor match
+      const searchName = conversation.userName?.toLowerCase() || ''
+      const searchEmail = conversation.userEmail?.toLowerCase() || ''
+      const searchPhone = conversation.userPhone?.replace(/\D/g, '') || ''
       
-      if (!leadsByNameData.success || !leadsByNameData.data?.length) {
-        return alert('No se encontró un lead asociado a este cliente')
+      // Priorizar matches exactos
+      lead = leadsData.data.find((l: any) => 
+        l.email?.toLowerCase() === searchEmail
+      ) || leadsData.data.find((l: any) => 
+        l.phone?.replace(/\D/g, '') === searchPhone
+      ) || leadsData.data.find((l: any) => 
+        l.fullName?.toLowerCase().includes(searchName)
+      ) || leadsData.data[0] // Fallback al más reciente
+      
+    } else {
+      // Si no hay resultados con search, intentar SOLO por nombre
+      if (conversation.userName) {
+        const nameRes = await fetch(`/api/leads?search=${encodeURIComponent(conversation.userName)}&limit=10`)
+        const nameData = await nameRes.json()
+        if (nameData.success && nameData.data?.length > 0) {
+          lead = nameData.data[0]
+        }
       }
       
-      // Tomar el más reciente
-      const lead = leadsByNameData.data[0]
-      console.log('📋 Lead seleccionado (por nombre):', { id: lead.id, email: lead.email, createdAt: lead.createdAt })
-      
-      const linkRes = await fetch('/api/leads/generate-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ leadId: lead.id, baseUrl: window.location.origin })
-      })
-      
-      const linkData = await linkRes.json()
-      
-      if (linkData.success) {
-        await navigator.clipboard.writeText(linkData.data.url)
-        setInput(linkData.data.url)
-        alert('✅ Enlace copiado al input')
-      } else {
-        alert('Error: ' + (linkData.error || 'Error desconocido'))
+      // Si aún no hay lead, intentar por teléfono
+      if (!lead && conversation.userPhone) {
+        const phoneRes = await fetch(`/api/leads?phone=${encodeURIComponent(conversation.userPhone)}&limit=10`)
+        const phoneData = await phoneRes.json()
+        if (phoneData.success && phoneData.data?.length > 0) {
+          lead = phoneData.data[0]
+        }
       }
-      return
     }
-
-    // ✅ Tomar el lead MÁS RECIENTE (el primero del array ya viene ordenado por createdAt desc)
-    const lead = leadsData.data[0]
     
-    console.log('📋 Lead seleccionado:', { id: lead.id, email: lead.email, fullName: lead.fullName, createdAt: lead.createdAt })
+    if (!lead) {
+      console.error('❌ No se encontró ningún lead para:', conversation)
+      return alert(`No se encontró un lead para este cliente.\n\nDatos buscados:\nNombre: ${conversation.userName || 'N/A'}\nEmail: ${conversation.userEmail || 'N/A'}\nTeléfono: ${conversation.userPhone || 'N/A'}`)
+    }
     
+    console.log('✅ Lead seleccionado:', {
+      id: lead.id,
+      nombre: lead.fullName,
+      email: lead.email,
+      telefono: lead.phone,
+      creado: lead.createdAt
+    })
+    
+    // Generar enlace
     const linkRes = await fetch('/api/leads/generate-link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -405,12 +426,13 @@ const generateDocumentLink = async () => {
     if (linkData.success) {
       await navigator.clipboard.writeText(linkData.data.url)
       setInput(linkData.data.url)
-      alert('✅ Enlace copiado al input')
+      alert(`✅ Enlace generado para ${lead.fullName}\n📋 Copiado al input`)
     } else {
       alert('Error: ' + (linkData.error || 'Error desconocido'))
     }
+    
   } catch (error) {
-    console.error('Error generando enlace:', error)
+    console.error('❌ Error generando enlace:', error)
     alert('Error al generar el enlace')
   } finally {
     setIsGeneratingDocLink(false)
@@ -418,9 +440,6 @@ const generateDocumentLink = async () => {
   }
 }
 
-  // ============================================
-  // 🧮 GENERAR ENLACE DE CALCULADORA
-  // ============================================
   const generateCalculatorLink = async () => {
     if (!conversation?.userEmail) return alert('No hay email asociado')
     setIsGeneratingCalculatorLink(true)
@@ -453,9 +472,6 @@ const generateDocumentLink = async () => {
     }
   }
 
-  // ============================================
-  // 🖼️ RENDERIZAR VISTA PREVIA DE ARCHIVOS
-  // ============================================
   const renderFilePreview = (msg: any) => {
     if (!msg.fileUrl) return null
     const fileName = msg.fileName || ''
@@ -491,7 +507,6 @@ const generateDocumentLink = async () => {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-[#f0f2f5] fixed inset-0 md:relative">
-      {/* Header - Estilo WhatsApp */}
       <div className="bg-[#075e54] text-white px-3 py-2 flex items-center justify-between shrink-0 safe-top">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <button onClick={() => router.push('/admin/chat')} className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0">
@@ -544,7 +559,6 @@ const generateDocumentLink = async () => {
         </div>
       </div>
 
-      {/* Messages - SCROLL ULTRA FLUIDO */}
       <div 
         ref={messagesContainerRef}
         className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-2 overscroll-contain"
@@ -583,7 +597,6 @@ const generateDocumentLink = async () => {
               </div>
             </div>
             
-            {/* Botón para eliminar mensaje */}
             {msg.senderType === 'agent' && (
               <button
                 onClick={() => deleteMessage(msg.id)}
@@ -613,7 +626,6 @@ const generateDocumentLink = async () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input - Estilo WhatsApp con selector de emojis */}
       {conversation?.status === 'active' && (
         <div className="bg-white border-t border-gray-200 p-2 shrink-0 safe-bottom">
           <div className="flex items-end gap-2">
@@ -640,7 +652,6 @@ const generateDocumentLink = async () => {
                 disabled={isSending}
               />
               
-              {/* Botón de emojis */}
               <div className="absolute right-2 bottom-2" ref={emojiPickerRef}>
                 <button
                   type="button"
