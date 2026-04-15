@@ -473,3 +473,72 @@ p a:hover {
 .dark .bg-white strong {
   color: #ffffff !important;
 }
+
+/* ============================================ */
+/* 🔥 NEGRITA EN MENSAJES DE CHAT - FIX DEFINITIVO */
+/* ============================================ */
+
+/* Asegurar que los strong y b se vean en negrita en TODOS los mensajes */
+strong, b {
+  font-weight: 700 !important;
+}
+
+/* Mensajes del usuario (fondo verde) */
+.bg-green-600 strong,
+.bg-green-600 b,
+[class*="bg-green"] strong,
+[class*="bg-green"] b {
+  font-weight: 700 !important;
+  color: white !important;
+}
+
+/* Mensajes del agente/sistema (fondo gris/blanco) */
+.bg-gray-100 strong,
+.bg-gray-100 b,
+.bg-white strong,
+.bg-white b,
+.bg-\\[\\#d9fdd3\\] strong,
+.bg-\\[\\#d9fdd3\\] b {
+  font-weight: 700 !important;
+  color: #1a1a1a !important;
+}
+
+/* Mensajes dentro de párrafos */
+p strong,
+p b,
+.whitespace-pre-wrap strong,
+.whitespace-pre-wrap b,
+span strong,
+span b {
+  font-weight: 700 !important;
+}
+
+/* Cursiva */
+em, i {
+  font-style: italic !important;
+}
+
+/* Tachado */
+del, s {
+  text-decoration: line-through !important;
+}
+
+/* Subrayado */
+u {
+  text-decoration: underline !important;
+}
+
+/* Código inline */
+code {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  padding: 0.125rem 0.25rem !important;
+  border-radius: 0.25rem !important;
+  font-family: monospace !important;
+  font-size: 0.875rem !important;
+}
+
+/* Enlaces */
+a {
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+}
