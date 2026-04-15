@@ -32,55 +32,33 @@ const EMOJI_LIST = [
 ]
 
 // ============================================
-// 🎨 FUNCIÓN PARA FORMATEAR TEXTO CON MARKDOWN (CORREGIDA - NEGRITA FUNCIONA)
+// 🎨 FUNCIÓN PARA FORMATEAR TEXTO CON MARKDOWN
 // ============================================
 const formatMessage = (text: string) => {
   if (!text) return text
   
   let formattedText = text
   
-  // 1. Escapar HTML primero para evitar inyección
   formattedText = formattedText
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
   
-  // 2. Aplicar formato Markdown
-  // Negrita: **texto** -> <strong>texto</strong>
   formattedText = formattedText.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-  
-  // Cursiva: *texto* -> <em>texto</em>
   formattedText = formattedText.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-  
-  // Subrayado: __texto__ -> <u>texto</u>
   formattedText = formattedText.replace(/__([^_]+)__/g, '<u>$1</u>')
-  
-  // Tachado: ~~texto~~ -> <del>texto</del>
   formattedText = formattedText.replace(/~~([^~]+)~~/g, '<del>$1</del>')
-  
-  // Código: `texto` -> <code>texto</code>
   formattedText = formattedText.replace(/`([^`]+)`/g, '<code class="bg-gray-200 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
   
-  // 3. Convertir URLs en enlaces
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
   formattedText = formattedText.replace(urlRegex, (url) => {
     const href = url.startsWith('www.') ? `https://${url}` : url
     return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="underline decoration-2 underline-offset-2 hover:opacity-80 break-all font-medium" style="color: inherit;">${url}</a>`
   })
   
-  // 4. Convertir saltos de línea en <br>
   formattedText = formattedText.replace(/\n/g, '<br>')
   
   return formattedText
-}
-
-// ============================================
-// 🔗 FUNCIÓN LINKIFY (CORREGIDA)
-// ============================================
-const linkify = (text: string, isUser: boolean) => {
-  if (!text) return text
-  const formattedText = formatMessage(text)
-  return <span dangerouslySetInnerHTML={{ __html: formattedText }} />
 }
 
 export default function ChatWidget() {
@@ -106,7 +84,6 @@ export default function ChatWidget() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const emojiPickerRef = useRef<HTMLDivElement>(null)
 
-  // Cerrar emoji picker al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
@@ -117,16 +94,12 @@ export default function ChatWidget() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // ============================================
-  // 😊 INSERTAR EMOJI
-  // ============================================
   const insertEmoji = (emoji: string) => {
     setInput(prev => prev + emoji)
     setShowEmojiPicker(false)
     inputRef.current?.focus()
   }
   
-  // ✅ Función para auto-iniciar conversación (respaldo)
   const autoStartConversation = async (name: string, email: string) => {
     console.log('🚀 Auto-iniciando conversación para:', email)
     
@@ -174,7 +147,6 @@ export default function ChatWidget() {
     }
   }
 
-  // ✅ DETECCIÓN DE PARÁMETROS EN URL - VERSIÓN FINAL CORREGIDA
   useEffect(() => {
     const timer = setTimeout(() => {
       const urlParams = new URLSearchParams(window.location.search)
@@ -185,13 +157,11 @@ export default function ChatWidget() {
       console.log('🔍 [ChatWidget] Parámetros:', { chatName, chatEmail, conversationId: conversationIdParam })
       
       if (chatName && chatEmail) {
-        // ✅ SI HAY conversationId, CARGAR ESA CONVERSACIÓN
         if (conversationIdParam) {
           console.log('📂 [ChatWidget] CARGANDO conversación existente:', conversationIdParam)
           localStorage.setItem('chat_conversation_id', conversationIdParam)
           setConversationId(conversationIdParam)
           
-          // NO iniciar nueva conversación, cargar la existente
           fetch(`/api/chat/messages?conversationId=${conversationIdParam}`)
             .then(res => res.json())
             .then(data => {
@@ -204,7 +174,6 @@ export default function ChatWidget() {
               }
             })
         } else {
-          // Si NO hay conversationId, abrir formulario
           console.log('📝 [ChatWidget] Sin conversationId, abriendo formulario')
           setIsOpen(true)
         }
@@ -216,7 +185,6 @@ export default function ChatWidget() {
     return () => clearTimeout(timer)
   }, [])
 
-  // ✅ Cargar datos guardados
   useEffect(() => {
     const savedName = localStorage.getItem('chat_user_name')
     const savedEmail = localStorage.getItem('chat_user_email')
@@ -284,52 +252,6 @@ export default function ChatWidget() {
       }
     } catch (error) {
       console.error('Error loading conversation:', error)
-    }
-  }
-
-  // ✅ Iniciar conversación automáticamente con los datos del lead
-  const startConversationAutomatically = async (lead: any) => {
-    if (!lead || !lead.email || !lead.name) return
-    
-    console.log('🚀 Iniciando conversación automática para:', lead.email)
-    
-    setIsLoading(true)
-    try {
-      const res = await fetch('/api/chat/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: lead.name,
-          email: lead.email,
-          phone: lead.phone || ''
-        })
-      })
-      const data = await res.json()
-
-      if (data.success) {
-        setConversationId(data.conversationId)
-        localStorage.setItem('chat_conversation_id', data.conversationId)
-        
-        const assignRes = await fetch('/api/chat/assign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ conversationId: data.conversationId })
-        })
-        const assignData = await assignRes.json()
-        if (assignData.success) setAssignedAgent(assignData.agent)
-        
-        setStep('chat')
-        setMessages([{
-          id: 'welcome',
-          message: `Hola ${lead.name}, ¡bienvenido de nuevo! Tu asesor te atenderá en breve.`,
-          senderType: 'system',
-          createdAt: new Date().toISOString()
-        }])
-      }
-    } catch (error) {
-      console.error('Error iniciando conversación automática:', error)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -508,23 +430,35 @@ export default function ChatWidget() {
     }
   }
 
+  // ============================================
+  // 🔄 POLLING AGRESIVO - ACTUALIZACIÓN GARANTIZADA
+  // ============================================
   useEffect(() => {
     if (!conversationId || step !== 'chat') return
 
-    const interval = setInterval(async () => {
+    const pollMessages = async () => {
       try {
-        const res = await fetch(`/api/chat/messages?conversationId=${conversationId}`)
+        // Agregar timestamp para evitar caché
+        const res = await fetch(`/api/chat/messages?conversationId=${conversationId}&_=${Date.now()}`)
         const data = await res.json()
-        if (data.success && data.messages.length > messages.length) {
+        
+        if (data.success) {
+          console.log('🔄 Actualizando mensajes...', data.messages.length)
           setMessages(data.messages)
         }
       } catch (error) {
-        console.error('Error polling messages:', error)
+        console.error('Error en polling:', error)
       }
-    }, 3000)
+    }
+
+    // Ejecutar inmediatamente
+    pollMessages()
+    
+    // Forzar actualización cada 2 segundos
+    const interval = setInterval(pollMessages, 2000)
 
     return () => clearInterval(interval)
-  }, [conversationId, messages.length, step])
+  }, [conversationId, step]) // ✅ SIN 'messages' en dependencias
 
   const renderFilePreview = (msg: any) => {
     if (!msg.fileUrl) return null
@@ -678,7 +612,6 @@ export default function ChatWidget() {
                             ? 'bg-gray-100 text-gray-500 italic' 
                             : 'bg-gray-100 text-gray-800 rounded-bl-none'
                         }`}>
-                          {/* ✅ MENSAJE CON FORMATO MARKDOWN (NEGRITA FUNCIONAL) */}
                           {msg.message && (
                             <span 
                               dangerouslySetInnerHTML={{ __html: formatMessage(msg.message) }}
@@ -720,7 +653,6 @@ export default function ChatWidget() {
                         className="w-full bg-transparent text-sm outline-none placeholder-gray-500 pr-8" 
                       />
                       
-                      {/* Botón de emojis */}
                       <div className="absolute right-2 top-1/2 -translate-y-1/2" ref={emojiPickerRef}>
                         <button
                           type="button"
