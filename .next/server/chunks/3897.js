@@ -1,4 +1,4 @@
-exports.id=3897,exports.ids=[3897],exports.modules={11825:()=>{},36119:(e,t,a)=>{"use strict";a.d(t,{Xt:()=>s,ir:()=>p,sendDocumentsReceivedEmail:()=>c});var o=a(55245),l=a(72880),i=a.n(l);i().setApiKey(process.env.SENDGRID_API_KEY||"");let n=o.createTransport({host:process.env.SMTP_HOST,port:parseInt(process.env.SMTP_PORT||"587"),secure:"true"===process.env.SMTP_SECURE,auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD},tls:{rejectUnauthorized:!1}}),r=process.env.NEXTAUTH_URL||"https://cajavalladolid.com",d=(e,t)=>`
+exports.id=3897,exports.ids=[3897],exports.modules={11825:()=>{},36119:(e,t,a)=>{"use strict";a.d(t,{Cz:()=>f,Xt:()=>c,ir:()=>p,sendDocumentsReceivedEmail:()=>s});var o=a(55245),l=a(72880),i=a.n(l);i().setApiKey(process.env.SENDGRID_API_KEY||"");let n=o.createTransport({host:process.env.SMTP_HOST,port:parseInt(process.env.SMTP_PORT||"587"),secure:"true"===process.env.SMTP_SECURE,auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD},tls:{rejectUnauthorized:!1}}),r=process.env.NEXTAUTH_URL||"https://cajavalladolid.com",d=(e,t)=>`
 <!DOCTYPE html>
 <html>
 <head>
@@ -41,7 +41,7 @@ exports.id=3897,exports.ids=[3897],exports.modules={11825:()=>{},36119:(e,t,a)=>
   </table>
 </body>
 </html>
-`;async function s({to:e,nombre:t,leadId:a,monto:o,tipoCredito:l,chatToken:s}){console.log("\uD83D\uDCE7 Enviando confirmaci\xf3n v\xeda SendGrid a:",e);let c=o?`$${parseFloat(o.toString()).toLocaleString("es-MX")}`:"No especificado",p=s?`${r}/?chat_token=${s}`:`${r}/?chat_name=${encodeURIComponent(t)}&chat_email=${encodeURIComponent(e)}`,f=`
+`;async function c({to:e,nombre:t,leadId:a,monto:o,tipoCredito:l,chatToken:c}){console.log("\uD83D\uDCE7 Enviando confirmaci\xf3n v\xeda SendGrid a:",e);let s=o?`$${parseFloat(o.toString()).toLocaleString("es-MX")}`:"No especificado",p=c?`${r}/?chat_token=${c}`:`${r}/?chat_name=${encodeURIComponent(t)}&chat_email=${encodeURIComponent(e)}`,f=`
     <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
       <tr>
         <td align="center" style="padding: 10px 0 20px;">
@@ -72,7 +72,7 @@ exports.id=3897,exports.ids=[3897],exports.modules={11825:()=>{},36119:(e,t,a)=>
       </tr>
       <tr>
         <td style="border-bottom: 1px solid #e5e7eb;"><strong>Monto solicitado:</strong></td>
-        <td align="right" style="border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #059669;">${c}</td>
+        <td align="right" style="border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #059669;">${s}</td>
       </tr>
       <tr>
         <td style="border-bottom: 1px solid #e5e7eb;"><strong>Tipo de cr\xe9dito:</strong></td>
@@ -112,7 +112,7 @@ exports.id=3897,exports.ids=[3897],exports.modules={11825:()=>{},36119:(e,t,a)=>
         </td>
       </tr>
     </table>
-  `;try{await i().send({to:e,from:"contacto@cajavalladolid.com",subject:"✨ \xa1Hola! Hemos recibido tu solicitud de cr\xe9dito",html:d(f,"Solicitud recibida")}),console.log("✅ Correo enviado v\xeda SendGrid a:",e)}catch(t){console.error("❌ SendGrid fall\xf3, intentando con Zoho..."),await n.sendMail({from:'"Caja Valladolid" <contacto@cajavalladolid.com>',to:e,subject:"✨ \xa1Hola! Hemos recibido tu solicitud de cr\xe9dito",html:d(f,"Solicitud recibida")}),console.log("✅ Correo enviado v\xeda Zoho a:",e)}}async function c({to:e,nombre:t,leadId:a}){console.log("\uD83D\uDCE7 Enviando confirmaci\xf3n de documentos a:",e);let o=`${r}/?chat_name=${encodeURIComponent(t)}&chat_email=${encodeURIComponent(e)}`,l=`
+  `;try{await i().send({to:e,from:"contacto@cajavalladolid.com",subject:"✨ \xa1Hola! Hemos recibido tu solicitud de cr\xe9dito",html:d(f,"Solicitud recibida")}),console.log("✅ Correo enviado v\xeda SendGrid a:",e)}catch(t){console.error("❌ SendGrid fall\xf3, intentando con Zoho..."),await n.sendMail({from:'"Caja Valladolid" <contacto@cajavalladolid.com>',to:e,subject:"✨ \xa1Hola! Hemos recibido tu solicitud de cr\xe9dito",html:d(f,"Solicitud recibida")}),console.log("✅ Correo enviado v\xeda Zoho a:",e)}}async function s({to:e,nombre:t,leadId:a}){console.log("\uD83D\uDCE7 Enviando confirmaci\xf3n de documentos a:",e);let o=`${r}/?chat_name=${encodeURIComponent(t)}&chat_email=${encodeURIComponent(e)}`,l=`
     <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
       <tr>
         <td align="center" style="padding: 10px 0 20px;">
@@ -184,7 +184,7 @@ exports.id=3897,exports.ids=[3897],exports.modules={11825:()=>{},36119:(e,t,a)=>
         </td>
       </tr>
     </table>
-  `;try{await i().send({to:e,from:"contacto@cajavalladolid.com",subject:"\uD83D\uDCC4 \xa1Documentos recibidos! Tu solicitud avanza",html:d(l,"Documentos recibidos")}),console.log("✅ Correo de documentos enviado a:",e)}catch(e){console.error("❌ Error enviando correo de documentos:",e)}}async function p({to:e,name:t,message:a,conversationId:o}){console.log("\uD83D\uDCE7 Enviando notificaci\xf3n de chat v\xeda Zoho a:",e);let l=`${r}/?chat_name=${encodeURIComponent(t)}&chat_email=${encodeURIComponent(e)}`,i=`
+  `;try{await i().send({to:e,from:"contacto@cajavalladolid.com",subject:"\uD83D\uDCC4 \xa1Documentos recibidos! Tu solicitud avanza",html:d(l,"Documentos recibidos")}),console.log("✅ Correo de documentos enviado a:",e)}catch(e){console.error("❌ Error enviando correo de documentos:",e)}}async function p({to:e,name:t,message:a,conversationId:o}){console.log("\uD83D\uDCE7 Enviando notificaci\xf3n de chat con conversationId:",o);let l=`${r}/?chat_name=${encodeURIComponent(t)}&chat_email=${encodeURIComponent(e)}&conversation_id=${o}`;console.log("\uD83D\uDD17 chatUrl generado:",l);let i=`
     <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
       <tr>
         <td align="center" style="padding: 10px 0 20px;">
@@ -238,4 +238,4 @@ exports.id=3897,exports.ids=[3897],exports.modules={11825:()=>{},36119:(e,t,a)=>
         </td>
       </tr>
     </table>
-  `;try{await n.sendMail({from:'"Caja Valladolid - Oficina Virtual" <contacto@cajavalladolid.com>',to:e,subject:"\uD83D\uDCE9 Nuevo mensaje de tu asesor",html:d(i,"Nuevo mensaje")}),console.log("✅ Notificaci\xf3n enviada v\xeda Zoho a:",e)}catch(e){console.error("❌ Error enviando notificaci\xf3n:",e)}}}};
+  `;try{await n.sendMail({from:'"Caja Valladolid - Oficina Virtual" <contacto@cajavalladolid.com>',to:e,subject:"\uD83D\uDCE9 Nuevo mensaje de tu asesor",html:d(i,"Nuevo mensaje")}),console.log("✅ Notificaci\xf3n enviada v\xeda Zoho a:",e)}catch(e){console.error("❌ Error enviando notificaci\xf3n:",e)}}async function f({to:e,subject:t,html:a}){try{await i().send({to:e,from:"contacto@cajavalladolid.com",subject:t,html:a})}catch{await n.sendMail({from:'"Caja Valladolid" <contacto@cajavalladolid.com>',to:e,subject:t,html:a})}}}};

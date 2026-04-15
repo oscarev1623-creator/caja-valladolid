@@ -53,10 +53,21 @@ const EMOJI_LIST = [
 // ============================================
 // 🔗 FUNCIÓN LINKIFY
 // ============================================
+// ============================================
+// 🔗 FUNCIÓN LINKIFY (CORREGIDA - NEGRITA VISIBLE)
+// ============================================
 const linkify = (text: string, isAgent: boolean) => {
   if (!text) return text
   const formattedText = formatMessage(text)
-  return <span dangerouslySetInnerHTML={{ __html: formattedText }} />
+  return (
+    <span 
+      dangerouslySetInnerHTML={{ __html: formattedText }}
+      style={{ 
+        // @ts-ignore - Para que los strong se vean
+        '--tw-strong-font-weight': '700'
+      } as React.CSSProperties}
+    />
+  )
 }
 
 export default function AgentChatPage() {
@@ -589,7 +600,12 @@ const generateDocumentLink = async () => {
                 : 'bg-white text-gray-800 rounded-tl-none shadow-sm'
             }`}>
               {msg.senderType === 'system' && <div className="text-xs mb-1">📢 Sistema</div>}
-              {msg.message && <p className="text-sm whitespace-pre-wrap break-all">{linkify(msg.message, msg.senderType === 'agent')}</p>}
+              {msg.message && (
+  <p 
+    className="text-sm whitespace-pre-wrap break-all [&>span>strong]:font-bold [&>span>strong]:text-gray-900"
+    dangerouslySetInnerHTML={{ __html: formatMessage(msg.message) }}
+  />
+)}
               {renderFilePreview(msg)}
               <div className={`text-[11px] mt-1 ${msg.senderType === 'agent' ? 'text-gray-500' : 'text-gray-400'} flex items-center gap-1`}>
                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

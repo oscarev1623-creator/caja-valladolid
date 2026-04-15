@@ -32,38 +32,54 @@ const EMOJI_LIST = [
 ]
 
 // ============================================
-// 🎨 FUNCIÓN PARA FORMATEAR TEXTO CON MARKDOWN
+// 🎨 FUNCIÓN PARA FORMATEAR TEXTO CON MARKDOWN (CORREGIDA - NEGRITA FUNCIONA)
 // ============================================
 const formatMessage = (text: string) => {
   if (!text) return text
   
   let formattedText = text
   
-  // Patrones de markdown
-  formattedText = formattedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-  formattedText = formattedText.replace(/\*(.+?)\*/g, '<em>$1</em>')
-  formattedText = formattedText.replace(/__(.+?)__/g, '<u>$1</u>')
-  formattedText = formattedText.replace(/~~(.+?)~~/g, '<del>$1</del>')
-  formattedText = formattedText.replace(/`(.+?)`/g, '<code class="bg-gray-200 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+  // 1. Escapar HTML primero para evitar inyección
+  formattedText = formattedText
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
   
-  // Convertir URLs en enlaces
+  // 2. Aplicar formato Markdown
+  // Negrita: **texto** -> <strong>texto</strong>
+  formattedText = formattedText.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  
+  // Cursiva: *texto* -> <em>texto</em>
+  formattedText = formattedText.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  
+  // Subrayado: __texto__ -> <u>texto</u>
+  formattedText = formattedText.replace(/__([^_]+)__/g, '<u>$1</u>')
+  
+  // Tachado: ~~texto~~ -> <del>texto</del>
+  formattedText = formattedText.replace(/~~([^~]+)~~/g, '<del>$1</del>')
+  
+  // Código: `texto` -> <code>texto</code>
+  formattedText = formattedText.replace(/`([^`]+)`/g, '<code class="bg-gray-200 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+  
+  // 3. Convertir URLs en enlaces
   const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
   formattedText = formattedText.replace(urlRegex, (url) => {
     const href = url.startsWith('www.') ? `https://${url}` : url
     return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="underline decoration-2 underline-offset-2 hover:opacity-80 break-all font-medium" style="color: inherit;">${url}</a>`
   })
   
+  // 4. Convertir saltos de línea en <br>
+  formattedText = formattedText.replace(/\n/g, '<br>')
+  
   return formattedText
 }
 
 // ============================================
-// 🔗 FUNCIÓN LINKIFY MEJORADA
+// 🔗 FUNCIÓN LINKIFY (CORREGIDA)
 // ============================================
 const linkify = (text: string, isUser: boolean) => {
   if (!text) return text
-  
   const formattedText = formatMessage(text)
-  
   return <span dangerouslySetInnerHTML={{ __html: formattedText }} />
 }
 
@@ -662,7 +678,13 @@ export default function ChatWidget() {
                             ? 'bg-gray-100 text-gray-500 italic' 
                             : 'bg-gray-100 text-gray-800 rounded-bl-none'
                         }`}>
-                          {linkify(msg.message, msg.senderType === 'user')}
+                          {/* ✅ MENSAJE CON FORMATO MARKDOWN (NEGRITA FUNCIONAL) */}
+                          {msg.message && (
+                            <span 
+                              dangerouslySetInnerHTML={{ __html: formatMessage(msg.message) }}
+                              className="break-words"
+                            />
+                          )}
                           {renderFilePreview(msg)}
                           <div className={`text-[10px] mt-1 ${msg.senderType === 'user' ? 'text-green-200' : 'text-gray-400'}`}>
                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
