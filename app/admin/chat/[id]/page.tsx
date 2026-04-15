@@ -4,32 +4,57 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { 
   Send, ArrowLeft, CheckCircle, XCircle, Paperclip, FileText, Trash2, 
-  Loader2, FileCheck, MoreVertical, Phone, Mail, MessageCircle 
+  Loader2, FileCheck, MoreVertical, Phone, Mail, MessageCircle, X
 } from 'lucide-react'
 
-// 🔗 Función linkify (optimizada)
+// ============================================
+// 🎨 FUNCIÓN PARA FORMATEAR TEXTO CON MARKDOWN SIMPLE
+// ============================================
+const formatMessage = (text: string) => {
+  if (!text) return text
+  
+  // Convertir emojis de texto a emojis reales (opcional)
+  // Los emojis Unicode funcionan directamente 😊
+  
+  // Dividir por partes
+  const parts = []
+  let currentIndex = 0
+  
+  // Patrones
+  const patterns = [
+    { regex: /\*\*(.+?)\*\*/g, replace: (m: string, p1: string) => `<strong>${p1}</strong>` },
+    { regex: /\*(.+?)\*/g, replace: (m: string, p1: string) => `<em>${p1}</em>` },
+    { regex: /__(.+?)__/g, replace: (m: string, p1: string) => `<u>${p1}</u>` },
+    { regex: /~~(.+?)~~/g, replace: (m: string, p1: string) => `<del>${p1}</del>` },
+    { regex: /`(.+?)`/g, replace: (m: string, p1: string) => `<code class="bg-gray-200 px-1 py-0.5 rounded text-sm">${p1}</code>` },
+  ]
+  
+  let formattedText = text
+  
+  patterns.forEach(({ regex, replace }) => {
+    formattedText = formattedText.replace(regex, replace)
+  })
+  
+  // Convertir URLs en enlaces
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
+  formattedText = formattedText.replace(urlRegex, (url) => {
+    const href = url.startsWith('www.') ? `https://${url}` : url
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="underline decoration-2 underline-offset-2 text-blue-600 font-medium">${url}</a>`
+  })
+  
+  return formattedText
+}
+
+// ============================================
+// 🔗 FUNCIÓN LINKIFY (COMPATIBLE CON FORMATO)
+// ============================================
 const linkify = (text: string, isAgent: boolean) => {
   if (!text) return text
-  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
-  const parts = text.split(urlRegex)
   
-  return parts.map((part, index) => {
-    if (part.match(urlRegex)) {
-      const href = part.startsWith('www.') ? `https://${part}` : part
-      return (
-<a
-  key={index}
-  href={href}
-  target="_blank"
-  rel="noopener noreferrer"
-  className={`underline decoration-2 underline-offset-2 hover:opacity-80 break-all font-medium ${isAgent ? 'text-blue-700' : 'text-blue-600'}`}
->
-          {part}
-        </a>
-      )
-    }
-    return <span key={index}>{part}</span>
-  })
+  // Primero aplicar formato markdown
+  const formattedText = formatMessage(text)
+  
+  return <span dangerouslySetInnerHTML={{ __html: formattedText }} />
 }
 
 export default function AgentChatPage() {
@@ -45,6 +70,7 @@ export default function AgentChatPage() {
   const [isGeneratingDocLink, setIsGeneratingDocLink] = useState(false)
   const [isGeneratingCalculatorLink, setIsGeneratingCalculatorLink] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastMessageCountRef = useRef<number>(0)
@@ -53,11 +79,13 @@ export default function AgentChatPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
+  // ============================================
+  // 📋 CARGAR MENSAJES
+  // ============================================
   const loadMessages = useCallback(async (markAsRead = false) => {
     if (!id) return
     
     try {
-      
       const url = markAsRead 
         ? `/api/chat/messages?conversationId=${id}&markAsRead=true`
         : `/api/chat/messages?conversationId=${id}`
@@ -163,6 +191,9 @@ export default function AgentChatPage() {
     }, 300)
   }
 
+  // ============================================
+  // 📤 ENVIAR MENSAJE
+  // ============================================
   const sendMessage = async () => {
     if (!input.trim() || !id) return
     const messageText = input.trim()
@@ -200,6 +231,9 @@ export default function AgentChatPage() {
     }
   }
 
+  // ============================================
+  // 📎 SUBIR ARCHIVO
+  // ============================================
   const uploadFile = async (file: File) => {
     if (!id) return
     setIsUploading(true)
@@ -232,6 +266,9 @@ export default function AgentChatPage() {
     }
   }
 
+  // ============================================
+  // ❌ CERRAR CONVERSACIÓN
+  // ============================================
   const closeConversation = async () => {
     if (!confirm('¿Cerrar esta conversación?')) return
     try {
@@ -244,6 +281,9 @@ export default function AgentChatPage() {
     }
   }
 
+  // ============================================
+  // 🗑️ ELIMINAR CONVERSACIÓN
+  // ============================================
   const deleteConversation = async () => {
     if (!confirm('¿Eliminar permanentemente?')) return
     try {
@@ -261,37 +301,80 @@ export default function AgentChatPage() {
     }
   }
 
+  // ============================================
+  // 🗑️ ELIMINAR MENSAJE INDIVIDUAL (NUEVO)
+  // ============================================
+  const deleteMessage = async (messageId: string) => {
+    if (!confirm('¿Eliminar este mensaje?')) return
+    
+    setDeletingMessageId(messageId)
+    try {
+      const res = await fetch(`/api/chat/messages/${messageId}`, { method: 'DELETE' })
+      const data = await res.json()
+      
+      if (data.success) {
+        setMessages(prev => prev.filter(m => m.id !== messageId))
+        lastMessageCountRef.current = messages.length - 1
+        localStorage.setItem('chat_refresh', Date.now().toString())
+        window.dispatchEvent(new CustomEvent('refreshConversations'))
+      } else {
+        alert(data.error || 'Error al eliminar mensaje')
+      }
+    } catch (error) {
+      alert('Error al eliminar mensaje')
+    } finally {
+      setDeletingMessageId(null)
+    }
+  }
+
+  // ============================================
+  // 🔗 GENERAR ENLACE DE DOCUMENTOS (CORREGIDO)
+  // ============================================
   const generateDocumentLink = async () => {
     if (!conversation?.userEmail) return alert('No hay email asociado')
     setIsGeneratingDocLink(true)
     try {
-      const leadsRes = await fetch(`/api/leads?email=${encodeURIComponent(conversation.userEmail)}`)
+      // ✅ Buscar TODOS los leads con ese email, ordenados por fecha (más reciente primero)
+      const leadsRes = await fetch(`/api/leads?email=${encodeURIComponent(conversation.userEmail)}&limit=50`)
       const leadsData = await leadsRes.json()
-      if (!leadsData.success || !leadsData.data?.length) return alert('Lead no encontrado')
       
+      if (!leadsData.success || !leadsData.data?.length) {
+        return alert('No se encontró un lead asociado a este email')
+      }
+
+      // ✅ Tomar el lead MÁS RECIENTE (el primero del array ordenado por createdAt desc)
       const lead = leadsData.data[0]
+      
+      console.log('📋 Lead seleccionado:', { id: lead.id, email: lead.email, createdAt: lead.createdAt })
+      
       const linkRes = await fetch('/api/leads/generate-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ leadId: lead.id, baseUrl: window.location.origin })
       })
+      
       const linkData = await linkRes.json()
+      
       if (linkData.success) {
         await navigator.clipboard.writeText(linkData.data.url)
         setInput(linkData.data.url)
         alert('✅ Enlace copiado al input')
       } else {
-        alert('Error: ' + linkData.error)
+        alert('Error: ' + (linkData.error || 'Error desconocido'))
       }
     } catch (error) {
-      alert('Error al generar enlace')
+      console.error('Error generando enlace:', error)
+      alert('Error al generar el enlace')
     } finally {
       setIsGeneratingDocLink(false)
       setShowMenu(false)
     }
   }
 
+  // ============================================
+  // 🧮 GENERAR ENLACE DE CALCULADORA
+  // ============================================
   const generateCalculatorLink = async () => {
     if (!conversation?.userEmail) return alert('No hay email asociado')
     setIsGeneratingCalculatorLink(true)
@@ -307,6 +390,7 @@ export default function AgentChatPage() {
         credentials: 'include',
         body: JSON.stringify({ leadId: lead.id, baseUrl: window.location.origin })
       })
+      
       const linkData = await linkRes.json()
       if (linkData.success) {
         await navigator.clipboard.writeText(linkData.data.url)
@@ -323,6 +407,9 @@ export default function AgentChatPage() {
     }
   }
 
+  // ============================================
+  // 🖼️ RENDERIZAR VISTA PREVIA DE ARCHIVOS
+  // ============================================
   const renderFilePreview = (msg: any) => {
     if (!msg.fileUrl) return null
     const fileName = msg.fileName || ''
@@ -387,37 +474,26 @@ export default function AgentChatPage() {
               <MoreVertical className="w-5 h-5" />
             </button>
             
-{showMenu && (
-  <>
-    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-    <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
-      <button 
-        onClick={generateDocumentLink} 
-        disabled={isGeneratingDocLink} 
-        className="w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50"
-      >
-        <FileText className="w-4 h-4 text-blue-600" />
-        {isGeneratingDocLink ? 'Generando...' : 'Enlace Docs'}
-      </button>
-      <button 
-        onClick={generateCalculatorLink} 
-        disabled={isGeneratingCalculatorLink} 
-        className="w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50"
-      >
-        <FileCheck className="w-4 h-4 text-purple-600" />
-        {isGeneratingCalculatorLink ? 'Generando...' : 'Enlace Calc'}
-      </button>
-      <hr className="my-1" />
-      <button 
-        onClick={deleteConversation} 
-        className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3"
-      >
-        <Trash2 className="w-4 h-4" />
-        Eliminar conversación
-      </button>
-    </div>
-  </>
-)}
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+                  <button onClick={generateDocumentLink} disabled={isGeneratingDocLink} className="w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    {isGeneratingDocLink ? 'Generando...' : 'Enlace Docs'}
+                  </button>
+                  <button onClick={generateCalculatorLink} disabled={isGeneratingCalculatorLink} className="w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-gray-50 flex items-center gap-3 disabled:opacity-50">
+                    <FileCheck className="w-4 h-4 text-purple-600" />
+                    {isGeneratingCalculatorLink ? 'Generando...' : 'Enlace Calc'}
+                  </button>
+                  <hr className="my-1" />
+                  <button onClick={deleteConversation} className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3 text-red-600">
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar conversación
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -444,7 +520,7 @@ export default function AgentChatPage() {
         )}
         
         {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
+          <div key={msg.id} className={`group relative flex ${msg.senderType === 'agent' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] px-3.5 py-2 rounded-lg ${
               msg.senderType === 'agent'
                 ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none'
@@ -460,6 +536,22 @@ export default function AgentChatPage() {
                 {msg.senderType === 'agent' && <CheckCircle className="w-3 h-3 text-gray-400" />}
               </div>
             </div>
+            
+            {/* ✅ BOTÓN PARA ELIMINAR MENSAJE (solo asesor y solo sus mensajes) */}
+            {msg.senderType === 'agent' && (
+              <button
+                onClick={() => deleteMessage(msg.id)}
+                disabled={deletingMessageId === msg.id}
+                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white rounded-full shadow-md hover:bg-red-50"
+                title="Eliminar mensaje"
+              >
+                {deletingMessageId === msg.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-red-500" />
+                ) : (
+                  <X className="w-3.5 h-3.5 text-red-500" />
+                )}
+              </button>
+            )}
           </div>
         ))}
         
@@ -475,6 +567,16 @@ export default function AgentChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Guía rápida de formato */}
+      <div className="bg-white/80 backdrop-blur-sm px-3 py-1 text-[10px] text-gray-400 border-t border-gray-100 flex gap-3 flex-wrap">
+        <span><strong>**negrita**</strong></span>
+        <span><em>*cursiva*</em></span>
+        <span><u>__subrayado__</u></span>
+        <span><del>~~tachado~~</del></span>
+        <span><code>`código`</code></span>
+        <span>😊 emojis</span>
+      </div>
+
       {/* Input - Estilo WhatsApp */}
       {conversation?.status === 'active' && (
         <div className="bg-white border-t border-gray-200 p-2 shrink-0 safe-bottom">
@@ -486,8 +588,8 @@ export default function AgentChatPage() {
             
             <div className="flex-1 bg-gray-100 rounded-3xl px-4 py-2">
               <textarea
-               ref={inputRef}
-               onFocus={handleFocus} 
+                ref={inputRef}
+                onFocus={handleFocus}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -496,7 +598,7 @@ export default function AgentChatPage() {
                     sendMessage()
                   }
                 }}
-                placeholder="Escribe un mensaje"
+                placeholder="Escribe un mensaje... (**negrita**, *cursiva*, 😊)"
                 className="w-full bg-transparent text-sm outline-none resize-none placeholder-gray-500"
                 rows={1}
                 disabled={isSending}

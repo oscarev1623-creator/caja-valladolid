@@ -22,29 +22,46 @@ function getAgentGradient(color: string | undefined) {
   return gradients[color || 'green'] || 'from-green-600 to-emerald-600'
 }
 
+// ============================================
+// 🎨 FUNCIÓN PARA FORMATEAR TEXTO CON MARKDOWN SIMPLE
+// ============================================
+const formatMessage = (text: string) => {
+  if (!text) return text
+  
+  let formattedText = text
+  
+  // Patrones de markdown
+  const patterns = [
+    { regex: /\*\*(.+?)\*\*/g, replace: (m: string, p1: string) => `<strong>${p1}</strong>` },
+    { regex: /\*(.+?)\*/g, replace: (m: string, p1: string) => `<em>${p1}</em>` },
+    { regex: /__(.+?)__/g, replace: (m: string, p1: string) => `<u>${p1}</u>` },
+    { regex: /~~(.+?)~~/g, replace: (m: string, p1: string) => `<del>${p1}</del>` },
+    { regex: /`(.+?)`/g, replace: (m: string, p1: string) => `<code class="bg-gray-200 px-1 py-0.5 rounded text-sm">${p1}</code>` },
+  ]
+  
+  patterns.forEach(({ regex, replace }) => {
+    formattedText = formattedText.replace(regex, replace)
+  })
+  
+  // Convertir URLs en enlaces
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
+  formattedText = formattedText.replace(urlRegex, (url) => {
+    const href = url.startsWith('www.') ? `https://${url}` : url
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="underline decoration-2 underline-offset-2 hover:opacity-80 break-all font-medium" style="color: inherit;">${url}</a>`
+  })
+  
+  return formattedText
+}
+
+// ============================================
+// 🔗 FUNCIÓN LINKIFY MEJORADA (CON FORMATO)
+// ============================================
 const linkify = (text: string, isUser: boolean) => {
   if (!text) return text
   
-  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
-  const parts = text.split(urlRegex)
+  const formattedText = formatMessage(text)
   
-  return parts.map((part, index) => {
-    if (part.match(urlRegex)) {
-      const href = part.startsWith('www.') ? `https://${part}` : part
-      return (
-        <a
-          key={index}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`underline decoration-2 underline-offset-2 hover:opacity-80 break-all ${isUser ? 'text-white font-medium' : 'text-blue-600 font-medium'}`}
-        >
-          {part}
-        </a>
-      )
-    }
-    return <span key={index}>{part}</span>
-  })
+  return <span dangerouslySetInnerHTML={{ __html: formattedText }} />
 }
 
 export default function ChatWidget() {
@@ -117,46 +134,46 @@ export default function ChatWidget() {
   }
 
   // ✅ DETECCIÓN DE PARÁMETROS EN URL - VERSIÓN FINAL CORREGIDA
-useEffect(() => {
-  const timer = setTimeout(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const chatName = urlParams.get('chat_name')
-    const chatEmail = urlParams.get('chat_email')
-    const conversationIdParam = urlParams.get('conversation_id')
-    
-    console.log('🔍 [ChatWidget] Parámetros:', { chatName, chatEmail, conversationId: conversationIdParam })
-    
-    if (chatName && chatEmail) {
-      // ✅ SI HAY conversationId, CARGAR ESA CONVERSACIÓN
-      if (conversationIdParam) {
-        console.log('📂 [ChatWidget] CARGANDO conversación existente:', conversationIdParam)
-        localStorage.setItem('chat_conversation_id', conversationIdParam)
-        setConversationId(conversationIdParam)
-        
-        // NO iniciar nueva conversación, cargar la existente
-        fetch(`/api/chat/messages?conversationId=${conversationIdParam}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-              setMessages(data.messages)
-              setStep('chat')
-              setIsOpen(true)
-            } else {
-              console.error('❌ Conversación no encontrada:', data.error)
-            }
-          })
-      } else {
-        // Si NO hay conversationId, abrir formulario
-        console.log('📝 [ChatWidget] Sin conversationId, abriendo formulario')
-        setIsOpen(true)
-      }
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const urlParams = new URLSearchParams(window.location.search)
+      const chatName = urlParams.get('chat_name')
+      const chatEmail = urlParams.get('chat_email')
+      const conversationIdParam = urlParams.get('conversation_id')
       
-      window.history.replaceState({}, document.title, window.location.pathname)
-    }
-  }, 300)
-  
-  return () => clearTimeout(timer)
-}, [])
+      console.log('🔍 [ChatWidget] Parámetros:', { chatName, chatEmail, conversationId: conversationIdParam })
+      
+      if (chatName && chatEmail) {
+        // ✅ SI HAY conversationId, CARGAR ESA CONVERSACIÓN
+        if (conversationIdParam) {
+          console.log('📂 [ChatWidget] CARGANDO conversación existente:', conversationIdParam)
+          localStorage.setItem('chat_conversation_id', conversationIdParam)
+          setConversationId(conversationIdParam)
+          
+          // NO iniciar nueva conversación, cargar la existente
+          fetch(`/api/chat/messages?conversationId=${conversationIdParam}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                setMessages(data.messages)
+                setStep('chat')
+                setIsOpen(true)
+              } else {
+                console.error('❌ Conversación no encontrada:', data.error)
+              }
+            })
+        } else {
+          // Si NO hay conversationId, abrir formulario
+          console.log('📝 [ChatWidget] Sin conversationId, abriendo formulario')
+          setIsOpen(true)
+        }
+        
+        window.history.replaceState({}, document.title, window.location.pathname)
+      }
+    }, 300)
+    
+    return () => clearTimeout(timer)
+  }, [])
 
   // ✅ Cargar datos guardados
   useEffect(() => {
@@ -613,7 +630,13 @@ useEffect(() => {
                   <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
                     {messages.map((msg) => (
                       <div key={msg.id} className={`flex ${msg.senderType === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${msg.senderType === 'user' ? 'bg-green-600 text-white rounded-br-none' : msg.senderType === 'system' ? 'bg-gray-100 text-gray-500 italic' : 'bg-gray-100 text-gray-800 rounded-bl-none'}`}>
+                        <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
+                          msg.senderType === 'user' 
+                            ? 'bg-green-600 text-white rounded-br-none' 
+                            : msg.senderType === 'system' 
+                            ? 'bg-gray-100 text-gray-500 italic' 
+                            : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                        }`}>
                           {linkify(msg.message, msg.senderType === 'user')}
                           {renderFilePreview(msg)}
                           <div className={`text-[10px] mt-1 ${msg.senderType === 'user' ? 'text-green-200' : 'text-gray-400'}`}>
@@ -638,7 +661,15 @@ useEffect(() => {
                     <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors">
                       <Paperclip className="w-4 h-4" />
                     </button>
-                    <input ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && sendMessage()} placeholder="Escribe tu mensaje..." className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white" />
+                    <input 
+                      ref={inputRef} 
+                      type="text" 
+                      value={input} 
+                      onChange={(e) => setInput(e.target.value)} 
+                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()} 
+                      placeholder="Escribe tu mensaje... (**negrita**, *cursiva*, 😊)" 
+                      className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white" 
+                    />
                     <button onClick={sendMessage} disabled={!input.trim()} className="bg-green-600 text-white p-2 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50">
                       <Send className="w-4 h-4" />
                     </button>
