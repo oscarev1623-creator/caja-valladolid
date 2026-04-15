@@ -363,7 +363,7 @@ const generateDocumentLink = async () => {
     const leadsData = await leadsRes.json()
     console.log('📦 Leads encontrados:', leadsData)
     
-    let lead = null
+    let lead: any = null
     
     if (leadsData.success && leadsData.data?.length > 0) {
       // Si hay resultados, buscar el mejor match
