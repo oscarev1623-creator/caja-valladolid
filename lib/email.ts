@@ -418,14 +418,14 @@ const getEmailTemplate = (content: string, title: string, variant: 'default' | '
           Registro Oficial: 29198 • CONDUSEF ID: 4930
         </div>
         
-        <div class="footer-links">
-          <a href="${baseUrl}" class="footer-link">Inicio</a>
-          <span style="color: #cbd5e1;">•</span>
-          <a href="${baseUrl}/privacidad" class="footer-link">Privacidad</a>
-          <span style="color: #cbd5e1;">•</span>
-          <a href="${baseUrl}/terminos" class="footer-link">Términos</a>
-          <span style="color: #cbd5e1;">•</span>
-          <a href="${baseUrl}/contacto" class="footer-link">Contacto</a>
+               <div class="footer-links" style="display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin: 16px 0;">
+          <a href="${baseUrl}" class="footer-link" style="color: #059669; text-decoration: none; font-weight: 500;">Inicio</a>
+          <span style="color: #cbd5e1; font-size: 8px; margin: 0 4px;">●</span>
+          <a href="${baseUrl}/privacidad" class="footer-link" style="color: #059669; text-decoration: none; font-weight: 500;">Privacidad</a>
+          <span style="color: #cbd5e1; font-size: 8px; margin: 0 4px;">●</span>
+          <a href="${baseUrl}/terminos" class="footer-link" style="color: #059669; text-decoration: none; font-weight: 500;">Términos</a>
+          <span style="color: #cbd5e1; font-size: 8px; margin: 0 4px;">●</span>
+          <a href="${baseUrl}/contacto" class="footer-link" style="color: #059669; text-decoration: none; font-weight: 500;">Contacto</a>
         </div>
         
         <div class="copyright">
