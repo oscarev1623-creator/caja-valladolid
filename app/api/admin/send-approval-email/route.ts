@@ -1,52 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import nodemailer from 'nodemailer'
-import path from 'path'
-import fs from 'fs'
+import { sendApprovalEmail } from '@/lib/email'
 
 const prisma = new PrismaClient()
-
-// Configuración con las nuevas credenciales de Ethereal
-const transporter = nodemailer.createTransport({
-  host: 'smtp.ethereal.email',
-  port: 587,
-  auth: {
-    user: 'edd2@ethereal.email',
-    pass: '6Rfh9Fy6pRv54wfezq'
-  }
-})
-
-// 📌 FUNCIÓN COPIADA DE LA CALCULADORA - Calcular anticipo FIJO según monto
-const calculateAdvance = (amount: number) => {
-  if (amount >= 10000 && amount <= 30000) return 800;
-  if (amount >= 40000 && amount <= 60000) return 900;   // Para $50,000 retorna $900
-  if (amount >= 70000 && amount <= 90000) return 1000;
-  if (amount >= 100000 && amount <= 120000) return 1100;
-  if (amount >= 130000 && amount <= 150000) return 1200;
-  if (amount >= 160000 && amount <= 180000) return 1250;
-  if (amount >= 190000 && amount <= 200000) return 1300;
-  if (amount >= 210000 && amount <= 240000) return 1350;
-  if (amount >= 250000 && amount <= 280000) return 1400;
-  if (amount >= 290000 && amount <= 320000) return 1450;
-  if (amount >= 330000 && amount <= 360000) return 1500;
-  if (amount >= 370000 && amount <= 400000) return 1500;
-  if (amount >= 410000 && amount <= 440000) return 2000;
-  if (amount >= 450000 && amount <= 470000) return 2500;
-  if (amount >= 480000 && amount <= 500000) return 3000;
-  if (amount >= 600000) return amount * 0.005; // 0.5% del monto
-  return 0;
-};
-
-// 📌 FUNCIÓN PARA CALCULAR PAGO MENSUAL (con tasa correcta)
-const calculateMonthlyPayment = (monto: number, tasaAnual: number, meses: number) => {
-  const tasaMensual = tasaAnual / 100 / 12;
-  const netAmount = monto; // No restamos anticipo aquí porque ya se manejó aparte
-  
-  const monthlyPayment = (netAmount * tasaMensual * Math.pow(1 + tasaMensual, meses)) / 
-                         (Math.pow(1 + tasaMensual, meses) - 1);
-  
-  return monthlyPayment;
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,69 +37,55 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Calcular valores
+    // Calcular pago mensual (SIN ANTICIPO)
     const monto = lead.estimatedAmount || 50000
-    const anticipo = calculateAdvance(monto)
-    const porcentajeAnticipo = ((anticipo / monto) * 100).toFixed(1)
+    const plazo = lead.plazo || 36
+    const tasa = 11 // 11% anual
     
-    // ✅ TASA CORRECTA: 6.9% anual
-    const tasa = 6.9
-    const plazo = 36 // meses
-    
-    // Calcular pago mensual con la tasa correcta
-    const pagoMensual = calculateMonthlyPayment(monto, tasa, plazo)
-    
-    // Calcular total de intereses (para referencia)
-    const totalPagar = pagoMensual * plazo
-    const totalIntereses = totalPagar - monto
+    // Cálculo simple SIN anticipo
+    const tasaMensual = tasa / 100 / 12
+    const pagoMensual = (monto * tasaMensual * Math.pow(1 + tasaMensual, plazo)) / 
+                        (Math.pow(1 + tasaMensual, plazo) - 1)
 
-    // Leer la plantilla HTML
-    const templatePath = path.join(process.cwd(), 'emails', 'aprobacion.html')
-    
-    // Verificar que la plantilla existe
-    if (!fs.existsSync(templatePath)) {
-      return NextResponse.json(
-        { success: false, error: 'Plantilla de correo no encontrada' },
-        { status: 500 }
-      )
-    }
-    
-    let htmlContent = fs.readFileSync(templatePath, 'utf8')
-
-    // Reemplazar variables
-    htmlContent = htmlContent
-      .replace(/{{nombre_cliente}}/g, lead.fullName)
-      .replace(/{{monto}}/g, monto.toLocaleString('es-MX'))
-      .replace(/{{plazo}}/g, plazo.toString())
-      .replace(/{{tasa}}/g, tasa.toString())
-      .replace(/{{pago_mensual}}/g, Math.round(pagoMensual).toLocaleString('es-MX'))
-      .replace(/{{anticipo}}/g, anticipo.toLocaleString('es-MX'))
-      .replace(/{{porcentaje_anticipo}}/g, porcentajeAnticipo)
-      .replace(/{{descuento_capital}}/g, (anticipo * 0.7).toLocaleString('es-MX'))
-      .replace(/{{gastos_admin}}/g, (anticipo * 0.3).toLocaleString('es-MX'))
-      .replace(/{{primer_pago}}/g, new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('es-MX'))
-      .replace(/{{link_contrato}}/g, `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/contratos/${lead.id}`)
-      .replace(/{{link_firma}}/g, `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/firmar/${lead.id}`)
-      // Agregar estas variables si tu plantilla las usa
-      .replace(/{{total_intereses}}/g, Math.round(totalIntereses).toLocaleString('es-MX'))
-      .replace(/{{total_pagar}}/g, Math.round(totalPagar).toLocaleString('es-MX'))
-
-    // ✅ AHORA lead.email SEGURO QUE EXISTE
-    const info = await transporter.sendMail({
-      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
-      to: lead.email, // Ya validado arriba
-      subject: '✅ ¡Felicidades! Tu crédito ha sido aprobado',
-      html: htmlContent,
-    })
-
-    console.log('✅ Correo enviado. URL de vista previa:', nodemailer.getTestMessageUrl(info))
     console.log('📊 Valores calculados:', {
       monto,
-      anticipo,
+      plazo,
       tasa,
-      pagoMensual: Math.round(pagoMensual),
-      totalIntereses: Math.round(totalIntereses)
+      pagoMensual: Math.round(pagoMensual)
     })
+
+    // ✅ MENSAJE PERSONALIZADO CON LOS DETALLES DEL CRÉDITO
+    const mensajePersonalizado = `
+      ¡Tu crédito por $${monto.toLocaleString('es-MX')} ha sido aprobado!
+      
+      📋 Detalles de tu crédito:
+      • Monto aprobado: $${monto.toLocaleString('es-MX')}
+      • Pago mensual estimado: $${Math.round(pagoMensual).toLocaleString('es-MX')}
+      • Plazo: ${plazo} meses
+      • Tasa de interés anual: ${tasa}%
+      
+      Comunícate a la Oficina Virtual para recibir los detalles finales y completar el proceso.
+    `.trim()
+
+    // ✅ ENVIAR CORREO USANDO LA FUNCIÓN DE lib/email.ts
+    try {
+      await sendApprovalEmail({
+        to: lead.email,
+        nombre: lead.fullName,
+        leadId: lead.id,
+        monto: monto,
+        tipoCredito: lead.creditType || 'TRADITIONAL',
+        mensajePersonalizado: mensajePersonalizado
+      })
+      
+      console.log('✅ Correo de aprobación enviado a:', lead.email)
+    } catch (emailError) {
+      console.error('❌ Error enviando correo:', emailError)
+      return NextResponse.json({
+        success: false,
+        error: 'Error al enviar el correo. Intenta de nuevo.'
+      }, { status: 500 })
+    }
 
     // Actualizar estado del lead
     await prisma.lead.update({
@@ -156,14 +98,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Correo enviado correctamente',
-      previewUrl: nodemailer.getTestMessageUrl(info)
+      message: 'Correo de aprobación enviado correctamente'
     })
 
   } catch (error) {
-    console.error('Error enviando correo:', error)
+    console.error('❌ Error en aprobación:', error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Error interno del servidor' },
+      { success: false, error: error instanceof Error ? error.message : 'Error interno' },
       { status: 500 }
     )
   }
