@@ -406,33 +406,75 @@ const getEmailTemplate = (content: string, title: string, variant: 'default' | '
         ${content}
       </div>
       
-      <!-- Footer Premium -->
-      <div class="footer">
-        <div class="footer-logo">
-          <div class="footer-icon">CV</div>
-          <span style="font-weight: 700; color: #1f2937; font-size: 16px;">Caja Popular Valladolid</span>
-        </div>
-        
-        <div class="footer-text">
-          San Bernardino de Siena<br>
-          Registro Oficial: 29198 • CONDUSEF ID: 4930
-        </div>
-        
-               <div class="footer-links" style="display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin: 16px 0;">
-          <a href="${baseUrl}" class="footer-link" style="color: #059669; text-decoration: none; font-weight: 500;">Inicio</a>
-          <span style="color: #cbd5e1; font-size: 8px; margin: 0 4px;">●</span>
-          <a href="${baseUrl}/privacidad" class="footer-link" style="color: #059669; text-decoration: none; font-weight: 500;">Privacidad</a>
-          <span style="color: #cbd5e1; font-size: 8px; margin: 0 4px;">●</span>
-          <a href="${baseUrl}/terminos" class="footer-link" style="color: #059669; text-decoration: none; font-weight: 500;">Términos</a>
-          <span style="color: #cbd5e1; font-size: 8px; margin: 0 4px;">●</span>
-          <a href="${baseUrl}/contacto" class="footer-link" style="color: #059669; text-decoration: none; font-weight: 500;">Contacto</a>
-        </div>
-        
-        <div class="copyright">
-          © ${new Date().getFullYear()} Caja Popular San Bernardino de Siena Valladolid.<br>
-          Todos los derechos reservados.
-        </div>
-      </div>
+      <!-- Footer - 100% Compatible con todos los clientes de email -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+        <tr>
+          <td align="center" style="padding: 30px 20px;">
+            
+            <!-- Logo y nombre en footer -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="padding-bottom: 16px;">
+                  <img src="${baseUrl}/logotipo.png" alt="Caja Valladolid" width="50" style="width: 50px; height: auto; display: inline-block;" />
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding-bottom: 8px;">
+                  <span style="font-family: Arial, Helvetica, sans-serif; font-weight: 700; color: #1f2937; font-size: 16px;">Caja Popular Valladolid</span>
+                </td>
+              </tr>
+            </table>
+            
+            <!-- Información de registro -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="padding-bottom: 4px;">
+                  <span style="font-family: Arial, Helvetica, sans-serif; color: #64748b; font-size: 13px;">San Bernardino de Siena</span>
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding-bottom: 16px;">
+                  <span style="font-family: Arial, Helvetica, sans-serif; color: #64748b; font-size: 13px;">Registro Oficial: 29198 &nbsp;&nbsp;|&nbsp;&nbsp; CONDUSEF ID: 4930</span>
+                </td>
+              </tr>
+            </table>
+            
+            <!-- Links de navegación -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="padding-bottom: 20px;">
+                  <a href="${baseUrl}" style="font-family: Arial, Helvetica, sans-serif; color: #059669; text-decoration: none; font-weight: 500; font-size: 13px; margin: 0 8px;">Inicio</a>
+                  <span style="color: #cbd5e1; font-size: 10px;">●</span>
+                  <a href="${baseUrl}/privacidad" style="font-family: Arial, Helvetica, sans-serif; color: #059669; text-decoration: none; font-weight: 500; font-size: 13px; margin: 0 8px;">Privacidad</a>
+                  <span style="color: #cbd5e1; font-size: 10px;">●</span>
+                  <a href="${baseUrl}/terminos" style="font-family: Arial, Helvetica, sans-serif; color: #059669; text-decoration: none; font-weight: 500; font-size: 13px; margin: 0 8px;">Términos</a>
+                  <span style="color: #cbd5e1; font-size: 10px;">●</span>
+                  <a href="${baseUrl}/contacto" style="font-family: Arial, Helvetica, sans-serif; color: #059669; text-decoration: none; font-weight: 500; font-size: 13px; margin: 0 8px;">Contacto</a>
+                </td>
+              </tr>
+            </table>
+            
+            <!-- Copyright -->
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="center" style="padding-top: 16px; border-top: 1px solid #e2e8f0;">
+                  <span style="font-family: Arial, Helvetica, sans-serif; color: #94a3b8; font-size: 11px;">
+                    © ${new Date().getFullYear()} Caja Popular San Bernardino de Siena Valladolid.
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding-top: 4px;">
+                  <span style="font-family: Arial, Helvetica, sans-serif; color: #94a3b8; font-size: 11px;">
+                    Todos los derechos reservados.
+                  </span>
+                </td>
+              </tr>
+            </table>
+            
+          </td>
+        </tr>
+      </table>
       
     </div>
   </div>
