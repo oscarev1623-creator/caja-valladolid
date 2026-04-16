@@ -40,7 +40,7 @@ const getEmailTemplate = (content: string, title: string) => `
           <tr>
             <td bgcolor="#059669" style="padding: 40px 20px; text-align: center; background-color: #059669;">
               <img src="${baseUrl}/logotipo.png" alt="Caja Valladolid" style="height: 120px; width: auto; margin-bottom: 15px;" />
-              <h1 style="color: #ffffff; margin: 10px 0 0 0; font-size: 28px; font-weight: bold;">Oficina Virtual</h1>
+              <h1 style="color: #ffffff; margin: 10px 0 0 0; font-size: 28px; font-weight: bold;">Caja Valladolid</h1>
               <p style="color: #d1fae5; margin: 8px 0 0 0; font-size: 16px;">Tu aliado financiero de confianza</p>
             </td>
           </tr>
@@ -77,14 +77,14 @@ export async function sendConfirmationEmail({
   leadId, 
   monto, 
   tipoCredito,
-  chatToken  // ✅ NUEVO PARÁMETRO
+  chatToken
 }: { 
   to: string
   nombre: string
   leadId: string
   monto?: number | string
   tipoCredito?: string
-  chatToken?: string  // ✅ NUEVO TIPO
+  chatToken?: string
 }) {
   console.log('📧 Enviando confirmación vía SendGrid a:', to)
   
@@ -96,7 +96,6 @@ export async function sendConfirmationEmail({
     ? 'Criptomonedas' 
     : 'Tradicional'
 
-  // ✅ Enlace con token para chat automático (prioridad) o fallback a nombre/email
   const chatUrl = chatToken 
     ? `${baseUrl}/?chat_token=${chatToken}`
     : `${baseUrl}/?chat_name=${encodeURIComponent(nombre)}&chat_email=${encodeURIComponent(to)}`
@@ -195,7 +194,7 @@ export async function sendConfirmationEmail({
 }
 
 // ============================================
-// 2. CORREO DE DOCUMENTOS RECIBIDOS (NUEVO - PROFESIONAL)
+// 2. CORREO DE DOCUMENTOS RECIBIDOS
 // ============================================
 export async function sendDocumentsReceivedEmail({ 
   to, 
@@ -301,11 +300,11 @@ export async function sendDocumentsReceivedEmail({
 // 3. CORREO DE NOTIFICACIÓN DE CHAT (ASESOR RESPONDE)
 // ============================================
 export async function sendChatNotificationEmail({ to, name, message, conversationId }: { to: string; name: string; message: string; conversationId: string }) {
-  console.log('📧 Enviando notificación de chat con conversationId:', conversationId) // ← AGREGAR ESTE LOG
+  console.log('📧 Enviando notificación de chat con conversationId:', conversationId)
   
   const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(name)}&chat_email=${encodeURIComponent(to)}&conversation_id=${conversationId}`
   
-  console.log('🔗 chatUrl generado:', chatUrl) // ← AGREGAR ESTE LOG
+  console.log('🔗 chatUrl generado:', chatUrl)
   
   const content = `
     <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
@@ -384,5 +383,139 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
     await sgMail.send({ to, from: 'contacto@cajavalladolid.com', subject, html })
   } catch {
     await transporter.sendMail({ from: '"Caja Valladolid" <contacto@cajavalladolid.com>', to, subject, html })
+  }
+}
+
+// ============================================
+// 5. 🎉 CORREO DE APROBACIÓN DE CRÉDITO (NUEVO)
+// ============================================
+export async function sendApprovalEmail({ 
+  to, 
+  nombre, 
+  leadId,
+  monto, 
+  tipoCredito,
+  mensajePersonalizado 
+}: { 
+  to: string
+  nombre: string
+  leadId?: string
+  monto?: number | string
+  tipoCredito?: string
+  mensajePersonalizado?: string
+}) {
+  console.log('📧 Enviando correo de APROBACIÓN a:', to)
+  
+  const montoFormateado = monto 
+    ? `$${parseFloat(monto.toString()).toLocaleString('es-MX')}` 
+    : 'No especificado'
+  
+  const tipo = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' 
+    ? 'Criptomonedas' 
+    : 'Tradicional'
+
+  const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(nombre)}&chat_email=${encodeURIComponent(to)}`
+
+  const contenidoMensaje = mensajePersonalizado || '¡Felicidades! Tu crédito ha sido aprobado. Un asesor te contactará para finalizar el proceso.'
+
+  const content = `
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
+      <tr>
+        <td align="center" style="padding: 10px 0 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border: 1px solid #d1fae5; padding: 20px;">
+            <tr>
+              <td align="center">
+                <h2 style="color: #059669; margin: 0 0 8px 0; font-size: 24px;">🎉 ¡Felicidades, ${nombre}!</h2>
+                <p style="color: #065f46; margin: 0; font-size: 18px;">Tu crédito ha sido <strong>APROBADO</strong></p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 20px 0;">
+      <tr>
+        <td style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 20px;">
+          <table width="100%" cellpadding="8">
+            ${leadId ? `
+            <tr>
+              <td width="50%"><strong>Número de solicitud:</strong></td>
+              <td width="50%" align="right">#${leadId.slice(-8).toUpperCase()}</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td width="50%"><strong>Monto aprobado:</strong></td>
+              <td width="50%" align="right" style="font-weight: bold; color: #059669; font-size: 18px;">${montoFormateado}</td>
+            </tr>
+            <tr>
+              <td><strong>Tipo de crédito:</strong></td>
+              <td align="right">${tipo}</td>
+            </tr>
+            <tr>
+              <td><strong>Estado:</strong></td>
+              <td align="right"><span style="background-color: #d1fae5; color: #065f46; padding: 4px 8px; font-size: 14px; font-weight: bold;">✅ APROBADO</span></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 20px 0;">
+      <tr>
+        <td style="background-color: #fef3c7; border: 1px solid #fde68a; padding: 20px;">
+          <p style="margin: 0 0 8px 0; color: #92400e; font-weight: bold;">📝 Mensaje de tu asesor:</p>
+          <p style="margin: 0; color: #92400e; font-size: 15px; line-height: 1.6;">${contenidoMensaje}</p>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 24px 0;">
+      <tr>
+        <td style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 20px;" align="center">
+          <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 18px;">💬 Comunícate a la Oficina Virtual</h3>
+          <p style="color: #1e40af; margin: 0 0 16px 0; font-size: 15px;">Habla directamente con tu asesor para finalizar el proceso:</p>
+          <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+            <tr>
+              <td align="center" bgcolor="#059669" style="padding: 16px 40px; background-color: #059669; border-radius: 8px;">
+                <a href="${chatUrl}" style="color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; display: inline-block;">💬 Abrir Oficina Virtual</a>
+              </td>
+            </tr>
+          </table>
+          <p style="color: #6b7280; margin: 16px 0 0 0; font-size: 13px;">
+            Tus datos ya están registrados. Solo haz clic para continuar.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
+      <tr>
+        <td style="background-color: #d1fae5; border: 1px solid #059669; padding: 16px;" align="center">
+          <p style="color: #065f46; margin: 0; font-size: 15px; font-weight: bold;">
+            🎯 ¡Estás a un paso de recibir tu crédito!
+          </p>
+        </td>
+      </tr>
+    </table>
+  `
+
+  try {
+    await sgMail.send({
+      to,
+      from: 'contacto@cajavalladolid.com',
+      subject: '🎉 ¡Felicidades! Tu crédito ha sido APROBADO',
+      html: getEmailTemplate(content, 'Crédito Aprobado')
+    })
+    console.log('✅ Correo de aprobación enviado vía SendGrid a:', to)
+  } catch (error: any) {
+    console.error('❌ SendGrid falló, intentando con Zoho...')
+    await transporter.sendMail({
+      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
+      to,
+      subject: '🎉 ¡Felicidades! Tu crédito ha sido APROBADO',
+      html: getEmailTemplate(content, 'Crédito Aprobado')
+    })
+    console.log('✅ Correo de aprobación enviado vía Zoho a:', to)
   }
 }
