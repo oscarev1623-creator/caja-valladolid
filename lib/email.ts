@@ -21,52 +21,425 @@ const transporter = nodemailer.createTransport({
 const baseUrl = process.env.NEXTAUTH_URL || 'https://cajavalladolid.com'
 
 // ============================================
-// TEMPLATE BASE - OPTIMIZADO PARA OUTLOOK
+// 🎨 TEMPLATE BASE - DISEÑO PREMIUM
 // ============================================
-const getEmailTemplate = (content: string, title: string) => `
+const getEmailTemplate = (content: string, title: string, variant: 'default' | 'success' | 'warning' | 'crypto' = 'default') => {
+  
+  const gradients = {
+    default: 'linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)',
+    success: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)',
+    warning: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
+    crypto: 'linear-gradient(135deg, #f7931a 0%, #f1c40f 50%, #e67e22 100%)'
+  }
+
+  const gradient = gradients[variant] || gradients.default
+
+  return `
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>${title} | Caja Valladolid</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #1f2937;
+    }
+    
+    .email-wrapper {
+      background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 50%, #f0fdf4 100%);
+      padding: 40px 20px;
+    }
+    
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      border: 1px solid rgba(5, 150, 105, 0.1);
+    }
+    
+    .header {
+      background: ${gradient};
+      padding: 48px 32px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      left: -5%;
+      width: 150px;
+      height: 150px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    
+    .logo-wrapper {
+      position: relative;
+      z-index: 10;
+      margin-bottom: 24px;
+    }
+    
+    .logo {
+      max-width: 180px;
+      height: auto;
+      filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+      transition: transform 0.3s ease;
+    }
+    
+    .logo:hover {
+      transform: scale(1.02);
+    }
+    
+    .company-name {
+      color: #ffffff;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      text-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      margin-bottom: 8px;
+    }
+    
+    .company-tagline {
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 16px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .content {
+      padding: 40px 32px;
+      background: #ffffff;
+    }
+    
+    .footer {
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 32px;
+      text-align: center;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .footer-icon {
+      width: 40px;
+      height: 40px;
+      background: ${gradient};
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 18px;
+      box-shadow: 0 4px 10px rgba(5, 150, 105, 0.3);
+    }
+    
+    .footer-text {
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin: 16px 0;
+      flex-wrap: wrap;
+    }
+    
+    .footer-link {
+      color: #059669;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    
+    .footer-link:hover {
+      color: #047857;
+      text-decoration: underline;
+    }
+    
+    .copyright {
+      color: #94a3b8;
+      font-size: 12px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    /* Estilos para el contenido */
+    .greeting-box {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1px solid #86efac;
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 28px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(5, 150, 105, 0.1);
+    }
+    
+    .greeting-title {
+      color: #065f46;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .greeting-subtitle {
+      color: #047857;
+      font-size: 15px;
+      font-weight: 500;
+    }
+    
+    .details-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 24px;
+      margin: 24px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    
+    .details-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .details-row:last-child {
+      border-bottom: none;
+    }
+    
+    .details-label {
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .details-value {
+      color: #1f2937;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    
+    .amount-highlight {
+      color: #059669;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .status-approved {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+    
+    .status-pending {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+    
+    .message-box {
+      background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+      border: 1px solid #fde68a;
+      border-radius: 20px;
+      padding: 24px;
+      margin: 24px 0;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+    }
+    
+    .message-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #92400e;
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    
+    .message-content {
+      color: #78350f;
+      font-size: 15px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+    
+    .cta-box {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border: 1px solid #93c5fd;
+      border-radius: 24px;
+      padding: 32px 24px;
+      margin: 32px 0 16px;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
+    }
+    
+    .cta-title {
+      color: #1e40af;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    
+    .cta-subtitle {
+      color: #3b82f6;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color: #ffffff !important;
+      text-decoration: none !important;
+      font-weight: 700;
+      font-size: 18px;
+      padding: 18px 42px;
+      border-radius: 60px;
+      box-shadow: 0 10px 25px rgba(5, 150, 105, 0.35);
+      transition: all 0.3s ease;
+      border: none;
+      text-align: center;
+    }
+    
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(5, 150, 105, 0.45);
+      background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    }
+    
+    .guarantee-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 24px;
+      padding: 16px;
+      background: #f0fdf4;
+      border-radius: 16px;
+      border: 1px dashed #6ee7b7;
+    }
+    
+    .guarantee-icon {
+      font-size: 24px;
+    }
+    
+    .guarantee-text {
+      color: #065f46;
+      font-size: 13px;
+      font-weight: 500;
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #f4f7f6;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f7f6; padding: 20px 0;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border: 1px solid #e5e7eb;">
-          <!-- Header con logo -->
-          <tr>
-            <td bgcolor="#059669" style="padding: 40px 20px; text-align: center; background-color: #059669;">
-              <img src="${baseUrl}/logotipo.png" alt="Caja Valladolid" style="height: 120px; width: auto; margin-bottom: 15px;" />
-              <h1 style="color: #ffffff; margin: 10px 0 0 0; font-size: 28px; font-weight: bold;">Caja Valladolid</h1>
-              <p style="color: #d1fae5; margin: 8px 0 0 0; font-size: 16px;">Tu aliado financiero de confianza</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 30px;">${content}</td>
-          </tr>
-          <tr>
-            <td style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 10px 0; font-size: 12px; color: #6b7280;">
-                Caja Popular San Bernardino de Siena Valladolid
-              </p>
-              <p style="margin: 0 0 10px 0; font-size: 12px; color: #6b7280;">
-                Registro Oficial: 29198 • CONDUSEF ID: 4930
-              </p>
-              <p style="margin: 0; font-size: 11px; color: #9ca3af;">
-                © ${new Date().getFullYear()} Caja Valladolid. Todos los derechos reservados.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
+<body>
+  <div class="email-wrapper">
+    <div class="email-container">
+      
+      <!-- Header Premium -->
+      <div class="header">
+        <div class="logo-wrapper">
+          <img src="${baseUrl}/logotipo.png" alt="Caja Valladolid" class="logo" />
+        </div>
+        <div class="company-name">Caja Valladolid</div>
+        <div class="company-tagline">Tu Aliado Financiero</div>
+      </div>
+      
+      <!-- Contenido -->
+      <div class="content">
+        ${content}
+      </div>
+      
+      <!-- Footer Premium -->
+      <div class="footer">
+        <div class="footer-logo">
+          <div class="footer-icon">CV</div>
+          <span style="font-weight: 700; color: #1f2937; font-size: 16px;">Caja Popular Valladolid</span>
+        </div>
+        
+        <div class="footer-text">
+          San Bernardino de Siena<br>
+          Registro Oficial: 29198 • CONDUSEF ID: 4930
+        </div>
+        
+        <div class="footer-links">
+          <a href="${baseUrl}" class="footer-link">Inicio</a>
+          <span style="color: #cbd5e1;">•</span>
+          <a href="${baseUrl}/privacidad" class="footer-link">Privacidad</a>
+          <span style="color: #cbd5e1;">•</span>
+          <a href="${baseUrl}/terminos" class="footer-link">Términos</a>
+          <span style="color: #cbd5e1;">•</span>
+          <a href="${baseUrl}/contacto" class="footer-link">Contacto</a>
+        </div>
+        
+        <div class="copyright">
+          © ${new Date().getFullYear()} Caja Popular San Bernardino de Siena Valladolid.<br>
+          Todos los derechos reservados.
+        </div>
+      </div>
+      
+    </div>
+  </div>
 </body>
 </html>
 `
+}
 
 // ============================================
 // 1. CORREO DE CONFIRMACIÓN DE SOLICITUD
@@ -101,84 +474,54 @@ export async function sendConfirmationEmail({
     : `${baseUrl}/?chat_name=${encodeURIComponent(nombre)}&chat_email=${encodeURIComponent(to)}`
 
   const content = `
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
-      <tr>
-        <td align="center" style="padding: 10px 0 20px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border: 1px solid #d1fae5; padding: 20px;">
-            <tr>
-              <td align="center">
-                <h2 style="color: #059669; margin: 0 0 8px 0; font-size: 22px;">¡Hola ${nombre}! 👋</h2>
-                <p style="color: #065f46; margin: 0; font-size: 16px;">Hemos recibido exitosamente tu solicitud de crédito.</p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 20px 0;">
-      <tr>
-        <td>
-          <h3 style="color: #065f46; margin: 0 0 12px 0; font-size: 18px;">📋 Detalles de tu solicitud</h3>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="12" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; background-color: #f9fafb; border: 1px solid #e5e7eb;">
-      <tr>
-        <td width="50%" style="border-bottom: 1px solid #e5e7eb;"><strong>Número de solicitud:</strong></td>
-        <td width="50%" align="right" style="border-bottom: 1px solid #e5e7eb;">#${leadId.slice(-8).toUpperCase()}</td>
-      </tr>
-      <tr>
-        <td style="border-bottom: 1px solid #e5e7eb;"><strong>Monto solicitado:</strong></td>
-        <td align="right" style="border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #059669;">${montoFormateado}</td>
-      </tr>
-      <tr>
-        <td style="border-bottom: 1px solid #e5e7eb;"><strong>Tipo de crédito:</strong></td>
-        <td align="right" style="border-bottom: 1px solid #e5e7eb;">${tipo}</td>
-      </tr>
-      <tr>
-        <td><strong>Estado:</strong></td>
-        <td align="right"><span style="background-color: #fef3c7; color: #92400e; padding: 4px 8px; font-size: 12px;">En evaluación</span></td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 24px 0;">
-      <tr>
-        <td style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 20px;" align="center">
-          <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 16px;">💬 Oficina Virtual</h3>
-          <p style="color: #1e40af; margin: 0 0 16px 0;">Habla directamente con un asesor en tiempo real:</p>
-          <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-            <tr>
-              <td align="center" bgcolor="#059669" style="padding: 14px 36px; background-color: #059669;">
-                <a href="${chatUrl}" style="color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">💬 Iniciar conversación</a>
-              </td>
-            </tr>
-          </table>
-          <p style="color: #6b7280; margin: 16px 0 0 0; font-size: 13px;">
-            Tus datos ya estarán listos. Solo haz clic en "Iniciar conversación".
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
-      <tr>
-        <td style="background-color: #f0fdf4; border: 1px solid #d1fae5; padding: 16px;" align="center">
-          <p style="color: #065f46; margin: 0; font-size: 14px;">
-            ⏳ <strong>Caja Valladolid está evaluando tu solicitud.</strong>
-          </p>
-        </td>
-      </tr>
-    </table>
+    <div class="greeting-box">
+      <div class="greeting-title">✨ ¡Hola ${nombre}!</div>
+      <div class="greeting-subtitle">Hemos recibido exitosamente tu solicitud de crédito</div>
+    </div>
+    
+    <div style="margin: 24px 0;">
+      <h3 style="color: #1f2937; font-size: 18px; font-weight: 700; margin-bottom: 16px;">📋 Detalles de tu solicitud</h3>
+    </div>
+    
+    <div class="details-card">
+      <div class="details-row">
+        <span class="details-label">Número de solicitud</span>
+        <span class="details-value">#${leadId.slice(-8).toUpperCase()}</span>
+      </div>
+      <div class="details-row">
+        <span class="details-label">Monto solicitado</span>
+        <span class="details-value amount-highlight">${montoFormateado}</span>
+      </div>
+      <div class="details-row">
+        <span class="details-label">Tipo de crédito</span>
+        <span class="details-value">${tipo}</span>
+      </div>
+      <div class="details-row">
+        <span class="details-label">Estado</span>
+        <span class="details-value"><span class="status-badge status-pending">En evaluación</span></span>
+      </div>
+    </div>
+    
+    <div class="cta-box">
+      <div class="cta-title">💬 Oficina Virtual</div>
+      <div class="cta-subtitle">Habla directamente con un asesor en tiempo real</div>
+      <a href="${chatUrl}" class="cta-button">Iniciar conversación</a>
+    </div>
+    
+    <div class="guarantee-badge">
+      <span class="guarantee-icon">⏳</span>
+      <span class="guarantee-text"><strong>Caja Valladolid está evaluando tu solicitud.</strong><br>Te notificaremos pronto.</span>
+    </div>
   `
+
+  const variant = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' ? 'crypto' : 'default'
 
   try {
     await sgMail.send({
       to,
       from: 'contacto@cajavalladolid.com',
       subject: '✨ ¡Hola! Hemos recibido tu solicitud de crédito',
-      html: getEmailTemplate(content, 'Solicitud recibida')
+      html: getEmailTemplate(content, 'Solicitud recibida', variant)
     })
     console.log('✅ Correo enviado vía SendGrid a:', to)
   } catch (error: any) {
@@ -187,7 +530,7 @@ export async function sendConfirmationEmail({
       from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
       to,
       subject: '✨ ¡Hola! Hemos recibido tu solicitud de crédito',
-      html: getEmailTemplate(content, 'Solicitud recibida')
+      html: getEmailTemplate(content, 'Solicitud recibida', variant)
     })
     console.log('✅ Correo enviado vía Zoho a:', to)
   }
@@ -210,77 +553,43 @@ export async function sendDocumentsReceivedEmail({
   const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(nombre)}&chat_email=${encodeURIComponent(to)}`
 
   const content = `
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
-      <tr>
-        <td align="center" style="padding: 10px 0 20px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border: 1px solid #d1fae5; padding: 20px;">
-            <tr>
-              <td align="center">
-                <h2 style="color: #059669; margin: 0 0 8px 0; font-size: 22px;">📄 ¡Documentos recibidos, ${nombre}!</h2>
-                <p style="color: #065f46; margin: 0; font-size: 16px;">Hemos recibido correctamente toda tu documentación.</p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 20px 0;">
-      <tr>
-        <td style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 20px;">
-          <table width="100%" cellpadding="8">
-            <tr>
-              <td width="50%"><strong>Número de solicitud:</strong></td>
-              <td width="50%" align="right">#${leadId.slice(-8).toUpperCase()}</td>
-            </tr>
-            <tr>
-              <td><strong>Fecha de recepción:</strong></td>
-              <td align="right">${new Date().toLocaleDateString('es-MX')}</td>
-            </tr>
-            <tr>
-              <td><strong>Estado:</strong></td>
-              <td align="right"><span style="background-color: #dbeafe; color: #1e40af; padding: 4px 8px; font-size: 12px;">En análisis</span></td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 20px 0;">
-      <tr>
-        <td style="background-color: #fef3c7; border: 1px solid #fde68a; padding: 16px;" align="center">
-          <p style="color: #92400e; margin: 0; font-size: 14px;">
-            ✅ <strong>Próximos pasos:</strong> Nuestro equipo analizará tu información y te contactará en <strong>24-48 horas</strong>.
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 24px 0;">
-      <tr>
-        <td style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 20px;" align="center">
-          <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 16px;">💬 ¿Tienes dudas?</h3>
-          <p style="color: #1e40af; margin: 0 0 16px 0;">Habla directamente con tu asesor en la Oficina Virtual:</p>
-          <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-            <tr>
-              <td align="center" bgcolor="#059669" style="padding: 14px 36px; background-color: #059669;">
-                <a href="${chatUrl}" style="color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">💬 Abrir Oficina Virtual</a>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
-      <tr>
-        <td style="background-color: #f0fdf4; border: 1px solid #d1fae5; padding: 16px;" align="center">
-          <p style="color: #065f46; margin: 0; font-size: 14px;">
-            🎯 <strong>Caja Valladolid está procesando tu solicitud.</strong>
-          </p>
-        </td>
-      </tr>
-    </table>
+    <div class="greeting-box">
+      <div class="greeting-title">📄 ¡Documentos recibidos, ${nombre}!</div>
+      <div class="greeting-subtitle">Hemos recibido correctamente toda tu documentación</div>
+    </div>
+    
+    <div class="details-card">
+      <div class="details-row">
+        <span class="details-label">Número de solicitud</span>
+        <span class="details-value">#${leadId.slice(-8).toUpperCase()}</span>
+      </div>
+      <div class="details-row">
+        <span class="details-label">Fecha de recepción</span>
+        <span class="details-value">${new Date().toLocaleDateString('es-MX')}</span>
+      </div>
+      <div class="details-row">
+        <span class="details-label">Estado</span>
+        <span class="details-value"><span class="status-badge status-pending">En análisis</span></span>
+      </div>
+    </div>
+    
+    <div class="message-box">
+      <div class="message-label">✅ Próximos pasos</div>
+      <div class="message-content">
+        Nuestro equipo analizará tu información y te contactará en <strong>24-48 horas</strong>.
+      </div>
+    </div>
+    
+    <div class="cta-box">
+      <div class="cta-title">💬 ¿Tienes dudas?</div>
+      <div class="cta-subtitle">Habla directamente con tu asesor en la Oficina Virtual</div>
+      <a href="${chatUrl}" class="cta-button">Abrir Oficina Virtual</a>
+    </div>
+    
+    <div class="guarantee-badge">
+      <span class="guarantee-icon">🎯</span>
+      <span class="guarantee-text"><strong>Caja Valladolid está procesando tu solicitud.</strong></span>
+    </div>
   `
 
   try {
@@ -288,7 +597,7 @@ export async function sendDocumentsReceivedEmail({
       to,
       from: 'contacto@cajavalladolid.com',
       subject: '📄 ¡Documentos recibidos! Tu solicitud avanza',
-      html: getEmailTemplate(content, 'Documentos recibidos')
+      html: getEmailTemplate(content, 'Documentos recibidos', 'success')
     })
     console.log('✅ Correo de documentos enviado a:', to)
   } catch (error) {
@@ -297,69 +606,34 @@ export async function sendDocumentsReceivedEmail({
 }
 
 // ============================================
-// 3. CORREO DE NOTIFICACIÓN DE CHAT (ASESOR RESPONDE)
+// 3. CORREO DE NOTIFICACIÓN DE CHAT
 // ============================================
 export async function sendChatNotificationEmail({ to, name, message, conversationId }: { to: string; name: string; message: string; conversationId: string }) {
   console.log('📧 Enviando notificación de chat con conversationId:', conversationId)
   
   const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(name)}&chat_email=${encodeURIComponent(to)}&conversation_id=${conversationId}`
   
-  console.log('🔗 chatUrl generado:', chatUrl)
-  
   const content = `
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
-      <tr>
-        <td align="center" style="padding: 10px 0 20px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border: 1px solid #d1fae5; padding: 20px;">
-            <tr>
-              <td align="center">
-                <h2 style="color: #059669; margin: 0 0 8px 0; font-size: 22px;">💬 ¡${name}, tienes un nuevo mensaje!</h2>
-                <p style="color: #065f46; margin: 0; font-size: 16px;">Tu asesor te ha respondido en la Oficina Virtual.</p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 20px 0;">
-      <tr>
-        <td style="background-color: #f3f4f6; border: 1px solid #e5e7eb; padding: 20px;">
-          <p style="margin: 0 0 8px 0; color: #374151; font-weight: bold;">📩 Mensaje de tu asesor:</p>
-          <table width="100%" cellpadding="16" style="background-color: #ffffff; border: 1px solid #e5e7eb;">
-            <tr>
-              <td>
-                <p style="margin: 0; color: #059669; font-style: italic; font-size: 15px;">"${message}"</p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 24px 0;">
-      <tr>
-        <td align="center">
-          <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-            <tr>
-              <td align="center" bgcolor="#059669" style="padding: 14px 36px; background-color: #059669;">
-                <a href="${chatUrl}" style="color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">💬 Responder en Oficina Virtual</a>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
-      <tr>
-        <td style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 16px;">
-          <p style="color: #1e40af; margin: 0; font-size: 13px; text-align: center;">
-            💡 Tus mensajes quedan guardados. Puedes volver cuando quieras.
-          </p>
-        </td>
-      </tr>
-    </table>
+    <div class="greeting-box">
+      <div class="greeting-title">💬 ¡${name}, tienes un nuevo mensaje!</div>
+      <div class="greeting-subtitle">Tu asesor te ha respondido en la Oficina Virtual</div>
+    </div>
+    
+    <div class="message-box">
+      <div class="message-label">📩 Mensaje de tu asesor</div>
+      <div class="message-content">"${message}"</div>
+    </div>
+    
+    <div class="cta-box">
+      <div class="cta-title">Responder ahora</div>
+      <div class="cta-subtitle">Continúa la conversación en la Oficina Virtual</div>
+      <a href="${chatUrl}" class="cta-button">Responder en Oficina Virtual</a>
+    </div>
+    
+    <div class="guarantee-badge">
+      <span class="guarantee-icon">💡</span>
+      <span class="guarantee-text">Tus mensajes quedan guardados. Puedes volver cuando quieras.</span>
+    </div>
   `
 
   try {
@@ -367,7 +641,7 @@ export async function sendChatNotificationEmail({ to, name, message, conversatio
       from: '"Caja Valladolid - Oficina Virtual" <contacto@cajavalladolid.com>',
       to,
       subject: '📩 Nuevo mensaje de tu asesor',
-      html: getEmailTemplate(content, 'Nuevo mensaje')
+      html: getEmailTemplate(content, 'Nuevo mensaje', 'default')
     })
     console.log('✅ Notificación enviada vía Zoho a:', to)
   } catch (error) {
@@ -387,7 +661,7 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
 }
 
 // ============================================
-// 5. 🎉 CORREO DE APROBACIÓN DE CRÉDITO (NUEVO)
+// 5. 🎉 CORREO DE APROBACIÓN DE CRÉDITO (PREMIUM)
 // ============================================
 export async function sendApprovalEmail({ 
   to, 
@@ -419,93 +693,57 @@ export async function sendApprovalEmail({
   const contenidoMensaje = mensajePersonalizado || '¡Felicidades! Tu crédito ha sido aprobado. Un asesor te contactará para finalizar el proceso.'
 
   const content = `
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
-      <tr>
-        <td align="center" style="padding: 10px 0 20px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f0fdf4; border: 1px solid #d1fae5; padding: 20px;">
-            <tr>
-              <td align="center">
-                <h2 style="color: #059669; margin: 0 0 8px 0; font-size: 24px;">🎉 ¡Felicidades, ${nombre}!</h2>
-                <p style="color: #065f46; margin: 0; font-size: 18px;">Tu crédito ha sido <strong>APROBADO</strong></p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 20px 0;">
-      <tr>
-        <td style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 20px;">
-          <table width="100%" cellpadding="8">
-            ${leadId ? `
-            <tr>
-              <td width="50%"><strong>Número de solicitud:</strong></td>
-              <td width="50%" align="right">#${leadId.slice(-8).toUpperCase()}</td>
-            </tr>
-            ` : ''}
-            <tr>
-              <td width="50%"><strong>Monto aprobado:</strong></td>
-              <td width="50%" align="right" style="font-weight: bold; color: #059669; font-size: 18px;">${montoFormateado}</td>
-            </tr>
-            <tr>
-              <td><strong>Tipo de crédito:</strong></td>
-              <td align="right">${tipo}</td>
-            </tr>
-            <tr>
-              <td><strong>Estado:</strong></td>
-              <td align="right"><span style="background-color: #d1fae5; color: #065f46; padding: 4px 8px; font-size: 14px; font-weight: bold;">✅ APROBADO</span></td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 20px 0;">
-      <tr>
-        <td style="background-color: #fef3c7; border: 1px solid #fde68a; padding: 20px;">
-          <p style="margin: 0 0 8px 0; color: #92400e; font-weight: bold;">📝 Mensaje de tu asesor:</p>
-          <p style="margin: 0; color: #92400e; font-size: 15px; line-height: 1.6;">${contenidoMensaje}</p>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; margin: 24px 0;">
-      <tr>
-        <td style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 20px;" align="center">
-          <h3 style="color: #1e40af; margin: 0 0 12px 0; font-size: 18px;">💬 Comunícate a la Oficina Virtual</h3>
-          <p style="color: #1e40af; margin: 0 0 16px 0; font-size: 15px;">Habla directamente con tu asesor para finalizar el proceso:</p>
-          <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-            <tr>
-              <td align="center" bgcolor="#059669" style="padding: 16px 40px; background-color: #059669; border-radius: 8px;">
-                <a href="${chatUrl}" style="color: #ffffff; text-decoration: none; font-weight: bold; font-size: 18px; display: inline-block;">💬 Abrir Oficina Virtual</a>
-              </td>
-            </tr>
-          </table>
-          <p style="color: #6b7280; margin: 16px 0 0 0; font-size: 13px;">
-            Tus datos ya están registrados. Solo haz clic para continuar.
-          </p>
-        </td>
-      </tr>
-    </table>
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif;">
-      <tr>
-        <td style="background-color: #d1fae5; border: 1px solid #059669; padding: 16px;" align="center">
-          <p style="color: #065f46; margin: 0; font-size: 15px; font-weight: bold;">
-            🎯 ¡Estás a un paso de recibir tu crédito!
-          </p>
-        </td>
-      </tr>
-    </table>
+    <div class="greeting-box" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-color: #6ee7b7;">
+      <div class="greeting-title" style="color: #065f46; font-size: 28px;">🎉 ¡Felicidades, ${nombre}!</div>
+      <div class="greeting-subtitle" style="color: #047857; font-size: 18px; font-weight: 600;">Tu crédito ha sido <strong>APROBADO</strong></div>
+    </div>
+    
+    <div class="details-card" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+      ${leadId ? `
+      <div class="details-row">
+        <span class="details-label">Número de solicitud</span>
+        <span class="details-value">#${leadId.slice(-8).toUpperCase()}</span>
+      </div>
+      ` : ''}
+      <div class="details-row">
+        <span class="details-label">Monto aprobado</span>
+        <span class="details-value amount-highlight" style="font-size: 26px;">${montoFormateado}</span>
+      </div>
+      <div class="details-row">
+        <span class="details-label">Tipo de crédito</span>
+        <span class="details-value">${tipo}</span>
+      </div>
+      <div class="details-row">
+        <span class="details-label">Estado</span>
+        <span class="details-value"><span class="status-badge status-approved">✅ APROBADO</span></span>
+      </div>
+    </div>
+    
+    <div class="message-box" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+      <div class="message-label">📝 Mensaje de tu asesor</div>
+      <div class="message-content" style="font-size: 16px;">${contenidoMensaje}</div>
+    </div>
+    
+    <div class="cta-box" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); padding: 36px 24px;">
+      <div class="cta-title" style="font-size: 22px;">💬 Comunícate a la Oficina Virtual</div>
+      <div class="cta-subtitle" style="font-size: 15px;">Habla directamente con tu asesor para finalizar el proceso</div>
+      <a href="${chatUrl}" class="cta-button" style="font-size: 20px; padding: 20px 48px;">Abrir Oficina Virtual</a>
+    </div>
+    
+    <div class="guarantee-badge" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-color: #059669;">
+      <span class="guarantee-icon" style="font-size: 28px;">🎯</span>
+      <span class="guarantee-text" style="font-size: 15px; font-weight: 700;">¡Estás a un paso de recibir tu crédito!</span>
+    </div>
   `
+
+  const variant = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' ? 'crypto' : 'success'
 
   try {
     await sgMail.send({
       to,
-      from: 'contacto@cajavalladolid.com',
+      from: 'Caja Valladolid <contacto@cajavalladolid.com>',
       subject: '🎉 ¡Felicidades! Tu crédito ha sido APROBADO',
-      html: getEmailTemplate(content, 'Crédito Aprobado')
+      html: getEmailTemplate(content, 'Crédito Aprobado', variant)
     })
     console.log('✅ Correo de aprobación enviado vía SendGrid a:', to)
   } catch (error: any) {
@@ -514,7 +752,7 @@ export async function sendApprovalEmail({
       from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
       to,
       subject: '🎉 ¡Felicidades! Tu crédito ha sido APROBADO',
-      html: getEmailTemplate(content, 'Crédito Aprobado')
+      html: getEmailTemplate(content, 'Crédito Aprobado', variant)
     })
     console.log('✅ Correo de aprobación enviado vía Zoho a:', to)
   }
