@@ -757,3 +757,6 @@ export async function sendApprovalEmail({
     console.log('✅ Correo de aprobación enviado vía Zoho a:', to)
   }
 }
+
+
+// Última actualización: Abril 2026 - Sistema de emails premium
