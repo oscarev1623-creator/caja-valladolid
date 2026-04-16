@@ -367,89 +367,87 @@ const generateNewCalculatorLink = () => {
     }
   }
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!lead || !leadId) return
-    
-    try {
-      const response = await fetch(`/api/leads/${leadId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus }),
-        credentials: 'include'
-      })
+const handleStatusChange = async (newStatus: string) => {
+  if (!lead || !leadId) return
+  
+  try {
+    const response = await fetch(`/api/leads/${leadId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ status: newStatus }),
+      credentials: 'include'
+    })
 
-      const data = await response.json()
+    const data = await response.json()
 
-      if (data.success) {
-        setLead({ ...lead, status: newStatus })
-        
-        if (newStatus === 'APPROVED') {
-          try {
-            const emailResponse = await fetch('/api/send-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                to: lead.email,
-                nombre: lead.fullName,
-                tipo: 'aprobacion',
-                leadId: lead.id,
-                monto: lead.estimatedAmount,
-                creditType: lead.creditType
-              })
-            })
-            
-            const emailData = await emailResponse.json()
-            
-            if (emailData.success) {
-              alert('✅ Crédito aprobado y correo enviado al cliente')
-            } else {
-              alert('⚠️ Crédito aprobado pero hubo un error al enviar el correo')
-            }
-          } catch (emailError) {
-            console.error('Error enviando correo:', emailError)
-            alert('⚠️ Crédito aprobado pero no se pudo enviar el correo')
+    if (data.success) {
+      setLead({ ...lead, status: newStatus })
+      
+      if (newStatus === 'APPROVED') {
+        try {
+          // ✅ USAR LA API CORRECTA según el tipo de crédito
+          const endpoint = lead.creditType === 'CRYPTO' 
+            ? '/api/admin/send-approval-email-cripto'
+            : '/api/admin/send-approval-email'
+          
+          const emailResponse = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ leadId: lead.id })
+          })
+          
+          const emailData = await emailResponse.json()
+          
+          if (emailData.success) {
+            alert('✅ Crédito aprobado y correo enviado al cliente')
+          } else {
+            alert('⚠️ Crédito aprobado pero hubo un error al enviar el correo: ' + (emailData.error || 'Error desconocido'))
           }
-        } else {
-          alert('✅ Estado actualizado')
+        } catch (emailError) {
+          console.error('Error enviando correo:', emailError)
+          alert('⚠️ Crédito aprobado pero no se pudo enviar el correo')
         }
       } else {
-        alert(data.error || 'Error al actualizar')
+        alert('✅ Estado actualizado')
       }
-    } catch (error) {
-      alert('Error de conexión')
+    } else {
+      alert(data.error || 'Error al actualizar')
     }
+  } catch (error) {
+    alert('Error de conexión')
   }
+}
 
-  const handleResendApprovalEmail = async () => {
-    if (!lead) return
+const handleResendApprovalEmail = async () => {
+  if (!lead) return
+  
+  try {
+    // ✅ USAR LA API CORRECTA según el tipo de crédito
+    const endpoint = lead.creditType === 'CRYPTO' 
+      ? '/api/admin/send-approval-email-cripto'
+      : '/api/admin/send-approval-email'
     
-    try {
-      const response = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: lead.email,
-          nombre: lead.fullName,
-          tipo: 'aprobacion',
-          leadId: lead.id,
-          monto: lead.estimatedAmount,
-          creditType: lead.creditType
-        })
-      })
-      
-      const data = await response.json()
-      
-      if (data.success) {
-        alert('✅ Correo de aprobación reenviado correctamente')
-      } else {
-        alert('❌ Error: ' + data.error)
-      }
-    } catch (error) {
-      alert('Error de conexión')
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ leadId: lead.id })
+    })
+    
+    const data = await response.json()
+    
+    if (data.success) {
+      alert('✅ Correo de aprobación reenviado correctamente')
+    } else {
+      alert('❌ Error: ' + (data.error || 'Error desconocido'))
     }
+  } catch (error) {
+    alert('Error de conexión')
   }
+}
 
   const formatDate = (dateString: string) => {
     try {
