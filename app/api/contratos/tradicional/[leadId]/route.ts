@@ -4,6 +4,40 @@ import PDFDocument from 'pdfkit'
 import path from 'path'
 import fs from 'fs'
 
+// ✅ PARCHE PARA VERCEL
+function patchPDFKit() {
+  if (typeof window === 'undefined') {
+    const fsModule = require('fs')
+    const originalReadFileSync = fsModule.readFileSync
+    
+    fsModule.readFileSync = function(filePath: string, options?: any) {
+      if (typeof filePath === 'string' && filePath.includes('.afm')) {
+        console.log('⚠️ Interceptada búsqueda de archivo AFM:', path.basename(filePath))
+        // Devolver datos AFM mínimos
+        return Buffer.from(`
+          FontName Helvetica
+          FullName Helvetica
+          FamilyName Helvetica
+          Weight Medium
+          ItalicAngle 0
+          IsFixedPitch false
+          CharacterSet ExtendedRoman
+          FontBBox -166 -225 1000 931
+          UnderlinePosition -100
+          UnderlineThickness 50
+          Version 001.000
+          StartFontMetrics 2.0
+          EndFontMetrics
+        `)
+      }
+      return originalReadFileSync.call(fsModule, filePath, options)
+    }
+  }
+}
+
+// Aplicar parche
+patchPDFKit()
+
 const prisma = new PrismaClient()
 
 export async function GET(
@@ -32,12 +66,9 @@ export async function GET(
     const polizaTipo = monto <= 100000 ? 'Tipo I' : 'Tipo II'
     const polizaCosto = monto <= 100000 ? 1132.82 : 2211.82
 
-    // ✅ CREAR PDF SIN REGISTRAR FUENTES (Usa las built-in de PDFKit)
     const doc = new PDFDocument({ 
       margin: 60, 
-      size: 'A4',
-      // ✅ Esto evita que busque archivos .afm externos
-      font: undefined
+      size: 'A4'
     })
 
     const chunks: Buffer[] = []
@@ -58,11 +89,8 @@ export async function GET(
       if (fs.existsSync(logoPath)) {
         doc.image(logoPath, 60, 25, { width: 70 })
       }
-    } catch (e) {
-      console.log('⚠️ Logo no encontrado')
-    }
+    } catch (e) {}
 
-    // ✅ Usar fuentes directamente sin registrarlas
     doc
       .fillColor('white')
       .font('Helvetica-Bold')
