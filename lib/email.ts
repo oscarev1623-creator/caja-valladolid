@@ -633,17 +633,24 @@ export async function sendDocumentsReceivedEmail({
       <span class="guarantee-text"><strong>Caja Valladolid está procesando tu solicitud.</strong></span>
     </div>
   `
-
+// ✅ USAR ZOHO PRIMERO (más confiable y ya pagado)
   try {
+    await transporter.sendMail({
+      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
+      to,
+      subject: '📄 ¡Documentos recibidos! Tu solicitud avanza',
+      html: getEmailTemplate(content, 'Documentos recibidos', 'success')
+    })
+    console.log('✅ Correo de documentos enviado vía Zoho a:', to)
+  } catch (zohoError) {
+    console.error('❌ Zoho falló, intentando con SendGrid...')
     await sgMail.send({
       to,
       from: 'contacto@cajavalladolid.com',
       subject: '📄 ¡Documentos recibidos! Tu solicitud avanza',
       html: getEmailTemplate(content, 'Documentos recibidos', 'success')
     })
-    console.log('✅ Correo de documentos enviado a:', to)
-  } catch (error) {
-    console.error('❌ Error enviando correo de documentos:', error)
+    console.log('✅ Correo de documentos enviado vía SendGrid a:', to)
   }
 }
 
