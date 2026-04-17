@@ -23,9 +23,8 @@ export async function GET(
       return NextResponse.json({ error: 'Lead no encontrado' }, { status: 404 })
     }
 
-    // ============================================
-    // VALORES DEL CRÉDITO
-    // ============================================
+    console.log('📄 Generando PDF para lead:', lead.id)
+
     const monto = lead.estimatedAmount || 50000
     const plazo = lead.plazo || 36
     const tasa = lead.creditType === 'CRYPTO' ? 5.4 : 11.0
@@ -33,72 +32,55 @@ export async function GET(
     const polizaTipo = monto <= 100000 ? 'Tipo I' : 'Tipo II'
     const polizaCosto = monto <= 100000 ? 1132.82 : 2211.82
 
-    const doc = new PDFDocument({ margin: 60, size: 'A4' })
+    // ✅ CREAR PDF SIN REGISTRAR FUENTES (Usa las built-in de PDFKit)
+    const doc = new PDFDocument({ 
+      margin: 60, 
+      size: 'A4',
+      // ✅ Esto evita que busque archivos .afm externos
+      font: undefined
+    })
 
     const chunks: Buffer[] = []
     doc.on('data', chunk => chunks.push(chunk))
 
-    // ============================================
-    // FUENTES
-    // ============================================
-    const fontRegular = path.join(process.cwd(), 'fonts/Inter-Regular.ttf')
-    const fontBold = path.join(process.cwd(), 'fonts/Inter-Bold.ttf')
-
-    if (fs.existsSync(fontRegular) && fs.existsSync(fontBold)) {
-      doc.registerFont('Regular', fontRegular)
-      doc.registerFont('Bold', fontBold)
-      console.log('✅ Fuentes Inter cargadas')
-    } else {
-      doc.registerFont('Regular', 'Helvetica')
-      doc.registerFont('Bold', 'Helvetica-Bold')
-      console.log('⚠️ Usando Helvetica (fallback)')
-    }
-
-    // ============================================
-    // COLORES CORPORATIVOS
-    // ============================================
     const primaryColor = '#059669'
     const accentColor = '#f7931a'
     const textColor = '#1f2937'
     const grayColor = '#6b7280'
-    const lightGreen = '#ecfdf5'
-    const lightAmber = '#fef3c7'
 
     // ============================================
-    // HEADER PREMIUM
+    // HEADER
     // ============================================
     doc.rect(0, 0, doc.page.width, 90).fill(primaryColor)
 
-    // Logo
     try {
       const logoPath = path.join(process.cwd(), 'public', 'logotipo.png')
       if (fs.existsSync(logoPath)) {
         doc.image(logoPath, 60, 25, { width: 70 })
-        console.log('✅ Logo cargado')
       }
-    } catch (error) {
-      console.error('❌ Error cargando logo:', error)
+    } catch (e) {
+      console.log('⚠️ Logo no encontrado')
     }
 
-    // Texto header
+    // ✅ Usar fuentes directamente sin registrarlas
     doc
       .fillColor('white')
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(18)
       .text('Carta de Formalización', 140, 30)
 
     doc
-      .font('Regular')
+      .font('Helvetica')
       .fontSize(10)
       .text('Formalización Legal y Administrativa', 140, 55)
 
     doc.moveDown(4)
 
     // ============================================
-    // DATOS DEL CLIENTE (CARD ELEGANTE)
+    // DATOS DEL CLIENTE
     // ============================================
     doc
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(12)
       .fillColor(primaryColor)
       .text('Datos del acreditado')
@@ -109,16 +91,16 @@ export async function GET(
 
     doc
       .roundedRect(60, cardStartY, doc.page.width - 120, 75, 6)
-      .fill(lightGreen)
+      .fill('#ecfdf5')
 
     doc
       .fillColor(textColor)
-      .font('Regular')
+      .font('Helvetica')
       .fontSize(10)
 
-    doc.text(`Nombre: ${lead.fullName}`, 75, cardStartY + 12)
-    doc.text(`Correo: ${lead.email}`, 75, cardStartY + 28)
-    doc.text(`Teléfono: ${lead.phone}`, 75, cardStartY + 44)
+    doc.text(`Nombre: ${lead.fullName || 'N/A'}`, 75, cardStartY + 12)
+    doc.text(`Correo: ${lead.email || 'N/A'}`, 75, cardStartY + 28)
+    doc.text(`Teléfono: ${lead.phone || 'N/A'}`, 75, cardStartY + 44)
     doc.text(`Folio: #${lead.id.slice(-8).toUpperCase()}`, 75, cardStartY + 60)
 
     doc.moveDown(6)
@@ -126,11 +108,13 @@ export async function GET(
     // ============================================
     // SALUDO
     // ============================================
+    const nombrePila = lead.fullName?.split(' ')[0] || 'Cliente'
+
     doc
-      .font('Regular')
+      .font('Helvetica')
       .fontSize(10)
       .fillColor(textColor)
-      .text(`Estimado/a ${lead.fullName.split(' ')[0]}:`)
+      .text(`Estimado/a ${nombrePila}:`)
 
     doc.moveDown(0.5)
 
@@ -143,10 +127,10 @@ export async function GET(
     doc.moveDown(2)
 
     // ============================================
-    // TABLA DE DETALLES DEL CRÉDITO
+    // TABLA DE DETALLES
     // ============================================
     doc
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(12)
       .fillColor(primaryColor)
       .text('Detalles del crédito')
@@ -156,13 +140,12 @@ export async function GET(
     const tableWidth = doc.page.width - 120
     const col1 = tableWidth * 0.5
 
-    // Header de tabla
     const tableHeaderY = doc.y
     doc.rect(60, tableHeaderY, tableWidth, 22).fill(primaryColor)
 
     doc
       .fillColor('white')
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(9)
       .text('Concepto', 70, tableHeaderY + 6)
 
@@ -173,7 +156,6 @@ export async function GET(
 
     doc.moveDown(1.5)
 
-    // Filas de tabla
     const detalles = [
       { label: 'Monto aprobado', valor: `$${monto.toLocaleString('es-MX')} MXN` },
       { label: 'Plazo', valor: `${plazo} meses` },
@@ -190,12 +172,12 @@ export async function GET(
 
       doc
         .fillColor(textColor)
-        .font('Regular')
+        .font('Helvetica')
         .fontSize(9)
         .text(d.label, 70, rowY + 5)
 
       doc
-        .font('Bold')
+        .font('Helvetica-Bold')
         .text(d.valor, 60 + col1, rowY + 5, {
           width: tableWidth - col1 - 10,
           align: 'right'
@@ -210,7 +192,7 @@ export async function GET(
     // REQUISITOS DE GARANTÍA
     // ============================================
     doc
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(12)
       .fillColor(primaryColor)
       .text('Requisitos de garantía')
@@ -218,7 +200,7 @@ export async function GET(
     doc.moveDown(0.5)
 
     doc
-      .font('Regular')
+      .font('Helvetica')
       .fontSize(10)
       .fillColor(textColor)
       .text(
@@ -233,7 +215,7 @@ export async function GET(
     // PÓLIZAS DE SEGURO
     // ============================================
     doc
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(12)
       .fillColor(primaryColor)
       .text('Pólizas de seguro')
@@ -241,7 +223,7 @@ export async function GET(
     doc.moveDown(0.5)
 
     doc
-      .font('Regular')
+      .font('Helvetica')
       .fontSize(10)
       .fillColor(textColor)
       .text('• Tipo I: Hasta $100,000 MXN → Prima: $1,132.82 MXN')
@@ -249,14 +231,13 @@ export async function GET(
 
     doc.moveDown()
 
-    // Destacar la póliza que aplica
     const polizaBoxY = doc.y
     doc
       .roundedRect(60, polizaBoxY, doc.page.width - 120, 24, 4)
-      .fill(lightAmber)
+      .fill('#fef3c7')
 
     doc
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(10)
       .fillColor(accentColor)
       .text(
@@ -271,7 +252,7 @@ export async function GET(
     // PRÓXIMOS PASOS
     // ============================================
     doc
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(12)
       .fillColor(primaryColor)
       .text('Próximos pasos')
@@ -287,7 +268,7 @@ export async function GET(
 
     pasos.forEach((p, i) => {
       doc
-        .font('Regular')
+        .font('Helvetica')
         .fontSize(10)
         .fillColor(textColor)
         .text(`${i + 1}. ${p}`)
@@ -300,7 +281,6 @@ export async function GET(
     // ============================================
     const firmaY = doc.page.height - 160
 
-    // Línea separadora
     doc
       .strokeColor(primaryColor)
       .lineWidth(1)
@@ -308,7 +288,6 @@ export async function GET(
       .lineTo(doc.page.width - 60, firmaY - 10)
       .stroke()
 
-    // Firma izquierda (Presidente)
     doc
       .strokeColor(textColor)
       .lineWidth(0.5)
@@ -316,41 +295,32 @@ export async function GET(
       .lineTo(240, firmaY)
       .stroke()
 
-    // Imagen de firma
     try {
       const firmaPath = path.join(process.cwd(), 'public', 'juanmendez.png')
       if (fs.existsSync(firmaPath)) {
         doc.image(firmaPath, 90, firmaY - 35, { width: 130 })
-        console.log('✅ Firma del presidente cargada')
       }
-    } catch (error) {
-      console.error('❌ Error cargando firma:', error)
-    }
+    } catch (e) {}
 
     doc
-      .font('Regular')
+      .font('Helvetica')
       .fontSize(8)
       .fillColor(grayColor)
       .text('Presidente del Consejo', 80, firmaY + 8)
 
     doc
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(9)
       .fillColor(textColor)
       .text('Lic. Juan Carlos Méndez Pérez', 80, firmaY + 20)
 
-    // ✅ SELLO OFICIAL (centro)
     try {
       const selloPath = path.join(process.cwd(), 'public', 'sello.png')
       if (fs.existsSync(selloPath)) {
         doc.image(selloPath, doc.page.width / 2 - 45, firmaY - 45, { width: 90 })
-        console.log('✅ Sello cargado')
       }
-    } catch (error) {
-      console.error('❌ Error cargando sello:', error)
-    }
+    } catch (e) {}
 
-    // Firma derecha (Cliente)
     doc
       .strokeColor(textColor)
       .lineWidth(0.5)
@@ -359,22 +329,23 @@ export async function GET(
       .stroke()
 
     doc
-      .font('Regular')
+      .font('Helvetica')
       .fontSize(8)
       .fillColor(grayColor)
       .text('El Acreditado', 320, firmaY + 8)
 
+    const nombreCliente = lead.fullName || 'Cliente'
     doc
-      .font('Bold')
+      .font('Helvetica-Bold')
       .fontSize(9)
       .fillColor(textColor)
-      .text(lead.fullName.length > 28 ? lead.fullName.substring(0, 25) + '...' : lead.fullName, 320, firmaY + 20)
+      .text(nombreCliente.length > 28 ? nombreCliente.substring(0, 25) + '...' : nombreCliente, 320, firmaY + 20)
 
     // ============================================
     // PIE DE PÁGINA
     // ============================================
     doc
-      .font('Regular')
+      .font('Helvetica')
       .fontSize(7)
       .fillColor(grayColor)
       .text(
@@ -401,7 +372,7 @@ export async function GET(
           new NextResponse(pdfBuffer, {
             headers: {
               'Content-Type': 'application/pdf',
-              'Content-Disposition': `attachment; filename="CARTA_FORMALIZACION_${lead.fullName.replace(/\s/g, '_')}.pdf"`
+              'Content-Disposition': `attachment; filename="CARTA_FORMALIZACION_${nombreCliente.replace(/\s/g, '_')}.pdf"`
             }
           })
         )
