@@ -4,40 +4,6 @@ import PDFDocument from 'pdfkit'
 import path from 'path'
 import fs from 'fs'
 
-// ✅ PARCHE PARA VERCEL
-function patchPDFKit() {
-  if (typeof window === 'undefined') {
-    const fsModule = require('fs')
-    const originalReadFileSync = fsModule.readFileSync
-    
-    fsModule.readFileSync = function(filePath: string, options?: any) {
-      if (typeof filePath === 'string' && filePath.includes('.afm')) {
-        console.log('⚠️ Interceptada búsqueda de archivo AFM:', path.basename(filePath))
-        // Devolver datos AFM mínimos
-        return Buffer.from(`
-          FontName Helvetica
-          FullName Helvetica
-          FamilyName Helvetica
-          Weight Medium
-          ItalicAngle 0
-          IsFixedPitch false
-          CharacterSet ExtendedRoman
-          FontBBox -166 -225 1000 931
-          UnderlinePosition -100
-          UnderlineThickness 50
-          Version 001.000
-          StartFontMetrics 2.0
-          EndFontMetrics
-        `)
-      }
-      return originalReadFileSync.call(fsModule, filePath, options)
-    }
-  }
-}
-
-// Aplicar parche
-patchPDFKit()
-
 const prisma = new PrismaClient()
 
 export async function GET(
@@ -67,7 +33,7 @@ export async function GET(
     const polizaCosto = monto <= 100000 ? 1132.82 : 2211.82
 
     const doc = new PDFDocument({ 
-      margin: 60, 
+      margin: 50, 
       size: 'A4'
     })
 
@@ -82,70 +48,65 @@ export async function GET(
     // ============================================
     // HEADER
     // ============================================
-    doc.rect(0, 0, doc.page.width, 90).fill(primaryColor)
+    doc.rect(0, 0, doc.page.width, 100).fill(primaryColor)
 
+    // Logo
     try {
       const logoPath = path.join(process.cwd(), 'public', 'logotipo.png')
       if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, 60, 25, { width: 70 })
+        doc.image(logoPath, 50, 25, { width: 70 })
       }
     } catch (e) {}
 
     doc
       .fillColor('white')
       .font('Helvetica-Bold')
-      .fontSize(18)
-      .text('Carta de Formalización', 140, 30)
+      .fontSize(20)
+      .text('CARTA DE FORMALIZACIÓN', 130, 35)
 
     doc
       .font('Helvetica')
-      .fontSize(10)
-      .text('Formalización Legal y Administrativa', 140, 55)
+      .fontSize(11)
+      .text('Etapa de Formalización Legal y Administrativa', 130, 60)
 
-    doc.moveDown(4)
+    doc
+      .fontSize(9)
+      .text(`Fecha: ${new Date().toLocaleDateString('es-MX', { 
+        year: 'numeric', month: 'long', day: 'numeric' 
+      })}`, 130, 78)
+
+    doc.moveDown(5)
 
     // ============================================
     // DATOS DEL CLIENTE
     // ============================================
     doc
       .font('Helvetica-Bold')
-      .fontSize(12)
+      .fontSize(14)
       .fillColor(primaryColor)
-      .text('Datos del acreditado')
+      .text('DATOS DEL ACREDITADO')
 
     doc.moveDown(0.5)
 
-    const cardStartY = doc.y
-
     doc
-      .roundedRect(60, cardStartY, doc.page.width - 120, 75, 6)
-      .fill('#ecfdf5')
-
-    doc
-      .fillColor(textColor)
       .font('Helvetica')
-      .fontSize(10)
+      .fontSize(11)
+      .fillColor(textColor)
 
-    doc.text(`Nombre: ${lead.fullName || 'N/A'}`, 75, cardStartY + 12)
-    doc.text(`Correo: ${lead.email || 'N/A'}`, 75, cardStartY + 28)
-    doc.text(`Teléfono: ${lead.phone || 'N/A'}`, 75, cardStartY + 44)
-    doc.text(`Folio: #${lead.id.slice(-8).toUpperCase()}`, 75, cardStartY + 60)
+    doc.text(`Nombre: ${lead.fullName || 'N/A'}`)
+    doc.text(`Correo: ${lead.email || 'N/A'}`)
+    doc.text(`Teléfono: ${lead.phone || 'N/A'}`)
+    doc.text(`Folio: #${lead.id.slice(-8).toUpperCase()}`)
 
-    doc.moveDown(6)
+    doc.moveDown(2)
 
     // ============================================
     // SALUDO
     // ============================================
     const nombrePila = lead.fullName?.split(' ')[0] || 'Cliente'
 
-    doc
-      .font('Helvetica')
-      .fontSize(10)
-      .fillColor(textColor)
-      .text(`Estimado/a ${nombrePila}:`)
-
-    doc.moveDown(0.5)
-
+    doc.text(`Estimado/a ${nombrePila}:`)
+    doc.moveDown(0.3)
     doc.text(
       'Para dar continuidad al proceso y proceder con la liberación de los fondos aprobados, ' +
       'el siguiente paso consiste en la formalización legal y administrativa de la operación.',
@@ -155,64 +116,25 @@ export async function GET(
     doc.moveDown(2)
 
     // ============================================
-    // TABLA DE DETALLES
+    // DETALLES DEL CRÉDITO
     // ============================================
     doc
       .font('Helvetica-Bold')
-      .fontSize(12)
+      .fontSize(14)
       .fillColor(primaryColor)
-      .text('Detalles del crédito')
+      .text('DETALLES DEL CRÉDITO')
 
     doc.moveDown(0.5)
 
-    const tableWidth = doc.page.width - 120
-    const col1 = tableWidth * 0.5
-
-    const tableHeaderY = doc.y
-    doc.rect(60, tableHeaderY, tableWidth, 22).fill(primaryColor)
-
     doc
-      .fillColor('white')
-      .font('Helvetica-Bold')
-      .fontSize(9)
-      .text('Concepto', 70, tableHeaderY + 6)
+      .font('Helvetica')
+      .fontSize(11)
+      .fillColor(textColor)
 
-    doc.text('Valor', 60 + col1, tableHeaderY + 6, {
-      width: tableWidth - col1 - 10,
-      align: 'right'
-    })
-
-    doc.moveDown(1.5)
-
-    const detalles = [
-      { label: 'Monto aprobado', valor: `$${monto.toLocaleString('es-MX')} MXN` },
-      { label: 'Plazo', valor: `${plazo} meses` },
-      { label: 'Tasa de interés', valor: `${tasa}% anual fija` },
-      { label: 'Tipo de crédito', valor: lead.creditType === 'CRYPTO' ? 'Criptomonedas' : 'Tradicional' }
-    ]
-
-    detalles.forEach((d, i) => {
-      const rowY = doc.y
-
-      doc
-        .rect(60, rowY, tableWidth, 20)
-        .fill(i % 2 === 0 ? '#f9fafb' : 'white')
-
-      doc
-        .fillColor(textColor)
-        .font('Helvetica')
-        .fontSize(9)
-        .text(d.label, 70, rowY + 5)
-
-      doc
-        .font('Helvetica-Bold')
-        .text(d.valor, 60 + col1, rowY + 5, {
-          width: tableWidth - col1 - 10,
-          align: 'right'
-        })
-
-      doc.moveDown(1.2)
-    })
+    doc.text(`Monto aprobado: $${monto.toLocaleString('es-MX')} MXN`)
+    doc.text(`Plazo: ${plazo} meses`)
+    doc.text(`Tasa de interés: ${tasa}% anual fija`)
+    doc.text(`Tipo de crédito: ${lead.creditType === 'CRYPTO' ? 'Criptomonedas' : 'Tradicional'}`)
 
     doc.moveDown(2)
 
@@ -221,15 +143,15 @@ export async function GET(
     // ============================================
     doc
       .font('Helvetica-Bold')
-      .fontSize(12)
+      .fontSize(14)
       .fillColor(primaryColor)
-      .text('Requisitos de garantía')
+      .text('REQUISITOS DE GARANTÍA')
 
     doc.moveDown(0.5)
 
     doc
       .font('Helvetica')
-      .fontSize(10)
+      .fontSize(11)
       .fillColor(textColor)
       .text(
         'Se requiere respaldo mediante garantía real (bien mueble o inmueble) con cobertura mínima ' +
@@ -244,89 +166,81 @@ export async function GET(
     // ============================================
     doc
       .font('Helvetica-Bold')
-      .fontSize(12)
+      .fontSize(14)
       .fillColor(primaryColor)
-      .text('Pólizas de seguro')
+      .text('PÓLIZAS DE SEGURO')
 
     doc.moveDown(0.5)
 
     doc
       .font('Helvetica')
-      .fontSize(10)
+      .fontSize(11)
       .fillColor(textColor)
-      .text('• Tipo I: Hasta $100,000 MXN → Prima: $1,132.82 MXN')
-      .text('• Tipo II: Más de $100,000 MXN → Prima: $2,211.82 MXN')
+      .text('• Póliza Tipo I: Hasta $100,000 MXN → Prima: $1,132.82 MXN')
+      .text('• Póliza Tipo II: Más de $100,000 MXN → Prima: $2,211.82 MXN')
 
-    doc.moveDown()
-
-    const polizaBoxY = doc.y
-    doc
-      .roundedRect(60, polizaBoxY, doc.page.width - 120, 24, 4)
-      .fill('#fef3c7')
+    doc.moveDown(0.5)
 
     doc
       .font('Helvetica-Bold')
-      .fontSize(10)
       .fillColor(accentColor)
-      .text(
-        `✅ Aplica para usted: Póliza ${polizaTipo} — Costo de prima: $${polizaCosto.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`,
-        70,
-        polizaBoxY + 7
-      )
+      .text(`✅ Aplica para usted: Póliza ${polizaTipo} — Costo de prima: $${polizaCosto.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`)
 
-    doc.moveDown(3)
+    doc.moveDown(2)
 
     // ============================================
     // PRÓXIMOS PASOS
     // ============================================
     doc
       .font('Helvetica-Bold')
-      .fontSize(12)
+      .fontSize(14)
       .fillColor(primaryColor)
-      .text('Próximos pasos')
+      .text('PRÓXIMOS PASOS')
 
     doc.moveDown(0.5)
 
     const pasos = [
-      'Un asesor se comunicará con usted en las próximas 24-48 horas.',
-      'Se coordinará la validación de la garantía real.',
-      'Se gestionará la emisión de la póliza de seguro correspondiente.',
-      'Una vez cumplidos los requisitos, se procederá a la liberación de fondos.'
+      '1. Un asesor se comunicará con usted en las próximas 24-48 horas.',
+      '2. Se coordinará la validación de la garantía real.',
+      '3. Se gestionará la emisión de la póliza de seguro correspondiente.',
+      '4. Una vez cumplidos los requisitos, se procederá a la liberación de fondos.'
     ]
 
-    pasos.forEach((p, i) => {
+    pasos.forEach(p => {
       doc
         .font('Helvetica')
-        .fontSize(10)
+        .fontSize(11)
         .fillColor(textColor)
-        .text(`${i + 1}. ${p}`)
+        .text(p)
     })
 
-    doc.moveDown(4)
+    doc.moveDown(3)
 
     // ============================================
     // FIRMAS Y SELLO
     // ============================================
-    const firmaY = doc.page.height - 160
+    const firmaY = doc.page.height - 150
 
+    // Línea separadora
     doc
       .strokeColor(primaryColor)
       .lineWidth(1)
-      .moveTo(60, firmaY - 10)
-      .lineTo(doc.page.width - 60, firmaY - 10)
+      .moveTo(50, firmaY - 10)
+      .lineTo(doc.page.width - 50, firmaY - 10)
       .stroke()
 
+    // Firma presidente
     doc
       .strokeColor(textColor)
       .lineWidth(0.5)
-      .moveTo(80, firmaY)
-      .lineTo(240, firmaY)
+      .moveTo(70, firmaY)
+      .lineTo(230, firmaY)
       .stroke()
 
     try {
       const firmaPath = path.join(process.cwd(), 'public', 'juanmendez.png')
       if (fs.existsSync(firmaPath)) {
-        doc.image(firmaPath, 90, firmaY - 35, { width: 130 })
+        doc.image(firmaPath, 80, firmaY - 35, { width: 130 })
       }
     } catch (e) {}
 
@@ -334,14 +248,15 @@ export async function GET(
       .font('Helvetica')
       .fontSize(8)
       .fillColor(grayColor)
-      .text('Presidente del Consejo', 80, firmaY + 8)
+      .text('Presidente del Consejo', 70, firmaY + 8)
 
     doc
       .font('Helvetica-Bold')
       .fontSize(9)
       .fillColor(textColor)
-      .text('Lic. Juan Carlos Méndez Pérez', 80, firmaY + 20)
+      .text('Lic. Juan Carlos Méndez Pérez', 70, firmaY + 20)
 
+    // Sello
     try {
       const selloPath = path.join(process.cwd(), 'public', 'sello.png')
       if (fs.existsSync(selloPath)) {
@@ -349,25 +264,26 @@ export async function GET(
       }
     } catch (e) {}
 
+    // Firma cliente
     doc
       .strokeColor(textColor)
       .lineWidth(0.5)
-      .moveTo(320, firmaY)
-      .lineTo(480, firmaY)
+      .moveTo(310, firmaY)
+      .lineTo(470, firmaY)
       .stroke()
 
     doc
       .font('Helvetica')
       .fontSize(8)
       .fillColor(grayColor)
-      .text('El Acreditado', 320, firmaY + 8)
+      .text('El Acreditado', 310, firmaY + 8)
 
     const nombreCliente = lead.fullName || 'Cliente'
     doc
       .font('Helvetica-Bold')
       .fontSize(9)
       .fillColor(textColor)
-      .text(nombreCliente.length > 28 ? nombreCliente.substring(0, 25) + '...' : nombreCliente, 320, firmaY + 20)
+      .text(nombreCliente.length > 28 ? nombreCliente.substring(0, 25) + '...' : nombreCliente, 310, firmaY + 20)
 
     // ============================================
     // PIE DE PÁGINA
