@@ -4,12 +4,6 @@ import PDFDocument from 'pdfkit'
 import path from 'path'
 import fs from 'fs'
 
-// Importar el parche
-import { patchPDFKit } from '@/lib/pdfkit-config'
-
-// Aplicar el parche ANTES de usar PDFKit
-patchPDFKit()
-
 const prisma = new PrismaClient()
 
 export async function GET(
@@ -20,382 +14,382 @@ export async function GET(
     const { leadId } = await params
 
     if (!leadId) {
-      return NextResponse.json(
-        { error: 'ID no proporcionado' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'ID no proporcionado' }, { status: 400 })
     }
 
-    // Buscar lead
-    const lead = await prisma.lead.findUnique({
-      where: { id: leadId }
-    })
+    const lead = await prisma.lead.findUnique({ where: { id: leadId } })
 
     if (!lead) {
-      return NextResponse.json(
-        { error: 'Lead no encontrado' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Lead no encontrado' }, { status: 404 })
     }
 
-    // Valores del crédito
+    // ============================================
+    // VALORES DEL CRÉDITO
+    // ============================================
     const monto = lead.estimatedAmount || 50000
     const plazo = lead.plazo || 36
     const tasa = lead.creditType === 'CRYPTO' ? 5.4 : 11.0
 
-    // Determinar tipo de póliza según el monto
     const polizaTipo = monto <= 100000 ? 'Tipo I' : 'Tipo II'
     const polizaCosto = monto <= 100000 ? 1132.82 : 2211.82
 
-    // Crear PDF
-    const doc = new PDFDocument({ 
-      margin: 50,
-      size: 'A4'
-    })
-    
+    const doc = new PDFDocument({ margin: 60, size: 'A4' })
+
     const chunks: Buffer[] = []
     doc.on('data', chunk => chunks.push(chunk))
 
-    // Colores CORPORATIVOS (verde)
-    const primaryColor = '#059669'
-    const secondaryColor = '#047857'
-    const accentColor = '#f7931a'
-    const textColor = '#1f2937'
-    const lightGray = '#f9fafb'
-    const lightGreen = '#ecfdf5'
+    // ============================================
+    // FUENTES
+    // ============================================
+    const fontRegular = path.join(process.cwd(), 'fonts/Inter-Regular.ttf')
+    const fontBold = path.join(process.cwd(), 'fonts/Inter-Bold.ttf')
+
+    if (fs.existsSync(fontRegular) && fs.existsSync(fontBold)) {
+      doc.registerFont('Regular', fontRegular)
+      doc.registerFont('Bold', fontBold)
+      console.log('✅ Fuentes Inter cargadas')
+    } else {
+      doc.registerFont('Regular', 'Helvetica')
+      doc.registerFont('Bold', 'Helvetica-Bold')
+      console.log('⚠️ Usando Helvetica (fallback)')
+    }
 
     // ============================================
-    // ENCABEZADO PREMIUM
+    // COLORES CORPORATIVOS
     // ============================================
-    doc.rect(0, 0, doc.page.width, 110).fill(primaryColor)
+    const primaryColor = '#059669'
+    const accentColor = '#f7931a'
+    const textColor = '#1f2937'
+    const grayColor = '#6b7280'
+    const lightGreen = '#ecfdf5'
+    const lightAmber = '#fef3c7'
+
+    // ============================================
+    // HEADER PREMIUM
+    // ============================================
+    doc.rect(0, 0, doc.page.width, 90).fill(primaryColor)
 
     // Logo
     try {
       const logoPath = path.join(process.cwd(), 'public', 'logotipo.png')
       if (fs.existsSync(logoPath)) {
-        doc.image(logoPath, 50, 25, { width: 80 })
+        doc.image(logoPath, 60, 25, { width: 70 })
+        console.log('✅ Logo cargado')
       }
     } catch (error) {
-      console.error('Error cargando logo:', error)
+      console.error('❌ Error cargando logo:', error)
     }
 
-    // Título principal
-    doc.fillColor('white')
-    doc.fontSize(20)
-    doc.font('Helvetica-Bold')
-    doc.text('CARTA DE FORMALIZACIÓN', 150, 35)
-    
-    doc.fontSize(11)
-    doc.font('Helvetica')
-    doc.text('Etapa de Formalización Legal y Administrativa', 150, 60)
-    
-    doc.fontSize(9)
-    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-MX', { 
-      year: 'numeric', month: 'long', day: 'numeric' 
-    })}`, 150, 78)
+    // Texto header
+    doc
+      .fillColor('white')
+      .font('Bold')
+      .fontSize(18)
+      .text('Carta de Formalización', 140, 30)
 
-    // Línea decorativa
-    doc.strokeColor('white')
-    .lineWidth(1)
-    .moveTo(50, 95)
-    .lineTo(doc.page.width - 50, 95)
-    .opacity(0.3)
-    .stroke()
-    .opacity(1)
+    doc
+      .font('Regular')
+      .fontSize(10)
+      .text('Formalización Legal y Administrativa', 140, 55)
+
+    doc.moveDown(4)
 
     // ============================================
-    // DATOS DEL CLIENTE
+    // DATOS DEL CLIENTE (CARD ELEGANTE)
     // ============================================
-    let currentY = 130
+    doc
+      .font('Bold')
+      .fontSize(12)
+      .fillColor(primaryColor)
+      .text('Datos del acreditado')
 
-    // Título de sección
-    doc.fillColor(primaryColor)
-    doc.fontSize(12)
-    doc.font('Helvetica-Bold')
-    doc.text('DATOS DEL ACREDITADO', 50, currentY)
-    currentY += 20
+    doc.moveDown(0.5)
 
-    // Tarjeta de datos
-    doc.roundedRect(50, currentY, doc.page.width - 100, 75, 5)
-       .fill(lightGreen)
-       .stroke(primaryColor)
-    
-    doc.fillColor(textColor)
-    doc.fontSize(10)
-    doc.font('Helvetica')
-    
-    currentY += 12
-    doc.text(`Nombre completo: ${lead.fullName}`, 65, currentY)
-    currentY += 18
-    doc.text(`Correo electrónico: ${lead.email}`, 65, currentY)
-    currentY += 18
-    doc.text(`Teléfono de contacto: ${lead.phone}`, 65, currentY)
-    currentY += 18
-    doc.text(`Número de folio: #${lead.id.slice(-8).toUpperCase()}`, 65, currentY)
+    const cardStartY = doc.y
 
-    currentY += 40
+    doc
+      .roundedRect(60, cardStartY, doc.page.width - 120, 75, 6)
+      .fill(lightGreen)
+
+    doc
+      .fillColor(textColor)
+      .font('Regular')
+      .fontSize(10)
+
+    doc.text(`Nombre: ${lead.fullName}`, 75, cardStartY + 12)
+    doc.text(`Correo: ${lead.email}`, 75, cardStartY + 28)
+    doc.text(`Teléfono: ${lead.phone}`, 75, cardStartY + 44)
+    doc.text(`Folio: #${lead.id.slice(-8).toUpperCase()}`, 75, cardStartY + 60)
+
+    doc.moveDown(6)
 
     // ============================================
-    // SALUDO Y APERTURA
+    // SALUDO
     // ============================================
-    doc.fillColor(textColor)
-    doc.fontSize(11)
-    doc.font('Helvetica')
-    doc.text(`Estimado/a ${lead.fullName.split(' ')[0]}:`, 50, currentY)
-    currentY += 20
-    
+    doc
+      .font('Regular')
+      .fontSize(10)
+      .fillColor(textColor)
+      .text(`Estimado/a ${lead.fullName.split(' ')[0]}:`)
+
+    doc.moveDown(0.5)
+
     doc.text(
-      'Para dar continuidad al proceso y proceder con la liquidación de los fondos aprobados, ' +
-      'el siguiente paso consiste en la Formalización Legal y Administrativa de la operación.',
-      50, currentY, { width: doc.page.width - 100, align: 'left' }
+      'Para dar continuidad al proceso y proceder con la liberación de los fondos aprobados, ' +
+      'el siguiente paso consiste en la formalización legal y administrativa de la operación.',
+      { align: 'justify' }
     )
-    currentY += 40
+
+    doc.moveDown(2)
 
     // ============================================
-    // DETALLES DEL CRÉDITO APROBADO
+    // TABLA DE DETALLES DEL CRÉDITO
     // ============================================
-    doc.fillColor(primaryColor)
-    doc.fontSize(12)
-    doc.font('Helvetica-Bold')
-    doc.text('DETALLES DEL CRÉDITO APROBADO', 50, currentY)
-    currentY += 20
+    doc
+      .font('Bold')
+      .fontSize(12)
+      .fillColor(primaryColor)
+      .text('Detalles del crédito')
 
-    // Tabla de detalles
-    doc.roundedRect(50, currentY, doc.page.width - 100, 20, 3).fill(primaryColor)
-    doc.fillColor('white')
-    doc.fontSize(9)
-    doc.font('Helvetica-Bold')
-    doc.text('CONCEPTO', 65, currentY + 5)
-    doc.text('VALOR', 350, currentY + 5)
+    doc.moveDown(0.5)
 
-    currentY += 25
+    const tableWidth = doc.page.width - 120
+    const col1 = tableWidth * 0.5
 
-    const detalles = [
-      { label: 'Monto aprobado:', valor: `$${monto.toLocaleString('es-MX')} MXN` },
-      { label: 'Plazo del crédito:', valor: `${plazo} meses` },
-      { label: 'Tasa de interés anual:', valor: `${tasa}% fija` },
-      { label: 'Tipo de crédito:', valor: lead.creditType === 'CRYPTO' ? 'Criptomonedas' : 'Tradicional' }
-    ]
+    // Header de tabla
+    const tableHeaderY = doc.y
+    doc.rect(60, tableHeaderY, tableWidth, 22).fill(primaryColor)
 
-    doc.fillColor(textColor)
-    doc.fontSize(9)
-    
-    detalles.forEach(detalle => {
-      doc.font('Helvetica').text(detalle.label, 65, currentY)
-      doc.font('Helvetica-Bold').text(detalle.valor, 350, currentY)
-      currentY += 18
+    doc
+      .fillColor('white')
+      .font('Bold')
+      .fontSize(9)
+      .text('Concepto', 70, tableHeaderY + 6)
+
+    doc.text('Valor', 60 + col1, tableHeaderY + 6, {
+      width: tableWidth - col1 - 10,
+      align: 'right'
     })
 
-    currentY += 20
+    doc.moveDown(1.5)
+
+    // Filas de tabla
+    const detalles = [
+      { label: 'Monto aprobado', valor: `$${monto.toLocaleString('es-MX')} MXN` },
+      { label: 'Plazo', valor: `${plazo} meses` },
+      { label: 'Tasa de interés', valor: `${tasa}% anual fija` },
+      { label: 'Tipo de crédito', valor: lead.creditType === 'CRYPTO' ? 'Criptomonedas' : 'Tradicional' }
+    ]
+
+    detalles.forEach((d, i) => {
+      const rowY = doc.y
+
+      doc
+        .rect(60, rowY, tableWidth, 20)
+        .fill(i % 2 === 0 ? '#f9fafb' : 'white')
+
+      doc
+        .fillColor(textColor)
+        .font('Regular')
+        .fontSize(9)
+        .text(d.label, 70, rowY + 5)
+
+      doc
+        .font('Bold')
+        .text(d.valor, 60 + col1, rowY + 5, {
+          width: tableWidth - col1 - 10,
+          align: 'right'
+        })
+
+      doc.moveDown(1.2)
+    })
+
+    doc.moveDown(2)
 
     // ============================================
-    // GARANTÍAS REQUERIDAS
+    // REQUISITOS DE GARANTÍA
     // ============================================
-    doc.fillColor(primaryColor)
-    doc.fontSize(12)
-    doc.font('Helvetica-Bold')
-    doc.text('REQUISITOS DE GARANTÍA', 50, currentY)
-    currentY += 20
+    doc
+      .font('Bold')
+      .fontSize(12)
+      .fillColor(primaryColor)
+      .text('Requisitos de garantía')
 
-    doc.fillColor(textColor)
-    doc.fontSize(10)
-    doc.font('Helvetica')
-    doc.text(
-      'Con el fin de respaldar la obligación crediticia, se requiere la constitución de las siguientes garantías:',
-      50, currentY, { width: doc.page.width - 100 }
-    )
-    currentY += 25
+    doc.moveDown(0.5)
 
-    // Garantía 1: Garantía Real
-    doc.roundedRect(50, currentY, doc.page.width - 100, 55, 5)
-       .fill(lightGreen)
-       .stroke(primaryColor)
-    
-    doc.fillColor(primaryColor)
-    doc.fontSize(10)
-    doc.font('Helvetica-Bold')
-    doc.text('1. Garantía Real (Física)', 65, currentY + 10)
-    
-    doc.fillColor(textColor)
-    doc.fontSize(9)
-    doc.font('Helvetica')
-    doc.text(
-      'Se requiere el respaldo de un bien mueble o inmueble, cuya valoración comercial debe representar, ' +
-      'como mínimo, una relación de 2 a 1 respecto al monto total solicitado (cobertura del 200%).',
-      65, currentY + 25, { width: doc.page.width - 130 }
-    )
-    currentY += 65
+    doc
+      .font('Regular')
+      .fontSize(10)
+      .fillColor(textColor)
+      .text(
+        'Se requiere respaldo mediante garantía real (bien mueble o inmueble) con cobertura mínima ' +
+        'del 200% del monto solicitado.',
+        { align: 'justify' }
+      )
 
-    // Garantía 2: Póliza de Seguro
-    doc.roundedRect(50, currentY, doc.page.width - 100, 70, 5)
-       .fill('#fef3c7')
-       .stroke(accentColor)
-    
-    doc.fillColor(accentColor)
-    doc.fontSize(10)
-    doc.font('Helvetica-Bold')
-    doc.text('2. Garantía de Cumplimiento (Póliza de Seguro)', 65, currentY + 10)
-    
-    doc.fillColor(textColor)
-    doc.fontSize(9)
-    doc.font('Helvetica')
-    doc.text(
-      'Con el fin de mitigar el riesgo de insolvencia y proteger la operación, se debe emitir una ' +
-      'póliza de seguro de crédito bajo las siguientes categorías de costo:',
-      65, currentY + 25, { width: doc.page.width - 130 }
-    )
-    
+    doc.moveDown(1.5)
+
+    // ============================================
+    // PÓLIZAS DE SEGURO
+    // ============================================
+    doc
+      .font('Bold')
+      .fontSize(12)
+      .fillColor(primaryColor)
+      .text('Pólizas de seguro')
+
+    doc.moveDown(0.5)
+
+    doc
+      .font('Regular')
+      .fontSize(10)
+      .fillColor(textColor)
+      .text('• Tipo I: Hasta $100,000 MXN → Prima: $1,132.82 MXN')
+      .text('• Tipo II: Más de $100,000 MXN → Prima: $2,211.82 MXN')
+
+    doc.moveDown()
+
     // Destacar la póliza que aplica
-    doc.roundedRect(65, currentY + 45, doc.page.width - 130, 18, 3)
-       .fill(polizaTipo === 'Tipo I' ? '#fef3c7' : lightGreen)
-       .stroke(polizaTipo === 'Tipo I' ? accentColor : primaryColor)
-    
-    doc.fillColor(polizaTipo === 'Tipo I' ? accentColor : primaryColor)
-    doc.fontSize(9)
-    doc.font('Helvetica-Bold')
-    doc.text(
-      `✅ Póliza ${polizaTipo}: Aplica para su caso - Costo de prima: $${polizaCosto.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`,
-      75, currentY + 49
-    )
-    
-    currentY += 80
+    const polizaBoxY = doc.y
+    doc
+      .roundedRect(60, polizaBoxY, doc.page.width - 120, 24, 4)
+      .fill(lightAmber)
 
-    // Nota de pólizas
-    doc.fillColor('#6b7280')
-    doc.fontSize(8)
-    doc.font('Helvetica')
-    doc.text(
-      '• Póliza Tipo I: Para montos ≤ $100,000 MXN - Prima: $1,132.82 MXN',
-      65, currentY
-    )
-    currentY += 14
-    doc.text(
-      '• Póliza Tipo II: Para montos > $100,000 MXN - Prima: $2,211.82 MXN',
-      65, currentY
-    )
-    currentY += 30
+    doc
+      .font('Bold')
+      .fontSize(10)
+      .fillColor(accentColor)
+      .text(
+        `✅ Aplica para usted: Póliza ${polizaTipo} — Costo de prima: $${polizaCosto.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`,
+        70,
+        polizaBoxY + 7
+      )
+
+    doc.moveDown(3)
 
     // ============================================
     // PRÓXIMOS PASOS
     // ============================================
-    doc.fillColor(primaryColor)
-    doc.fontSize(12)
-    doc.font('Helvetica-Bold')
-    doc.text('PRÓXIMOS PASOS', 50, currentY)
-    currentY += 20
+    doc
+      .font('Bold')
+      .fontSize(12)
+      .fillColor(primaryColor)
+      .text('Próximos pasos')
+
+    doc.moveDown(0.5)
 
     const pasos = [
-      '1. Un asesor se comunicará con usted en las próximas 24-48 horas.',
-      '2. Se coordinará la presentación de la garantía real (avalúo del bien).',
-      '3. Se gestionará la emisión de la póliza de seguro correspondiente.',
-      '4. Una vez cumplidos los requisitos, se procederá a la liquidación de fondos.'
+      'Un asesor se comunicará con usted en las próximas 24-48 horas.',
+      'Se coordinará la validación de la garantía real.',
+      'Se gestionará la emisión de la póliza de seguro correspondiente.',
+      'Una vez cumplidos los requisitos, se procederá a la liberación de fondos.'
     ]
 
-    doc.fillColor(textColor)
-    doc.fontSize(9)
-    doc.font('Helvetica')
-    
-    pasos.forEach(paso => {
-      doc.text(paso, 65, currentY)
-      currentY += 16
+    pasos.forEach((p, i) => {
+      doc
+        .font('Regular')
+        .fontSize(10)
+        .fillColor(textColor)
+        .text(`${i + 1}. ${p}`)
     })
 
-    currentY += 15
+    doc.moveDown(4)
 
     // ============================================
     // FIRMAS Y SELLO
     // ============================================
-    const firmaY = Math.max(currentY + 20, doc.page.height - 180)
+    const firmaY = doc.page.height - 160
 
     // Línea separadora
-    doc.strokeColor(primaryColor)
-    .lineWidth(1.5)
-    .moveTo(50, firmaY - 10)
-    .lineTo(doc.page.width - 50, firmaY - 10)
-    .stroke()
+    doc
+      .strokeColor(primaryColor)
+      .lineWidth(1)
+      .moveTo(60, firmaY - 10)
+      .lineTo(doc.page.width - 60, firmaY - 10)
+      .stroke()
 
-    doc.fillColor(primaryColor)
-    doc.fontSize(10)
-    doc.font('Helvetica-Bold')
-    doc.text('FIRMAS Y AUTORIZACIÓN', 50, firmaY, { align: 'center', width: doc.page.width - 100 })
+    // Firma izquierda (Presidente)
+    doc
+      .strokeColor(textColor)
+      .lineWidth(0.5)
+      .moveTo(80, firmaY)
+      .lineTo(240, firmaY)
+      .stroke()
 
-    // Firma de la Institución (izquierda)
-    doc.roundedRect(70, firmaY + 20, 180, 75, 5).stroke(primaryColor)
-
-    // Línea para firma
-    doc.strokeColor(primaryColor)
-    .lineWidth(1)
-    .moveTo(80, firmaY + 60)
-    .lineTo(220, firmaY + 60)
-    .stroke()
-
-    // Firma del presidente
+    // Imagen de firma
     try {
       const firmaPath = path.join(process.cwd(), 'public', 'juanmendez.png')
       if (fs.existsSync(firmaPath)) {
-        doc.image(firmaPath, 75, firmaY + 30, { width: 130, height: 30 })
+        doc.image(firmaPath, 90, firmaY - 35, { width: 130 })
+        console.log('✅ Firma del presidente cargada')
       }
     } catch (error) {
-      console.error('Error cargando firma:', error)
+      console.error('❌ Error cargando firma:', error)
     }
 
-    doc.fillColor(primaryColor)
-    doc.fontSize(8)
-    doc.font('Helvetica-Bold')
-    doc.text('PRESIDENTE DEL CONSEJO', 80, firmaY + 65)
-    doc.fillColor(textColor)
-    doc.fontSize(7)
-    doc.text('LIC. JUAN CARLOS MÉNDEZ PÉREZ', 80, firmaY + 75)
+    doc
+      .font('Regular')
+      .fontSize(8)
+      .fillColor(grayColor)
+      .text('Presidente del Consejo', 80, firmaY + 8)
+
+    doc
+      .font('Bold')
+      .fontSize(9)
+      .fillColor(textColor)
+      .text('Lic. Juan Carlos Méndez Pérez', 80, firmaY + 20)
 
     // ✅ SELLO OFICIAL (centro)
     try {
       const selloPath = path.join(process.cwd(), 'public', 'sello.png')
       if (fs.existsSync(selloPath)) {
-        doc.image(selloPath, 220, firmaY + 15, { width: 120, height: 70 })
-        console.log('✅ Sello cargado correctamente')
+        doc.image(selloPath, doc.page.width / 2 - 45, firmaY - 45, { width: 90 })
+        console.log('✅ Sello cargado')
       }
     } catch (error) {
-      console.error('Error cargando sello:', error)
+      console.error('❌ Error cargando sello:', error)
     }
 
-    // Firma del Cliente (derecha)
-    doc.roundedRect(310, firmaY + 20, 180, 75, 5).stroke(primaryColor)
-    
-    doc.strokeColor(primaryColor)
-    .lineWidth(1)
-    .moveTo(320, firmaY + 60)
-    .lineTo(460, firmaY + 60)
-    .stroke()
+    // Firma derecha (Cliente)
+    doc
+      .strokeColor(textColor)
+      .lineWidth(0.5)
+      .moveTo(320, firmaY)
+      .lineTo(480, firmaY)
+      .stroke()
 
-    doc.fillColor(primaryColor)
-    doc.fontSize(8)
-    doc.font('Helvetica-Bold')
-    doc.text('EL ACREDITADO', 320, firmaY + 65)
-    doc.fillColor(textColor)
-    doc.fontSize(7)
-    const nombreCliente = lead.fullName.length > 30 ? lead.fullName.substring(0, 27) + '...' : lead.fullName
-    doc.text(nombreCliente, 320, firmaY + 75)
+    doc
+      .font('Regular')
+      .fontSize(8)
+      .fillColor(grayColor)
+      .text('El Acreditado', 320, firmaY + 8)
+
+    doc
+      .font('Bold')
+      .fontSize(9)
+      .fillColor(textColor)
+      .text(lead.fullName.length > 28 ? lead.fullName.substring(0, 25) + '...' : lead.fullName, 320, firmaY + 20)
 
     // ============================================
     // PIE DE PÁGINA
     // ============================================
-    doc.fontSize(6)
-    doc.fillColor('#6b7280')
-    doc.font('Helvetica')
+    doc
+      .font('Regular')
+      .fontSize(7)
+      .fillColor(grayColor)
+      .text(
+        'Caja Popular San Bernardino de Siena Valladolid S.C. de A.P. de R.L. de C.V.',
+        { align: 'center' }
+      )
+
     doc.text(
-      'Caja Popular San Bernardino de Siena Valladolid S.C. de A.P. de R.L. de C.V.',
-      50, doc.page.height - 45,
-      { align: 'center', width: doc.page.width - 100 }
+      'Calle 40 #204B entre 41 y 43, Col. Centro, Valladolid, Yucatán',
+      { align: 'center' }
     )
-    doc.text(
-      'Calle 40 #204B entre 41 y 43, Col. Centro, Valladolid, Yucatán · Tel: 985 856 1234',
-      50, doc.page.height - 35,
-      { align: 'center', width: doc.page.width - 100 }
-    )
+
     doc.text(
       `Folio: #${lead.id.slice(-8).toUpperCase()} · Documento generado electrónicamente · ${new Date().toLocaleDateString('es-MX')}`,
-      50, doc.page.height - 25,
-      { align: 'center', width: doc.page.width - 100 }
+      { align: 'center' }
     )
 
     doc.end()
@@ -416,9 +410,6 @@ export async function GET(
 
   } catch (error) {
     console.error('❌ ERROR:', error)
-    return NextResponse.json(
-      { error: 'Error generando documento' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Error generando documento' }, { status: 500 })
   }
 }
