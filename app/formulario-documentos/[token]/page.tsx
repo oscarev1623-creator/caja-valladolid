@@ -199,37 +199,55 @@ export default function DocumentosPage() {
       submitFormData.append('leadId', lead.id)
       submitFormData.append('userId', 'client')
       
-      const response = await fetch('/api/documents/upload', {
-        method: 'POST',
-        body: submitFormData
+const response = await fetch('/api/documents/upload', {
+  method: 'POST',
+  body: submitFormData
+})
+
+const result = await response.json()
+
+if (result.success) {
+  // ✅ ACTUALIZAR LEAD CON DATOS DEL FORMULARIO
+  const updateResponse = await fetch(`/api/leads/${lead.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      curp: formData.curp,
+      ocupacion: formData.ocupacion,
+      ingresoMensual: parseFloat(formData.ingresoMensual.replace(/[^0-9.-]/g, '')) || 0,
+      tiempoEmpleo: formData.tiempoEmpleo,
+      direccion: formData.direccion,
+      comentarios: formData.comentarios,
+      documentsSubmitted: true,
+      status: 'UNDER_REVIEW'
+    })
+  })
+  
+  if (!updateResponse.ok) {
+    console.error('Error actualizando lead:', await updateResponse.text())
+  }
+  
+  // ✅ ENVIAR CORREO DE CONFIRMACIÓN DE DOCUMENTOS RECIBIDOS
+  try {
+    await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: lead.email,
+        nombre: lead.fullName,
+        tipo: 'documentos',
+        leadId: lead.id
       })
-      
-      const result = await response.json()
-      
-      if (result.success) {
-        // ✅ ACTUALIZAR LEAD CON DATOS DEL FORMULARIO (SIN RFC)
-        const updateResponse = await fetch(`/api/leads/${lead.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            curp: formData.curp,
-            ocupacion: formData.ocupacion,
-            ingresoMensual: parseFloat(formData.ingresoMensual.replace(/[^0-9.-]/g, '')) || 0,
-            tiempoEmpleo: formData.tiempoEmpleo,
-            direccion: formData.direccion,
-            comentarios: formData.comentarios
-          })
-        })
-        
-        if (!updateResponse.ok) {
-          console.error('Error actualizando lead:', await updateResponse.text())
-        }
-        
-        alert(`✅ ${result.message}`)
-        router.push(`/gracias`)
-      } else {
-        alert(`❌ Error: ${result.error}`)
-      }
+    })
+    console.log('✅ Correo de confirmación de documentos enviado')
+  } catch (emailError) {
+    console.error('❌ Error enviando correo de documentos:', emailError)
+    // No bloqueamos el flujo si falla el correo
+  }
+  
+  alert(`✅ ${result.message}`)
+  router.push(`/gracias`)
+}
       
     } catch (error: any) {
       console.error('Error:', error)
