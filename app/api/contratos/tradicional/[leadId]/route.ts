@@ -44,10 +44,20 @@ export async function GET(
     let y = 20
 
     // ============================================
-    // HEADER
+    // HEADER CON LOGO
     // ============================================
     doc.setFillColor(primaryColor)
     doc.rect(0, 0, 210, 35, 'F')
+
+    // LOGO de la empresa (círculo verde con texto blanco)
+    doc.setDrawColor('#ffffff')
+    doc.setFillColor('#ffffff')
+    doc.circle(25, 17.5, 8, 'F')
+    doc.setTextColor(primaryColor)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('CAJA', 25, 15, { align: 'center' })
+    doc.text('POPULAR', 25, 20, { align: 'center' })
 
     doc.setTextColor('#ffffff')
     doc.setFontSize(18)
@@ -183,24 +193,39 @@ export async function GET(
     y += 15
 
     // ============================================
-    // FIRMAS
+    // FIRMAS CON SELLO
     // ============================================
+    
+    // SELLO de la empresa (círculo punteado)
+    doc.setDrawColor(primaryColor)
+    doc.setLineWidth(0.5)
+    doc.circle(45, y + 5, 12)
+    doc.setFontSize(7)
+    doc.setTextColor(primaryColor)
+    doc.setFont('helvetica', 'bold')
+    doc.text('CAJA POPULAR', 45, y, { align: 'center' })
+    doc.text('SAN BERNARDINO', 45, y + 4, { align: 'center' })
+    doc.text('DE SIENA', 45, y + 8, { align: 'center' })
+    doc.text('VALLADOLID', 45, y + 12, { align: 'center' })
+
+    // Líneas de firma
     doc.setTextColor(grayColor)
     doc.setFontSize(10)
-    doc.text('_________________________', 25, y)
-    doc.text('_________________________', 120, y)
+    doc.text('_________________________', 70, y + 5)
+    doc.text('_________________________', 145, y + 5)
 
     doc.setFontSize(8)
-    doc.text('Presidente del Consejo', 25, y + 6)
-    doc.text('El Acreditado', 120, y + 6)
+    doc.text('Presidente del Consejo', 70, y + 11)
+    doc.text('El Acreditado', 145, y + 11)
 
+    // Nombres bajo las firmas
     doc.setFontSize(9)
     doc.setTextColor(textColor)
-    doc.text('Lic. Juan Carlos Méndez Pérez', 25, y + 14)
+    doc.text('Lic. Juan Carlos Méndez Pérez', 70, y + 19)
     const nombreCliente = lead.fullName || 'Cliente'
-    doc.text(nombreCliente.length > 28 ? nombreCliente.substring(0, 25) + '...' : nombreCliente, 120, y + 14)
+    doc.text(nombreCliente.length > 28 ? nombreCliente.substring(0, 25) + '...' : nombreCliente, 145, y + 19)
 
-    y += 30
+    y += 35
 
     // ============================================
     // PIE DE PÁGINA
