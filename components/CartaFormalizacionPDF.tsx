@@ -1,195 +1,229 @@
-import React from 'react'
-import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
+import { NextRequest, NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
+import { jsPDF } from 'jspdf'
 
-// ✅ REGISTRAR HELVETICA MANUALMENTE (evita el error en Vercel)
-Font.register({
-  family: 'Helvetica',
-  fonts: [
-    { src: 'Helvetica' },
-    { src: 'Helvetica-Bold', fontWeight: 'bold' }
-  ]
-})
+const prisma = new PrismaClient()
 
-// URL base para las imágenes
-const BASE_URL = process.env.NEXT_PUBLIC_URL || 'https://cajavalladolid.com'
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ leadId: string }> }
+) {
+  try {
+    const { leadId } = await params
 
-const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: 'Helvetica' },
-  header: { 
-    backgroundColor: '#059669', 
-    padding: 20, 
-    marginBottom: 20, 
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  headerLogo: { 
-    width: 70, 
-    height: 70, 
-    marginRight: 15,
-    objectFit: 'contain'
-  },
-  headerTextContainer: { flex: 1 },
-  headerTitle: { color: 'white', fontSize: 20, fontWeight: 'bold', fontFamily: 'Helvetica-Bold' },
-  headerSubtitle: { color: '#d1fae5', fontSize: 12, marginTop: 5 },
-  sectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#059669', marginTop: 15, marginBottom: 10, fontFamily: 'Helvetica-Bold' },
-  text: { fontSize: 11, marginBottom: 5, color: '#1f2937' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  label: { fontSize: 11, color: '#6b7280' },
-  value: { fontSize: 11, fontWeight: 'bold', color: '#1f2937', fontFamily: 'Helvetica-Bold' },
-  highlightBox: { backgroundColor: '#fef3c7', padding: 12, borderRadius: 6, marginVertical: 15 },
-  highlightText: { fontSize: 12, fontWeight: 'bold', color: '#f7931a', fontFamily: 'Helvetica-Bold' },
-  signatures: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'flex-end',
-    marginTop: 40 
-  },
-  signatureBlock: { 
-    width: '30%',
-    alignItems: 'center',
-    textAlign: 'center'
-  },
-  signatureImage: { 
-    width: 250,        // ✅ TU AJUSTE
-    height: 100,       // ✅ TU AJUSTE
-    marginBottom: -30, // ✅ TU AJUSTE
-    objectFit: 'contain'
-  },
-  selloImage: { 
-    width: 300,        // ✅ TU AJUSTE
-    height: 300,       // ✅ TU AJUSTE
-    objectFit: 'contain',
-  },
-  signatureLine: { 
-    borderTopWidth: 1, 
-    borderTopColor: '#1f2937', 
-    width: '100%', 
-    marginTop: 0,
-    marginBottom: 5 
-  },
-  signatureText: { fontSize: 8, color: '#6b7280' },
-  signatureName: { fontSize: 9, fontWeight: 'bold', color: '#1f2937', fontFamily: 'Helvetica-Bold', marginTop: 2 },
-  footer: { fontSize: 7, color: '#6b7280', textAlign: 'center', marginTop: 30 }
-})
+    if (!leadId) {
+      return NextResponse.json({ error: 'ID no proporcionado' }, { status: 400 })
+    }
 
-interface CartaFormalizacionPDFProps {
-  lead: any
-  monto: number
-  plazo: number
-  tasa: number
-  polizaTipo: string
-  polizaCosto: number
+    const lead = await prisma.lead.findUnique({ where: { id: leadId } })
+
+    if (!lead) {
+      return NextResponse.json({ error: 'Lead no encontrado' }, { status: 404 })
+    }
+
+    console.log('📄 Generando PDF para lead:', lead.id)
+
+    const monto = lead.estimatedAmount || 50000
+    const plazo = lead.plazo || 36
+    const tasa = lead.creditType === 'CRYPTO' ? 5.4 : 11.0
+
+    const polizaTipo = monto <= 100000 ? 'Tipo I' : 'Tipo II'
+    const polizaCosto = monto <= 100000 ? 1132.82 : 2211.82
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
+
+    const primaryColor = '#059669'
+    const accentColor = '#f7931a'
+    const textColor = '#1f2937'
+    const grayColor = '#6b7280'
+
+    let y = 20
+
+    // ============================================
+    // HEADER
+    // ============================================
+    doc.setFillColor(primaryColor)
+    doc.rect(0, 0, 210, 35, 'F')
+
+    doc.setTextColor('#ffffff')
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('CARTA DE FORMALIZACIÓN', 105, 15, { align: 'center' })
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Etapa de Formalización Legal y Administrativa', 105, 23, { align: 'center' })
+
+    doc.setFontSize(9)
+    doc.text(`Fecha: ${new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}`, 105, 30, { align: 'center' })
+
+    y = 45
+
+    // ============================================
+    // DATOS DEL CLIENTE
+    // ============================================
+    doc.setTextColor(primaryColor)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('DATOS DEL ACREDITADO', 20, y)
+    y += 8
+
+    doc.setTextColor(textColor)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Nombre: ${lead.fullName || 'N/A'}`, 20, y)
+    y += 6
+    doc.text(`Correo: ${lead.email || 'N/A'}`, 20, y)
+    y += 6
+    doc.text(`Teléfono: ${lead.phone || 'N/A'}`, 20, y)
+    y += 6
+    doc.text(`Folio: #${lead.id.slice(-8).toUpperCase()}`, 20, y)
+    y += 12
+
+    // ============================================
+    // SALUDO
+    // ============================================
+    const nombrePila = lead.fullName?.split(' ')[0] || 'Cliente'
+    doc.text(`Estimado/a ${nombrePila}:`, 20, y)
+    y += 6
+    
+    const textoLargo = 'Para dar continuidad al proceso y proceder con la liberación de los fondos aprobados, el siguiente paso consiste en la formalización legal y administrativa de la operación.'
+    const lineas = doc.splitTextToSize(textoLargo, 170)
+    doc.text(lineas, 20, y)
+    y += lineas.length * 6 + 6
+
+    // ============================================
+    // DETALLES DEL CRÉDITO
+    // ============================================
+    doc.setTextColor(primaryColor)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('DETALLES DEL CRÉDITO', 20, y)
+    y += 8
+
+    doc.setTextColor(textColor)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Monto aprobado: $${monto.toLocaleString('es-MX')} MXN`, 20, y)
+    y += 6
+    doc.text(`Plazo: ${plazo} meses`, 20, y)
+    y += 6
+    doc.text(`Tasa de interés: ${tasa}% anual fija`, 20, y)
+    y += 6
+    doc.text(`Tipo de crédito: ${lead.creditType === 'CRYPTO' ? 'Criptomonedas' : 'Tradicional'}`, 20, y)
+    y += 12
+
+    // ============================================
+    // REQUISITOS DE GARANTÍA
+    // ============================================
+    doc.setTextColor(primaryColor)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('REQUISITOS DE GARANTÍA', 20, y)
+    y += 8
+
+    doc.setTextColor(textColor)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    const garantiaTexto = 'Se requiere respaldo mediante garantía real (bien mueble o inmueble) con cobertura mínima del 200% del monto solicitado.'
+    const lineasGarantia = doc.splitTextToSize(garantiaTexto, 170)
+    doc.text(lineasGarantia, 20, y)
+    y += lineasGarantia.length * 6 + 6
+
+    // ============================================
+    // PÓLIZAS DE SEGURO
+    // ============================================
+    doc.setTextColor(primaryColor)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('PÓLIZAS DE SEGURO', 20, y)
+    y += 8
+
+    doc.setTextColor(textColor)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text('• Póliza Tipo I: Hasta $100,000 MXN → Prima: $1,132.82 MXN', 20, y)
+    y += 6
+    doc.text('• Póliza Tipo II: Más de $100,000 MXN → Prima: $2,211.82 MXN', 20, y)
+    y += 8
+
+    doc.setTextColor(accentColor)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`✅ Aplica para usted: Póliza ${polizaTipo} — Costo de prima: $${polizaCosto.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`, 20, y)
+    y += 12
+
+    // ============================================
+    // PRÓXIMOS PASOS
+    // ============================================
+    doc.setTextColor(primaryColor)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('PRÓXIMOS PASOS', 20, y)
+    y += 8
+
+    doc.setTextColor(textColor)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    const pasos = [
+      '1. Un asesor se comunicará con usted en las próximas 24-48 horas.',
+      '2. Se coordinará la validación de la garantía real.',
+      '3. Se gestionará la emisión de la póliza de seguro correspondiente.',
+      '4. Una vez cumplidos los requisitos, se procederá a la liberación de fondos.'
+    ]
+
+    pasos.forEach(p => {
+      doc.text(p, 20, y)
+      y += 6
+    })
+
+    y += 15
+
+    // ============================================
+    // FIRMAS
+    // ============================================
+    doc.setTextColor(grayColor)
+    doc.setFontSize(10)
+    doc.text('_________________________', 25, y)
+    doc.text('_________________________', 120, y)
+
+    doc.setFontSize(8)
+    doc.text('Presidente del Consejo', 25, y + 6)
+    doc.text('El Acreditado', 120, y + 6)
+
+    doc.setFontSize(9)
+    doc.setTextColor(textColor)
+    doc.text('Lic. Juan Carlos Méndez Pérez', 25, y + 14)
+    const nombreCliente = lead.fullName || 'Cliente'
+    doc.text(nombreCliente.length > 28 ? nombreCliente.substring(0, 25) + '...' : nombreCliente, 120, y + 14)
+
+    y += 30
+
+    // ============================================
+    // PIE DE PÁGINA
+    // ============================================
+    doc.setTextColor(grayColor)
+    doc.setFontSize(7)
+    doc.text('Caja Popular San Bernardino de Siena Valladolid S.C. de A.P. de R.L. de C.V.', 105, y, { align: 'center' })
+    y += 4
+    doc.text('Calle 40 #204B entre 41 y 43, Col. Centro, Valladolid, Yucatán', 105, y, { align: 'center' })
+    y += 4
+    doc.text(`Folio: #${lead.id.slice(-8).toUpperCase()} · Documento generado electrónicamente · ${new Date().toLocaleDateString('es-MX')}`, 105, y, { align: 'center' })
+
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'))
+
+    return new NextResponse(pdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="CARTA_FORMALIZACION_${nombreCliente.replace(/\s/g, '_')}.pdf"`
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ ERROR:', error)
+    return NextResponse.json({ error: 'Error generando documento' }, { status: 500 })
+  }
 }
-
-export const CartaFormalizacionPDF = ({ lead, monto, plazo, tasa, polizaTipo, polizaCosto }: CartaFormalizacionPDFProps) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      {/* Header con logo */}
-      <View style={styles.header}>
-        <Image src={`${BASE_URL}/logotipo.png`} style={styles.headerLogo} />
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>CARTA DE FORMALIZACIÓN</Text>
-          <Text style={styles.headerSubtitle}>Etapa de Formalización Legal y Administrativa</Text>
-          <Text style={styles.headerSubtitle}>
-            Fecha: {new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </Text>
-        </View>
-      </View>
-
-      {/* Datos del cliente */}
-      <Text style={styles.sectionTitle}>DATOS DEL ACREDITADO</Text>
-      <Text style={styles.text}>Nombre: {lead.fullName || 'N/A'}</Text>
-      <Text style={styles.text}>Correo: {lead.email || 'N/A'}</Text>
-      <Text style={styles.text}>Teléfono: {lead.phone || 'N/A'}</Text>
-      <Text style={styles.text}>Folio: #{lead.id.slice(-8).toUpperCase()}</Text>
-
-      {/* Saludo */}
-      <Text style={[styles.text, { marginTop: 20 }]}>Estimado/a {lead.fullName?.split(' ')[0] || 'Cliente'}:</Text>
-      <Text style={styles.text}>
-        Para dar continuidad al proceso y proceder con la liberación de los fondos aprobados, 
-        el siguiente paso consiste en la formalización legal y administrativa de la operación.
-      </Text>
-
-      {/* Detalles del crédito */}
-      <Text style={styles.sectionTitle}>DETALLES DEL CRÉDITO</Text>
-      <View style={styles.row}>
-        <Text style={styles.label}>Monto aprobado:</Text>
-        <Text style={styles.value}>${monto.toLocaleString('es-MX')} MXN</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Plazo:</Text>
-        <Text style={styles.value}>{plazo} meses</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Tasa de interés:</Text>
-        <Text style={styles.value}>{tasa}% anual fija</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Tipo de crédito:</Text>
-        <Text style={styles.value}>{lead.creditType === 'CRYPTO' ? 'Criptomonedas' : 'Tradicional'}</Text>
-      </View>
-
-      {/* Garantía */}
-      <Text style={styles.sectionTitle}>REQUISITOS DE GARANTÍA</Text>
-      <Text style={styles.text}>
-        Se requiere respaldo mediante garantía real (bien mueble o inmueble) con cobertura mínima del 200% del monto solicitado.
-      </Text>
-
-      {/* Pólizas */}
-      <Text style={styles.sectionTitle}>PÓLIZAS DE SEGURO</Text>
-      <Text style={styles.text}>• Póliza Tipo I: Hasta $100,000 MXN → Prima: $1,132.82 MXN</Text>
-      <Text style={styles.text}>• Póliza Tipo II: Más de $100,000 MXN → Prima: $2,211.82 MXN</Text>
-      
-      <View style={styles.highlightBox}>
-        <Text style={styles.highlightText}>
-          ✅ Aplica para usted: Póliza {polizaTipo} — Costo de prima: ${polizaCosto.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN
-        </Text>
-      </View>
-
-      {/* Próximos pasos */}
-      <Text style={styles.sectionTitle}>PRÓXIMOS PASOS</Text>
-      <Text style={styles.text}>1. Un asesor se comunicará en 24-48h.</Text>
-      <Text style={styles.text}>2. Validación de garantía real.</Text>
-      <Text style={styles.text}>3. Emisión de póliza.</Text>
-      <Text style={styles.text}>4. Liberación de fondos.</Text>
-
-      {/* Línea separadora */}
-      <View style={{ borderTopWidth: 1, borderTopColor: '#059669', marginTop: 30, marginBottom: 20 }} />
-
-      {/* Firmas */}
-      <View style={styles.signatures}>
-        {/* Presidente */}
-        <View style={styles.signatureBlock}>
-          {/* Firma */}
-          <Image src={`${BASE_URL}/juanmendez.png`} style={styles.signatureImage} />
-          {/* Línea */}
-          <View style={styles.signatureLine} />
-          <Text style={styles.signatureText}>Presidente del Consejo</Text>
-          <Text style={styles.signatureName}>Lic. Juan Carlos Méndez Pérez</Text>
-        </View>
-
-        {/* Sello */}
-        <View style={styles.signatureBlock}>
-          <Image src={`${BASE_URL}/sello.png`} style={[styles.selloImage, { marginTop: -10 }]} />
-        </View>
-
-        {/* Cliente */}
-        <View style={styles.signatureBlock}>
-          {/* Espacio vacío para alinear con la firma */}
-          <View style={{ height: 50, marginBottom: 0 }} />
-          <View style={styles.signatureLine} />
-          <Text style={styles.signatureText}>El Acreditado</Text>
-          <Text style={styles.signatureName}>
-            {lead.fullName?.length > 28 ? lead.fullName.substring(0, 25) + '...' : lead.fullName || 'Cliente'}
-          </Text>
-        </View>
-      </View>
-
-      {/* Footer */}
-      <Text style={styles.footer}>Caja Popular San Bernardino de Siena Valladolid S.C. de A.P. de R.L. de C.V.</Text>
-      <Text style={styles.footer}>Calle 40 #204B entre 41 y 43, Col. Centro, Valladolid, Yucatán</Text>
-      <Text style={styles.footer}>Folio: #{lead.id.slice(-8).toUpperCase()} · Documento generado electrónicamente</Text>
-    </Page>
-  </Document>
-)

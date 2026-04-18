@@ -5,10 +5,9 @@ import { useRouter, useParams } from 'next/navigation'
 import {
   ArrowLeft, Ticket, FileText, Download, Eye,
   Upload, User, Mail, Phone, Calendar, Clock,
-  Link as LinkIcon, Copy, Send, Trash2, Loader2
+  Link as LinkIcon, Copy, Loader2
 } from 'lucide-react'
 
-// Interfaces para tipado
 interface Document {
   id: string
   filename: string
@@ -38,7 +37,6 @@ export default function TicketDetailPage() {
   const router = useRouter()
   const params = useParams()
   
-  // Manejo seguro de params.id
   const ticketId = params?.id as string | undefined
 
   const [ticket, setTicket] = useState<Ticket | null>(null)
@@ -70,7 +68,6 @@ export default function TicketDetailPage() {
       const data = await response.json()
       if (data.success) {
         setTicket(data.data)
-        // Si el ticket tiene documentos asociados
         if (data.data.documents) {
           setDocuments(data.data.documents)
         }
@@ -88,7 +85,6 @@ export default function TicketDetailPage() {
     const file = e.target.files?.[0]
     if (!file || !ticket) return
 
-    // Validar tamaño (10MB)
     if (file.size > 10 * 1024 * 1024) {
       alert('❌ El archivo no puede ser mayor a 10MB')
       return
@@ -110,7 +106,7 @@ export default function TicketDetailPage() {
       const data = await response.json()
       if (data.success) {
         alert('✅ Documento subido correctamente')
-        fetchTicket() // Recargar
+        fetchTicket()
       } else {
         alert('❌ Error: ' + data.error)
       }
@@ -127,7 +123,26 @@ export default function TicketDetailPage() {
     alert('✅ Enlace copiado al portapapeles')
   }
 
-  // Redirigir si no hay ticketId
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800'
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800'
+      case 'COMPLETED': return 'bg-green-100 text-green-800'
+      case 'EXPIRED': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch(status) {
+      case 'PENDING': return 'Pendiente'
+      case 'IN_PROGRESS': return 'En Progreso'
+      case 'COMPLETED': return 'Completado'
+      case 'EXPIRED': return 'Expirado'
+      default: return status
+    }
+  }
+
   if (!ticketId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -140,8 +155,8 @@ export default function TicketDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando ticket...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600 mx-auto mb-3"></div>
+          <p className="text-gray-600 text-sm">Cargando ticket...</p>
         </div>
       </div>
     )
@@ -149,12 +164,12 @@ export default function TicketDetailPage() {
 
   if (!ticket) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="text-center">
           <p className="text-gray-600 mb-4">Ticket no encontrado</p>
           <button
             onClick={() => router.push('/admin/tickets')}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
           >
             Volver a Tickets
           </button>
@@ -163,97 +178,65 @@ export default function TicketDetailPage() {
     )
   }
 
-  // Función para obtener el color del estado
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'IN_PROGRESS':
-        return 'bg-blue-100 text-blue-800'
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800'
-      case 'EXPIRED':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  // Función para obtener el texto del estado
-  const getStatusText = (status: string) => {
-    switch(status) {
-      case 'PENDING':
-        return 'Pendiente'
-      case 'IN_PROGRESS':
-        return 'En Progreso'
-      case 'COMPLETED':
-        return 'Completado'
-      case 'EXPIRED':
-        return 'Expirado'
-      default:
-        return status
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-3 md:p-6">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 text-gray-600 hover:text-gray-900 text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Volver
           </button>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Ticket className="w-6 h-6 text-green-600" />
+          <h1 className="text-lg md:text-xl font-bold flex items-center gap-2">
+            <Ticket className="w-5 h-5 text-green-600" />
             Detalle del Ticket
           </h1>
         </div>
 
         {/* Información del ticket */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
-            <h2 className="text-xl font-bold text-white">
+        <div className="bg-white rounded-xl shadow overflow-hidden mb-4">
+          <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 md:px-6 py-3 md:py-4">
+            <h2 className="text-lg md:text-xl font-bold text-white">
               Ticket #{ticket.ticketNumber}
             </h2>
           </div>
           
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-4 md:p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Número de ticket</p>
-                <p className="text-lg font-bold text-gray-900">{ticket.ticketNumber}</p>
+                <p className="text-xs text-gray-500 mb-1">Número de ticket</p>
+                <p className="text-base md:text-lg font-bold text-gray-900">{ticket.ticketNumber}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">Estado</p>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium inline-block ${getStatusColor(ticket.status)}`}>
+                <p className="text-xs text-gray-500 mb-1">Estado</p>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium inline-block ${getStatusColor(ticket.status)}`}>
                   {getStatusText(ticket.status)}
                 </span>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">Lead asociado</p>
+                <p className="text-xs text-gray-500 mb-1">Lead asociado</p>
                 <p className="font-medium text-gray-900">{ticket.lead.fullName}</p>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-sm">
-                  <a href={`mailto:${ticket.lead.email}`} className="text-blue-600 hover:underline flex items-center gap-1">
+                <div className="flex flex-wrap gap-3 mt-1">
+                  <a href={`mailto:${ticket.lead.email}`} className="text-blue-600 hover:underline flex items-center gap-1 text-xs">
                     <Mail className="w-3 h-3" />
                     {ticket.lead.email}
                   </a>
-                  <a href={`tel:${ticket.lead.phone}`} className="text-blue-600 hover:underline flex items-center gap-1">
+                  <a href={`tel:${ticket.lead.phone}`} className="text-blue-600 hover:underline flex items-center gap-1 text-xs">
                     <Phone className="w-3 h-3" />
                     {ticket.lead.phone}
                   </a>
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">Fechas</p>
-                <p className="text-sm flex items-center gap-1 text-gray-700">
+                <p className="text-xs text-gray-500 mb-1">Fechas</p>
+                <p className="text-xs flex items-center gap-1 text-gray-700">
                   <Calendar className="w-3 h-3 text-gray-400" />
                   Creado: {new Date(ticket.createdAt).toLocaleDateString('es-MX')}
                 </p>
-                <p className="text-sm flex items-center gap-1 mt-1 text-gray-700">
+                <p className="text-xs flex items-center gap-1 mt-1 text-gray-700">
                   <Clock className="w-3 h-3 text-gray-400" />
                   Expira: {new Date(ticket.expiresAt).toLocaleDateString('es-MX')}
                 </p>
@@ -261,18 +244,18 @@ export default function TicketDetailPage() {
             </div>
 
             {/* Link del ticket */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <p className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
-                <LinkIcon className="w-4 h-4" />
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1">
+                <LinkIcon className="w-3 h-3" />
                 Enlace del ticket:
               </p>
               <div className="flex items-center gap-2 bg-white p-2 rounded-lg border">
-                <span className="font-mono text-sm text-gray-600 flex-1 truncate px-2">
+                <span className="font-mono text-xs text-gray-600 flex-1 truncate">
                   {ticket.linkUrl}
                 </span>
                 <button
                   onClick={() => copyToClipboard(ticket.linkUrl)}
-                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                   title="Copiar enlace"
                 >
                   <Copy className="w-4 h-4" />
@@ -282,17 +265,17 @@ export default function TicketDetailPage() {
           </div>
         </div>
 
-        {/* SECCIÓN DE SUBIR DOCUMENTOS */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Upload className="w-5 h-5" />
+        {/* Subir documentos */}
+        <div className="bg-white rounded-xl shadow overflow-hidden mb-4">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 md:px-6 py-3 md:py-4">
+            <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+              <Upload className="w-4 h-4 md:w-5 md:h-5" />
               Subir documento a este ticket
             </h2>
           </div>
           
-          <div className="p-6">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
+          <div className="p-4 md:p-5">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 md:p-8 text-center hover:border-blue-500 transition-colors">
               <input
                 type="file"
                 id="file-upload"
@@ -301,19 +284,16 @@ export default function TicketDetailPage() {
                 disabled={uploading}
                 accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
               />
-              <label
-                htmlFor="file-upload"
-                className="cursor-pointer flex flex-col items-center"
-              >
+              <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
                 {uploading ? (
-                  <Loader2 className="w-12 h-12 text-blue-500 mb-3 animate-spin" />
+                  <Loader2 className="w-10 h-10 text-blue-500 mb-2 animate-spin" />
                 ) : (
-                  <Upload className="w-12 h-12 text-gray-400 mb-3" />
+                  <Upload className="w-10 h-10 text-gray-400 mb-2" />
                 )}
-                <p className="text-gray-700 font-medium mb-1">
+                <p className="text-gray-700 font-medium text-sm">
                   {uploading ? 'Subiendo archivo...' : 'Haz clic para seleccionar un archivo'}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs text-gray-500 mt-1">
                   PDF, JPG, PNG, DOC (máx 10MB)
                 </p>
               </label>
@@ -321,26 +301,26 @@ export default function TicketDetailPage() {
           </div>
         </div>
 
-        {/* DOCUMENTOS SUBIDOS */}
+        {/* Documentos subidos */}
         {documents.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <FileText className="w-5 h-5" />
+          <div className="bg-white rounded-xl shadow overflow-hidden">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 md:px-6 py-3 md:py-4">
+              <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 md:w-5 md:h-5" />
                 Documentos del ticket ({documents.length})
               </h2>
             </div>
             
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 md:p-5">
+              <div className="space-y-2">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="border rounded-lg p-4 flex items-start justify-between hover:shadow-md transition-shadow bg-white">
+                  <div key={doc.id} className="border rounded-lg p-3 flex items-center justify-between hover:shadow-md transition-shadow bg-white">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                         <FileText className="w-5 h-5 text-blue-600" />
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900 line-clamp-1">{doc.filename}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate text-sm">{doc.filename}</p>
                         <p className="text-xs text-gray-500">
                           {new Date(doc.uploadedAt).toLocaleDateString('es-MX')}
                         </p>
@@ -351,7 +331,7 @@ export default function TicketDetailPage() {
                         href={doc.fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                         title="Ver documento"
                       >
                         <Eye className="w-4 h-4" />
@@ -359,7 +339,7 @@ export default function TicketDetailPage() {
                       <a
                         href={doc.fileUrl}
                         download
-                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
                         title="Descargar documento"
                       >
                         <Download className="w-4 h-4" />

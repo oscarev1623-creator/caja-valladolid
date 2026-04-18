@@ -1,4 +1,4 @@
-// File: C:\Users\jonat\Desktop\Respaldo Jonathan\caja-final\app\api\contratos\tradicional\[leadId]\route.ts
+// File: C:\Users\jonat\Desktop\Respaldo Jonathan\caja-final\app\api\contratos\tradicional\[leadId]\route.tsx
 import * as entry from '../../../../../../../app/api/contratos/tradicional/[leadId]/route.js'
 import type { NextRequest } from 'next/server.js'
 

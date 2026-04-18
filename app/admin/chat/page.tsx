@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { MessageCircle, User, Clock, CheckCircle, ArrowLeft, Users, Filter, X, Trash2, RefreshCw } from 'lucide-react'
+import { MessageCircle, User, Clock, CheckCircle, ArrowLeft, Users, Filter, X, Trash2, RefreshCw, Search } from 'lucide-react'
 
 export default function AdminChatPage() {
   const router = useRouter()
@@ -17,7 +17,9 @@ export default function AdminChatPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date())
   const [isPolling, setIsPolling] = useState(false)
-  const [forceUpdate, setForceUpdate] = useState(0) // 👈 NUEVO: forzar re-render
+  const [forceUpdate, setForceUpdate] = useState(0)
+  const [search, setSearch] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const leadId = searchParams?.get('leadId') || null
@@ -25,19 +27,17 @@ export default function AdminChatPage() {
   const leadName = searchParams?.get('name') || null
   const leadPhone = searchParams?.get('phone') || null
 
-  // 🔴 SOLUCIÓN NUCLEAR: Usar localStorage para comunicación entre pestañas
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'chat_refresh') {
         console.log('💥 ACTUALIZACIÓN NUCLEAR DETECTADA');
         fetchConversations(true);
-        setForceUpdate(prev => prev + 1); // Forzar re-render
+        setForceUpdate(prev => prev + 1);
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
     
-    // También escuchar el evento normal
     const handleRefresh = () => {
       console.log('🔄 Evento refresh recibido');
       fetchConversations(true);
@@ -58,7 +58,6 @@ export default function AdminChatPage() {
     fetchConversations();
     fetchAgents();
     
-    // Polling cada 2 segundos (más agresivo)
     pollingIntervalRef.current = setInterval(() => {
       fetchConversations(true);
     }, 2000);
@@ -71,9 +70,24 @@ export default function AdminChatPage() {
   }, []);
 
   useEffect(() => {
-    const sorted = [...conversations].sort((a, b) => 
+    let filtered = [...conversations].sort((a, b) => 
       new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
+    
+    if (search.trim()) {
+      const lower = search.toLowerCase()
+      filtered = filtered.filter(c => 
+        (c.userName || '').toLowerCase().includes(lower) ||
+        (c.userEmail || '').toLowerCase().includes(lower) ||
+        (c.userPhone || '').includes(lower)
+      )
+    }
+    
+    if (selectedAgent !== 'all') {
+      filtered = filtered.filter(conv => conv.assignedTo?.id === selectedAgent);
+    }
+    
+    setFilteredConversations(filtered);
     
     const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
     setUnreadCount(totalUnread);
@@ -83,14 +97,7 @@ export default function AdminChatPage() {
     } else {
       document.title = 'Conversaciones - Caja Valladolid';
     }
-    
-    if (selectedAgent === 'all') {
-      setFilteredConversations(sorted);
-    } else {
-      const filtered = sorted.filter(conv => conv.assignedTo?.id === selectedAgent);
-      setFilteredConversations(filtered);
-    }
-  }, [conversations, selectedAgent, forceUpdate]); // 👈 forceUpdate como dependencia
+  }, [conversations, selectedAgent, forceUpdate, search]);
 
   useEffect(() => {
     if (leadId && leadEmail && !creatingChat) {
@@ -179,13 +186,10 @@ export default function AdminChatPage() {
     if (!confirm('¿Eliminar esta conversación permanentemente?')) return;
     
     try {
-      const res = await fetch(`/api/chat/delete/${id}`, {
-  method: 'DELETE',
-})
+      const res = await fetch(`/api/chat/delete/${id}`, { method: 'DELETE' })
       const data = await res.json();
       if (data.success) {
         fetchConversations();
-        // Disparar actualización nuclear
         localStorage.setItem('chat_refresh', Date.now().toString());
         window.dispatchEvent(new CustomEvent('refreshConversations'));
       } else {
@@ -228,9 +232,9 @@ export default function AdminChatPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.push('/admin/leads')}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -238,42 +242,62 @@ export default function AdminChatPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
               Conversaciones
               {unreadCount > 0 && (
                 <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full animate-pulse">
                   {unreadCount}
                 </span>
               )}
-              {isPolling && (
-                <RefreshCw className="w-4 h-4 text-green-500 animate-spin ml-2" />
-              )}
             </h1>
-            <p className="text-gray-500 text-sm">
-              Actualización cada 2s • Última: {lastRefreshTime.toLocaleTimeString()}
+            <p className="text-gray-500 text-xs">
+              Actualización cada 2s • {lastRefreshTime.toLocaleTimeString()}
             </p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            fetchConversations(false);
-            setForceUpdate(prev => prev + 1);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Actualizar ahora
-        </button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => {
+              fetchConversations(false);
+              setForceUpdate(prev => prev + 1);
+            }}
+            className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
+          >
+            <RefreshCw className={`w-4 h-4 ${isPolling ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Actualizar</span>
+          </button>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="md:hidden px-3 py-2 bg-green-600 text-white rounded-lg text-sm"
+          >
+            <Filter className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {creatingChat && (
         <div className="mb-4 p-4 bg-blue-50 rounded-lg text-center">
           <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent inline-block mr-2"></div>
-          <span className="text-blue-700">Creando conversación con el cliente...</span>
+          <span className="text-blue-700 text-sm">Creando conversación...</span>
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow p-4 mb-6">
+      {/* Búsqueda en móvil */}
+      <div className="mb-3 md:hidden">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar conversación..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className={`${showFilters ? 'block' : 'hidden'} md:block bg-white rounded-xl shadow p-3 md:p-4 mb-4`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-500" />
@@ -285,14 +309,29 @@ export default function AdminChatPage() {
               className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
             >
               <X className="w-3 h-3" />
-              Limpiar filtro
+              Limpiar
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        
+        {/* Búsqueda desktop */}
+        <div className="hidden md:block mb-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, email o teléfono..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+            />
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setSelectedAgent('all')}
-            className={`px-3 py-1.5 rounded-full text-sm transition-all ${
+            className={`px-3 py-1.5 rounded-full text-xs md:text-sm transition-all ${
               selectedAgent === 'all'
                 ? 'bg-green-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -316,7 +355,7 @@ export default function AdminChatPage() {
               <button
                 key={agent.id}
                 onClick={() => setSelectedAgent(agent.id)}
-                className={`px-3 py-1.5 rounded-full text-sm transition-all flex items-center gap-1 ${
+                className={`px-3 py-1.5 rounded-full text-xs md:text-sm transition-all flex items-center gap-1 ${
                   selectedAgent === agent.id
                     ? 'text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -339,11 +378,16 @@ export default function AdminChatPage() {
         </div>
       </div>
 
+      {/* Lista de conversaciones */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
         {filteredConversations.length === 0 ? (
           <div className="text-center py-12">
             <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No hay conversaciones {selectedAgent !== 'all' ? 'para este asesor' : 'aún'}</p>
+            <p className="text-gray-500">
+              {search ? 'No se encontraron conversaciones' : 
+               selectedAgent !== 'all' ? 'No hay conversaciones para este asesor' : 
+               'No hay conversaciones aún'}
+            </p>
           </div>
         ) : (
           <div className="divide-y">
@@ -351,15 +395,15 @@ export default function AdminChatPage() {
               <div key={conv.id} className="relative group">
                 <Link
                   href={`/admin/chat/${conv.id}`}
-                  className={`block p-4 hover:bg-gray-50 transition-colors ${
+                  className={`block p-3 md:p-4 hover:bg-gray-50 transition-colors ${
                     conv.unreadCount > 0 ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 md:gap-3">
                       <div className="relative">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-green-600" />
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
                         </div>
                         {conv.unreadCount > 0 && (
                           <div className="absolute -top-1 -right-1">
@@ -368,8 +412,8 @@ export default function AdminChatPage() {
                           </div>
                         )}
                       </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900 flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-900 flex items-center gap-2 text-sm md:text-base truncate">
                           {conv.userName || conv.userEmail}
                           {conv.unreadCount > 0 && (
                             <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">
@@ -377,21 +421,21 @@ export default function AdminChatPage() {
                             </span>
                           )}
                         </h3>
-                        <p className="text-sm text-gray-500">{conv.userEmail}</p>
+                        <p className="text-xs md:text-sm text-gray-500 truncate">{conv.userEmail}</p>
                         {conv.userPhone && (
                           <p className="text-xs text-gray-400">{conv.userPhone}</p>
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right ml-2">
                       <div className="mb-1">{getStatusBadge(conv.status)}</div>
                       <p className="text-xs text-gray-400">
-                        {new Date(conv.updatedAt).toLocaleString()}
+                        {new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>
                   {conv.lastMessage && (
-                    <p className={`text-sm mt-2 truncate pl-13 ${
+                    <p className={`text-xs md:text-sm mt-2 truncate pl-12 md:pl-15 ${
                       conv.unreadCount > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'
                     }`}>
                       {conv.lastMessage}
@@ -400,7 +444,7 @@ export default function AdminChatPage() {
                 </Link>
                 <button
                   onClick={(e) => deleteConversation(conv.id, e)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
