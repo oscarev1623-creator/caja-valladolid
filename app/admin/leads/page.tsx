@@ -45,7 +45,7 @@ const COLOR_PRESETS = [
 
 const CATEGORIES = [
   { id: 'all', name: 'Todos', icon: '📋', color: '#6b7280', bg: '#f3f4f6', filter: () => true },
-  { id: 'pending', name: 'Pendientes', icon: '⏳', color: '#f59e0b', bg: '#fef3c7', filter: (lead: Lead) => lead.status === 'PENDING' },
+  { id: 'pending', name: 'Pendientes', icon: '⏳', color: '#f59e0b', bg: '#fef3c7', filter: (lead: Lead) => lead.status === 'PENDING' || lead.status === 'PENDING_DOCUMENTS' },
   { id: 'contacted', name: 'Contactados', icon: '📞', color: '#3b82f6', bg: '#dbeafe', filter: (lead: Lead) => lead.status === 'CONTACTED' },
   { id: 'documentation', name: 'Documentación', icon: '📄', color: '#8b5cf6', bg: '#ede9fe', filter: (lead: Lead) => lead.stage === 'DOCUMENTATION' || lead.status === 'UNDER_REVIEW' },
   { id: 'review', name: 'En Revisión', icon: '🔍', color: '#6366f1', bg: '#e0e7ff', filter: (lead: Lead) => lead.status === 'UNDER_REVIEW' },
@@ -71,8 +71,8 @@ export default function LeadsPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  //const [page, setPage] = useState(1)
+  //const [totalPages, setTotalPages] = useState(1)
   const [totalLeads, setTotalLeads] = useState(0)
   const [activeCategory, setActiveCategory] = useState('all')
   const [sendingEmail, setSendingEmail] = useState<string | null>(null)
@@ -177,11 +177,10 @@ export default function LeadsPage() {
       setError('')
 
       const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '50',
-        ...(search && { search }),
-        ...(statusFilter && { status: statusFilter })
-      })
+  limit: '1000',  // ✅ Cargar hasta 1000 leads de una vez
+  ...(search && { search }),
+  ...(statusFilter && { status: statusFilter })
+})
 
       const response = await fetch(`/api/leads?${params}`, {
         credentials: 'include'
@@ -196,8 +195,8 @@ export default function LeadsPage() {
 
       if (data.success) {
         setAllLeads(data.data)
-        setTotalPages(data.pagination.pages)
-        setTotalLeads(data.pagination.total)
+        //setTotalPages(data.pagination.pages)
+        //setTotalLeads(data.pagination.total)
         setSelectedLeads([])
       } else {
         setError(data.error || 'Error al cargar leads')
@@ -210,9 +209,9 @@ export default function LeadsPage() {
     }
   }
 
-  useEffect(() => {
-    fetchLeads()
-  }, [page, statusFilter])
+useEffect(() => {
+  fetchLeads()
+}, [statusFilter])  // ✅ Ya no depende de page
 
   // Aplicar filtros (incluyendo el de asesor)
   useEffect(() => {
@@ -496,7 +495,7 @@ export default function LeadsPage() {
               Filtrar
             </button>
             <button
-              onClick={() => { setSearch(''); setStatusFilter(''); setActiveCategory('all'); setPage(1); fetchLeads(); }}
+              onClick={() => { setSearch(''); setStatusFilter(''); setActiveCategory('all'); fetchLeads(); }}
               className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm"
             >
               Limpiar
@@ -808,28 +807,15 @@ export default function LeadsPage() {
               </div>
 
               {/* Paginación */}
-              <div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-3 bg-gray-50 text-sm">
-                <div className="text-gray-600 text-xs">
-                  Mostrando {(page - 1) * 50 + 1} a {Math.min(page * 50, totalLeads)} de {totalLeads}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-100 text-sm"
-                  >
-                    ← Anterior
-                  </button>
-                  <span className="px-3 py-1 bg-green-600 text-white rounded-lg text-sm">Pág. {page}</span>
-                  <button
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="px-3 py-1 border rounded-lg disabled:opacity-50 hover:bg-gray-100 text-sm"
-                  >
-                    Siguiente →
-                  </button>
-                </div>
-              </div>
+{/* Contador simple sin paginación */}
+<div className="px-4 py-3 border-t border-gray-200 flex justify-between items-center bg-gray-50 text-sm">
+  <div className="text-gray-600 text-xs">
+    Mostrando {filteredLeads.length} de {totalLeads} leads
+  </div>
+  <div className="text-xs text-gray-400">
+    {selectedLeads.length > 0 && `${selectedLeads.length} seleccionados`}
+  </div>
+</div>
             </>
           )}
         </div>
