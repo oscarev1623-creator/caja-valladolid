@@ -1,5 +1,14 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer'
+
+// ✅ REGISTRAR HELVETICA MANUALMENTE (evita el error en Vercel)
+Font.register({
+  family: 'Helvetica',
+  fonts: [
+    { src: 'Helvetica' },
+    { src: 'Helvetica-Bold', fontWeight: 'bold' }
+  ]
+})
 
 // URL base para las imágenes
 const BASE_URL = process.env.NEXT_PUBLIC_URL || 'https://cajavalladolid.com'
@@ -42,21 +51,21 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   signatureImage: { 
-    width: 250,        // Ajusta este valor si quieres más ancho
-    height: 100,        // Ajusta este valor si quieres más alto
-    marginBottom: -30,   // ← 0 para que toque la línea
+    width: 250,        // ✅ TU AJUSTE
+    height: 100,       // ✅ TU AJUSTE
+    marginBottom: -30, // ✅ TU AJUSTE
     objectFit: 'contain'
   },
   selloImage: { 
-    width: 300,         // Ajusta este valor para tamaño del sello
-    height: 300,        // Ajusta este valor para tamaño del sello
+    width: 300,        // ✅ TU AJUSTE
+    height: 300,       // ✅ TU AJUSTE
     objectFit: 'contain',
   },
   signatureLine: { 
     borderTopWidth: 1, 
     borderTopColor: '#1f2937', 
     width: '100%', 
-    marginTop: 0,       // ← 0 para que la línea esté justo debajo de la firma
+    marginTop: 0,
     marginBottom: 5 
   },
   signatureText: { fontSize: 8, color: '#6b7280' },
@@ -162,8 +171,8 @@ export const CartaFormalizacionPDF = ({ lead, monto, plazo, tasa, polizaTipo, po
 
         {/* Sello */}
         <View style={styles.signatureBlock}>
-  <Image src={`${BASE_URL}/sello.png`} style={[styles.selloImage, { marginTop: -10 }]} />
-</View>
+          <Image src={`${BASE_URL}/sello.png`} style={[styles.selloImage, { marginTop: -10 }]} />
+        </View>
 
         {/* Cliente */}
         <View style={styles.signatureBlock}>
