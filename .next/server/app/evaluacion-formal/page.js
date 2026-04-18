@@ -9,4 +9,4 @@
               'https://connect.facebook.net/en_US/fbevents.js');
               fbq('init', '2190339731374417');
               fbq('track', 'PageView');
-            `}}),s.jsx("noscript",{children:s.jsx("img",{height:"1",width:"1",style:{display:"none"},src:"https://www.facebook.com/tr?id=2190339731374417&ev=PageView&noscript=1",alt:"facebook-pixel"})})]}),(0,s.jsxs)("body",{className:"font-sans antialiased min-h-screen",children:[e,s.jsx(o.c,{})]})]})}},67272:()=>{}};var r=require("../../webpack-runtime.js");r.C(e);var a=e=>r(r.s=e),s=r.X(0,[8948,2670,7851],()=>a(11216));module.exports=s})();
+            `}}),s.jsx("noscript",{children:s.jsx("img",{height:"1",width:"1",style:{display:"none"},src:"https://www.facebook.com/tr?id=2190339731374417&ev=PageView&noscript=1",alt:"facebook-pixel"})})]}),(0,s.jsxs)("body",{className:"font-sans antialiased min-h-screen",children:[e,s.jsx(o.c,{})]})]})}},67272:()=>{}};var r=require("../../webpack-runtime.js");r.C(e);var a=e=>r(r.s=e),s=r.X(0,[9276,2670,7851],()=>a(11216));module.exports=s})();
