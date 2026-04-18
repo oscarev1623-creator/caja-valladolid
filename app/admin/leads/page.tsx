@@ -481,18 +481,20 @@ useEffect(() => {
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
-            >
-              <option value="">Todos los estados</option>
-              <option value="PENDING">Pendiente</option>
-              <option value="CONTACTED">Contactado</option>
-              <option value="UNDER_REVIEW">En Revisión</option>
-              <option value="APPROVED">Aprobado</option>
-              <option value="REJECTED">Rechazado</option>
-            </select>
+<select
+  value={statusFilter}
+  onChange={(e) => setStatusFilter(e.target.value)}
+  className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+>
+  <option value="">Todos los estados</option>
+  <option value="PENDING">Pendiente</option>
+  <option value="PENDING_DOCUMENTS">Pendiente Documentos</option>
+  <option value="PENDING_CONTACT">Pendiente Contacto</option>
+  <option value="CONTACTED">Contactado</option>
+  <option value="UNDER_REVIEW">En Revisión</option>
+  <option value="APPROVED">Aprobado</option>
+  <option value="REJECTED">Rechazado</option>
+</select>
             <button
               onClick={fetchLeads}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm flex items-center justify-center gap-2"
