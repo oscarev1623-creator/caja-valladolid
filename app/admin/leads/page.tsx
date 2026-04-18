@@ -45,7 +45,11 @@ const COLOR_PRESETS = [
 
 const CATEGORIES = [
   { id: 'all', name: 'Todos', icon: '📋', color: '#6b7280', bg: '#f3f4f6', filter: () => true },
-  { id: 'pending', name: 'Pendientes', icon: '⏳', color: '#f59e0b', bg: '#fef3c7', filter: (lead: Lead) => lead.status === 'PENDING' || lead.status === 'PENDING_DOCUMENTS' },
+  { id: 'pending', name: 'Pendientes', icon: '⏳', color: '#f59e0b', bg: '#fef3c7', filter: (lead: Lead) => 
+  lead.status === 'PENDING' || 
+  lead.status === 'PENDING_DOCUMENTS' || 
+  lead.status === 'PENDING_CONTACT' 
+},
   { id: 'contacted', name: 'Contactados', icon: '📞', color: '#3b82f6', bg: '#dbeafe', filter: (lead: Lead) => lead.status === 'CONTACTED' },
   { id: 'documentation', name: 'Documentación', icon: '📄', color: '#8b5cf6', bg: '#ede9fe', filter: (lead: Lead) => lead.stage === 'DOCUMENTATION' || lead.status === 'UNDER_REVIEW' },
   { id: 'review', name: 'En Revisión', icon: '🔍', color: '#6366f1', bg: '#e0e7ff', filter: (lead: Lead) => lead.status === 'UNDER_REVIEW' },
@@ -343,15 +347,17 @@ useEffect(() => {
   }
 
   const getStatusConfig = (status: string) => {
-    const config: Record<string, { bg: string, text: string, icon: any, label: string }> = {
-      'PENDING': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente' },
-      'CONTACTED': { bg: '#dbeafe', text: '#1e40af', icon: Phone, label: 'Contactado' },
-      'APPROVED': { bg: '#d1fae5', text: '#065f46', icon: CheckCircle, label: 'Aprobado' },
-      'REJECTED': { bg: '#fee2e2', text: '#991b1b', icon: XCircle, label: 'Rechazado' },
-      'UNDER_REVIEW': { bg: '#e0e7ff', text: '#3730a3', icon: AlertTriangle, label: 'En Revisión' }
-    }
-    return config[status] || { bg: '#f3f4f6', text: '#374151', icon: AlertCircle, label: status }
+  const config: Record<string, { bg: string, text: string, icon: any, label: string }> = {
+    'PENDING': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente' },
+    'PENDING_DOCUMENTS': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente Docs' },
+    'PENDING_CONTACT': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente Contacto' },  // ← AGREGAR ESTA LÍNEA
+    'CONTACTED': { bg: '#dbeafe', text: '#1e40af', icon: Phone, label: 'Contactado' },
+    'APPROVED': { bg: '#d1fae5', text: '#065f46', icon: CheckCircle, label: 'Aprobado' },
+    'REJECTED': { bg: '#fee2e2', text: '#991b1b', icon: XCircle, label: 'Rechazado' },
+    'UNDER_REVIEW': { bg: '#e0e7ff', text: '#3730a3', icon: AlertTriangle, label: 'En Revisión' }
   }
+  return config[status] || { bg: '#f3f4f6', text: '#374151', icon: AlertCircle, label: status }
+}
 
   const getCategoryCount = (categoryId: string) => {
     if (categoryId === 'all') return allLeads.length
