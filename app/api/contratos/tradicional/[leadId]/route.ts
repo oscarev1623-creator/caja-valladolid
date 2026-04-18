@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { jsPDF } from 'jspdf'
+import { readFileSync } from 'fs'
+import path from 'path'
 
 const prisma = new PrismaClient()
 
@@ -30,6 +32,15 @@ export async function GET(
     const polizaTipo = monto <= 100000 ? 'Tipo I' : 'Tipo II'
     const polizaCosto = monto <= 100000 ? 1132.82 : 2211.82
 
+    // Cargar imágenes como base64
+    const logoPath = path.join(process.cwd(), 'public', 'logotipo.png')
+    const firmaPath = path.join(process.cwd(), 'public', 'juanmendez.png')
+    const selloPath = path.join(process.cwd(), 'public', 'sello.png')
+
+    const logoBase64 = readFileSync(logoPath).toString('base64')
+    const firmaBase64 = readFileSync(firmaPath).toString('base64')
+    const selloBase64 = readFileSync(selloPath).toString('base64')
+
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -44,20 +55,13 @@ export async function GET(
     let y = 20
 
     // ============================================
-    // HEADER CON LOGO
+    // HEADER CON LOGO PNG
     // ============================================
     doc.setFillColor(primaryColor)
     doc.rect(0, 0, 210, 35, 'F')
 
-    // LOGO de la empresa (círculo verde con texto blanco)
-    doc.setDrawColor('#ffffff')
-    doc.setFillColor('#ffffff')
-    doc.circle(25, 17.5, 8, 'F')
-    doc.setTextColor(primaryColor)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.text('CAJA', 25, 15, { align: 'center' })
-    doc.text('POPULAR', 25, 20, { align: 'center' })
+    // LOGO PNG
+    doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 15, 5, 20, 20)
 
     doc.setTextColor('#ffffff')
     doc.setFontSize(18)
@@ -193,39 +197,32 @@ export async function GET(
     y += 15
 
     // ============================================
-    // FIRMAS CON SELLO
+    // FIRMAS CON SELLO Y FIRMA PNG
     // ============================================
     
-    // SELLO de la empresa (círculo punteado)
-    doc.setDrawColor(primaryColor)
-    doc.setLineWidth(0.5)
-    doc.circle(45, y + 5, 12)
-    doc.setFontSize(7)
-    doc.setTextColor(primaryColor)
-    doc.setFont('helvetica', 'bold')
-    doc.text('CAJA POPULAR', 45, y, { align: 'center' })
-    doc.text('SAN BERNARDINO', 45, y + 4, { align: 'center' })
-    doc.text('DE SIENA', 45, y + 8, { align: 'center' })
-    doc.text('VALLADOLID', 45, y + 12, { align: 'center' })
+    // SELLO PNG
+    doc.addImage(`data:image/png;base64,${selloBase64}`, 'PNG', 25, y - 5, 25, 25)
 
-    // Líneas de firma
+    // FIRMA PNG (Presidente)
+    doc.addImage(`data:image/png;base64,${firmaBase64}`, 'PNG', 60, y, 40, 15)
+
+    // Línea de firma del cliente
     doc.setTextColor(grayColor)
     doc.setFontSize(10)
-    doc.text('_________________________', 70, y + 5)
     doc.text('_________________________', 145, y + 5)
 
     doc.setFontSize(8)
-    doc.text('Presidente del Consejo', 70, y + 11)
-    doc.text('El Acreditado', 145, y + 11)
+    doc.text('Presidente del Consejo', 70, y + 16)
+    doc.text('El Acreditado', 145, y + 16)
 
     // Nombres bajo las firmas
     doc.setFontSize(9)
     doc.setTextColor(textColor)
-    doc.text('Lic. Juan Carlos Méndez Pérez', 70, y + 19)
+    doc.text('Lic. Juan Carlos Méndez Pérez', 70, y + 24)
     const nombreCliente = lead.fullName || 'Cliente'
-    doc.text(nombreCliente.length > 28 ? nombreCliente.substring(0, 25) + '...' : nombreCliente, 145, y + 19)
+    doc.text(nombreCliente.length > 28 ? nombreCliente.substring(0, 25) + '...' : nombreCliente, 145, y + 24)
 
-    y += 35
+    y += 40
 
     // ============================================
     // PIE DE PÁGINA
