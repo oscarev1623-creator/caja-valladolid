@@ -57,7 +57,7 @@ export async function GET(
     doc.rect(0, 0, 210, 35, 'F')
     
     // LOGO PNG
-    doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 15, 5, 20, 20, undefined, 'FAST')
+    doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 20, 5, 30, 30, undefined, 'FAST')
 
     doc.setTextColor('#ffffff')
     doc.setFontSize(18)
