@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || ''
     
     const pageNum = Math.max(1, parseInt(searchParams.get('page') || '1') || 1)
-    const limitNum = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '10') || 10))
+    const limitNum = Math.max(1, parseInt(searchParams.get('limit') || '1000') || 1000)
     const skip = (pageNum - 1) * limitNum
 
     const where: any = {}
