@@ -137,31 +137,29 @@ export async function POST(request: NextRequest) {
 
     // Actualizar lead si se subieron documentos
     if (uploadedDocuments.length > 0) {
-      // ✅ CAMBIO ÚNICO: status ahora es UNDER_REVIEW
       await prisma.lead.update({
         where: { id: leadId },
         data: {
           documentsSubmitted: true,
           docsSubmittedAt: new Date(),
-          status: 'UNDER_REVIEW' // ✅ ANTES: 'DOCUMENTS_SUBMITTED'
+          status: 'UNDER_REVIEW'
         }
       })
       
       console.log('✅ Lead actualizado a UNDER_REVIEW. Documentos:', uploadedDocuments.length)
       
-      // ✅ Enviar correo de confirmación de documentos recibidos
-      try {
-        const { sendDocumentsReceivedEmail } = await import('@/lib/email')
-        await sendDocumentsReceivedEmail({
-          to: lead.email!,
-          nombre: lead.fullName,
-          leadId: lead.id
-        })
-        console.log('✅ Correo de documentos enviado a:', lead.email)
-      } catch (emailError) {
-        console.error('❌ Error enviando correo de documentos:', emailError)
-        // No fallar la petición si el correo falla
-      }
+      // ❌ CORREO COMENTADO - Ya se envía desde el frontend vía /api/send-email
+      // try {
+      //   const { sendDocumentsReceivedEmail } = await import('@/lib/email')
+      //   await sendDocumentsReceivedEmail({
+      //     to: lead.email!,
+      //     nombre: lead.fullName,
+      //     leadId: lead.id
+      //   })
+      //   console.log('✅ Correo de documentos enviado a:', lead.email)
+      // } catch (emailError) {
+      //   console.error('❌ Error enviando correo de documentos:', emailError)
+      // }
     }
 
     return NextResponse.json({
