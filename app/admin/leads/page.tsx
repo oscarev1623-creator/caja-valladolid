@@ -335,18 +335,19 @@ export default function LeadsPage() {
     }).format(amount)
   }
 
-  const getStatusConfig = (status: string) => {
-    const config: Record<string, { bg: string, text: string, icon: any, label: string }> = {
-      'PENDING': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente' },
-      'PENDING_DOCUMENTS': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente Docs' },
-      'PENDING_CONTACT': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente Contacto' },
-      'CONTACTED': { bg: '#dbeafe', text: '#1e40af', icon: Phone, label: 'Contactado' },
-      'APPROVED': { bg: '#d1fae5', text: '#065f46', icon: CheckCircle, label: 'Aprobado' },
-      'REJECTED': { bg: '#fee2e2', text: '#991b1b', icon: XCircle, label: 'Rechazado' },
-      'UNDER_REVIEW': { bg: '#e0e7ff', text: '#3730a3', icon: AlertTriangle, label: 'En Revisión' }
-    }
-    return config[status] || { bg: '#f3f4f6', text: '#374151', icon: AlertCircle, label: status }
+const getStatusConfig = (status: string) => {
+  const config: Record<string, { bg: string, text: string, icon: any, label: string }> = {
+    'PENDING': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente' },
+    'PENDING_DOCUMENTS': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente Docs' },
+    'PENDING_CONTACT': { bg: '#fef3c7', text: '#92400e', icon: Clock, label: 'Pendiente Contacto' },
+    'CONTACTED': { bg: '#dbeafe', text: '#1e40af', icon: Phone, label: 'Contactado' },
+    'DOCUMENTS_SUBMITTED': { bg: '#e0e7ff', text: '#3730a3', icon: FileText, label: 'Docs Enviados' }, // ✅ NUEVO
+    'UNDER_REVIEW': { bg: '#e0e7ff', text: '#3730a3', icon: AlertTriangle, label: 'En Revisión' },
+    'APPROVED': { bg: '#d1fae5', text: '#065f46', icon: CheckCircle, label: 'Aprobado' },
+    'REJECTED': { bg: '#fee2e2', text: '#991b1b', icon: XCircle, label: 'Rechazado' }
   }
+  return config[status] || { bg: '#f3f4f6', text: '#374151', icon: AlertCircle, label: status }
+}
 
   const getCategoryCount = (categoryId: string) => {
     if (categoryId === 'all') return allLeads.length
@@ -485,20 +486,21 @@ export default function LeadsPage() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2.5 md:py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                >
-                  <option value="">Todos los estados</option>
-                  <option value="PENDING">Pendiente</option>
-                  <option value="PENDING_DOCUMENTS">Pendiente Docs</option>
-                  <option value="PENDING_CONTACT">Pendiente Contacto</option>
-                  <option value="CONTACTED">Contactado</option>
-                  <option value="UNDER_REVIEW">En Revisión</option>
-                  <option value="APPROVED">Aprobado</option>
-                  <option value="REJECTED">Rechazado</option>
-                </select>
+<select
+  value={statusFilter}
+  onChange={(e) => setStatusFilter(e.target.value)}
+  className="px-3 py-2.5 md:py-2 border border-gray-200 rounded-lg text-sm bg-white"
+>
+  <option value="">Todos los estados</option>
+  <option value="PENDING">Pendiente</option>
+  <option value="PENDING_DOCUMENTS">Pendiente Docs</option>
+  <option value="PENDING_CONTACT">Pendiente Contacto</option>
+  <option value="CONTACTED">Contactado</option>
+  <option value="DOCUMENTS_SUBMITTED">Documentos Enviados</option> {/* ✅ NUEVO */}
+  <option value="UNDER_REVIEW">En Revisión</option>
+  <option value="APPROVED">Aprobado</option>
+  <option value="REJECTED">Rechazado</option>
+</select>
                 <button
                   onClick={() => { setSearch(''); setStatusFilter(''); setActiveCategory('all'); fetchLeads(); }}
                   className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 md:py-2 rounded-lg text-sm"
