@@ -137,18 +137,19 @@ export async function POST(request: NextRequest) {
 
     // Actualizar lead si se subieron documentos
     if (uploadedDocuments.length > 0) {
+      // ✅ CAMBIO ÚNICO: status ahora es UNDER_REVIEW
       await prisma.lead.update({
         where: { id: leadId },
         data: {
           documentsSubmitted: true,
           docsSubmittedAt: new Date(),
-          status: 'DOCUMENTS_SUBMITTED'
+          status: 'UNDER_REVIEW' // ✅ ANTES: 'DOCUMENTS_SUBMITTED'
         }
       })
       
-      console.log('✅ Lead actualizado. Documentos:', uploadedDocuments.length)
+      console.log('✅ Lead actualizado a UNDER_REVIEW. Documentos:', uploadedDocuments.length)
       
-      // ✅ NUEVO: Enviar correo de confirmación de documentos recibidos
+      // ✅ Enviar correo de confirmación de documentos recibidos
       try {
         const { sendDocumentsReceivedEmail } = await import('@/lib/email')
         await sendDocumentsReceivedEmail({
