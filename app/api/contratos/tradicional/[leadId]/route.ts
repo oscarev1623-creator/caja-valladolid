@@ -57,7 +57,7 @@ export async function GET(
     doc.rect(0, 0, 210, 35, 'F')
     
     // LOGO PNG
-    doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 15, 5, 20, 20)
+    doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 15, 5, 20, 20, undefined, 'FAST')
 
     doc.setTextColor('#ffffff')
     doc.setFontSize(18)
@@ -280,10 +280,10 @@ export async function GET(
     y += 20
 
     // SELLO PNG
-    doc.addImage(`data:image/png;base64,${selloBase64}`, 'PNG', -5, y - 5, 90, 40)
+    doc.addImage(`data:image/png;base64,${selloBase64}`, 'PNG', -5, y - 5, 90, 40, undefined, 'FAST')
     
     // FIRMA PNG
-    doc.addImage(`data:image/png;base64,${firmaBase64}`, 'PNG', 55, y - 10, 70, 38)
+    doc.addImage(`data:image/png;base64,${firmaBase64}`, 'PNG', 55, y - 10, 70, 38, undefined, 'FAST')
 
     // Línea de firma del cliente
     doc.setTextColor(grayColor)
