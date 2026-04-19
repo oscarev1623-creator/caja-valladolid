@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { validateFile, formatFileSize } from '@/lib/file-utils' // ✅ CAMBIO 1: Import agregado
 
 declare global {
   interface Window {
@@ -81,7 +82,25 @@ const [formData, setFormData] = useState({
     }))
   }
 
+  // ✅ CAMBIO 2: handleFileChange con validación de tamaño
   const handleFileChange = (field: keyof typeof documents, file: File | null) => {
+    if (!file) {
+      setDocuments(prev => ({ ...prev, [field]: null }))
+      return
+    }
+    
+    // Validar tamaño (máximo 4.5 MB)
+    if (file.size > 4.5 * 1024 * 1024) {
+      alert(`❌ El archivo "${file.name}" pesa ${formatFileSize(file.size)}. Máximo 4.5 MB permitido.`)
+      return
+    }
+    
+    const validation = validateFile(file)
+    if (!validation.valid) {
+      alert(`❌ ${validation.message}`)
+      return
+    }
+    
     setDocuments(prev => ({
       ...prev,
       [field]: file
@@ -100,13 +119,14 @@ const [formData, setFormData] = useState({
     )
   }
 
+  // ✅ CAMBIO 3: constanciaLaboral ya NO es obligatoria
   const validateRequiredDocuments = () => {
     const errors: string[] = []
     const required = [
       { field: 'ineFront', name: 'INE/IFE Frontal' },
       { field: 'ineBack', name: 'INE/IFE Trasera' },
       { field: 'comprobanteDomicilio', name: 'Comprobante de Domicilio' },
-      { field: 'constanciaLaboral', name: 'Constancia Laboral' }
+      // { field: 'constanciaLaboral', name: 'Constancia Laboral' } // ❌ COMENTADA - Ya no es obligatoria
     ]
     
     required.forEach(({ field, name }) => {
@@ -836,14 +856,11 @@ setFormData({
                         </div>
                       </div>
 
-                      <div className={`border-2 border-dashed rounded-xl p-6 mb-4 transition-colors ${
-                        validationErrors.includes('Constancia Laboral') 
-                          ? 'border-red-400 bg-red-50' 
-                          : 'border-gray-300 hover:border-green-400'
-                      }`}>
+                      {/* ✅ CAMBIO EN EL JSX: Constancia Laboral OPCIONAL */}
+                      <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 mb-4 hover:border-green-400 transition-colors">
                         <label className="block mb-2">
                           <span className="font-medium text-gray-900">Constancia Laboral</span>
-                          <span className="text-red-500 ml-1">*</span>
+                          <span className="text-gray-400 ml-1 text-xs">(Opcional)</span>
                           <p className="text-sm text-gray-500 mt-1">Carta de empleo, recibos de nómina, estados de cuenta</p>
                         </label>
                         <div className="mt-2">
