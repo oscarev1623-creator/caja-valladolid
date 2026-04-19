@@ -6,6 +6,11 @@ import path from 'path'
 
 const prisma = new PrismaClient()
 
+// Cargar imágenes
+const logoBase64 = readFileSync(path.join(process.cwd(), 'public', 'logotipo.png')).toString('base64')
+const firmaBase64 = readFileSync(path.join(process.cwd(), 'public', 'juanmendez.png')).toString('base64')
+const selloBase64 = readFileSync(path.join(process.cwd(), 'public', 'sello.png')).toString('base64')
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ leadId: string }> }
@@ -32,15 +37,6 @@ export async function GET(
     const polizaTipo = monto <= 100000 ? 'Tipo I' : 'Tipo II'
     const polizaCosto = monto <= 100000 ? 1132.82 : 2211.82
 
-    // Cargar imágenes como base64
-    const logoPath = path.join(process.cwd(), 'public', 'logotipo.png')
-    const firmaPath = path.join(process.cwd(), 'public', 'juanmendez.png')
-    const selloPath = path.join(process.cwd(), 'public', 'sello.png')
-
-    const logoBase64 = readFileSync(logoPath).toString('base64')
-    const firmaBase64 = readFileSync(firmaPath).toString('base64')
-    const selloBase64 = readFileSync(selloPath).toString('base64')
-
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -55,11 +51,11 @@ export async function GET(
     let y = 20
 
     // ============================================
-    // HEADER CON LOGO PNG
+    // HEADER CON LOGO
     // ============================================
     doc.setFillColor(primaryColor)
     doc.rect(0, 0, 210, 35, 'F')
-
+    
     // LOGO PNG
     doc.addImage(`data:image/png;base64,${logoBase64}`, 'PNG', 15, 5, 20, 20)
 
@@ -171,6 +167,46 @@ export async function GET(
     y += 12
 
     // ============================================
+    // CLÁUSULAS (PRIMERAS 5)
+    // ============================================
+    doc.setTextColor(primaryColor)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('CLÁUSULAS', 20, y)
+    y += 8
+
+    doc.setTextColor(textColor)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    
+    const clausulas = [
+      'PRIMERA. - OBJETO: El presente documento tiene por objeto formalizar la aceptación de las condiciones',
+      'generales para el otorgamiento del crédito aprobado a favor del acreditado.',
+      '',
+      'SEGUNDA. - MONTO Y DESTINO: El crédito aprobado asciende a la cantidad señalada en la sección "Detalles',
+      'del Crédito", debiendo ser destinado exclusivamente para los fines manifestados en la solicitud de crédito.',
+      '',
+      'TERCERA. - GARANTÍA: El acreditado se obliga a constituir garantía real suficiente que cubra al menos el',
+      '200% del monto del crédito otorgado. Dicha garantía deberá ser debidamente formalizada mediante',
+      'contrato de garantía, mismo que formará parte integrante del presente instrumento.',
+      '',
+      'CUARTA. - SEGURO: El acreditado se obliga a contratar y mantener vigente durante toda la vida del crédito',
+      'la póliza de seguro correspondiente, cuya prima será cubierta por el acreditado en los términos señalados',
+      'en la sección "Pólizas de Seguro".',
+      '',
+      'QUINTA. - ACEPTACIÓN: La firma del presente documento por parte del acreditado implica la aceptación',
+      'plena e incondicional de todos y cada uno de los términos y condiciones aquí establecidos, así como de',
+      'los que se contengan en los documentos accesorios que se deriven del presente acto.'
+    ]
+    
+    clausulas.forEach(c => {
+      doc.text(c, 20, y)
+      y += 5
+    })
+    
+    y += 5
+
+    // ============================================
     // PRÓXIMOS PASOS
     // ============================================
     doc.setTextColor(primaryColor)
@@ -194,45 +230,87 @@ export async function GET(
       y += 6
     })
 
+    // ============================================
+    // NUEVA PÁGINA
+    // ============================================
+    doc.addPage()
+    y = 30
+
+    // ============================================
+    // SEXTA CLÁUSULA (en página 2)
+    // ============================================
+    doc.setTextColor(primaryColor)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('CLÁUSULAS (CONTINUACIÓN)', 20, y)
+    y += 8
+
+    doc.setTextColor(textColor)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    
+    const clausulaSexta = [
+      'SEXTA. - JURISDICCIÓN: Para la interpretación y cumplimiento del presente documento, las partes se',
+      'someten expresamente a la jurisdicción de los tribunales competentes de la ciudad de Valladolid, Yucatán,',
+      'renunciando a cualquier otro fuero que pudiera corresponderles por razón de su domicilio presente o futuro.'
+    ]
+    
+    clausulaSexta.forEach(c => {
+      doc.text(c, 20, y)
+      y += 5
+    })
+    
     y += 15
 
     // ============================================
     // FIRMAS CON SELLO Y FIRMA PNG
     // ============================================
-    
-    // SELLO PNG
-    doc.addImage(`data:image/png;base64,${selloBase64}`, 'PNG', 25, y - 5, 25, 25)
+    doc.setTextColor(primaryColor)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('FIRMAS', 105, y, { align: 'center' })
+    y += 15
 
-    // FIRMA PNG (Presidente)
-    doc.addImage(`data:image/png;base64,${firmaBase64}`, 'PNG', 60, y, 40, 15)
+    doc.setTextColor(textColor)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Las partes que intervienen en el presente documento manifiestan su plena', 105, y, { align: 'center' })
+    y += 6
+    doc.text('conformidad con el contenido del mismo, firmando al calce para constancia.', 105, y, { align: 'center' })
+    y += 20
+
+    // SELLO PNG
+    doc.addImage(`data:image/png;base64,${selloBase64}`, 'PNG', -5, y - 5, 90, 40)
+    
+    // FIRMA PNG
+    doc.addImage(`data:image/png;base64,${firmaBase64}`, 'PNG', 55, y - 10, 70, 38)
 
     // Línea de firma del cliente
     doc.setTextColor(grayColor)
     doc.setFontSize(10)
     doc.text('_________________________', 145, y + 5)
 
-    doc.setFontSize(8)
-    doc.text('Presidente del Consejo', 70, y + 16)
-    doc.text('El Acreditado', 145, y + 16)
-
-    // Nombres bajo las firmas
     doc.setFontSize(9)
-    doc.setTextColor(textColor)
-    doc.text('Lic. Juan Carlos Méndez Pérez', 70, y + 24)
-    const nombreCliente = lead.fullName || 'Cliente'
-    doc.text(nombreCliente.length > 28 ? nombreCliente.substring(0, 25) + '...' : nombreCliente, 145, y + 24)
+    doc.text('Presidente del Consejo de Administración', 75, y + 20)
+    doc.text('El Acreditado', 145, y + 20)
 
-    y += 40
+    doc.setFontSize(10)
+    doc.setTextColor(textColor)
+    doc.text('Lic. Juan Carlos Méndez Pérez', 75, y + 30)
+    const nombreCliente = lead.fullName || 'Cliente'
+    doc.text(nombreCliente, 145, y + 30)
+
+    y += 50
 
     // ============================================
     // PIE DE PÁGINA
     // ============================================
     doc.setTextColor(grayColor)
-    doc.setFontSize(7)
+    doc.setFontSize(8)
     doc.text('Caja Popular San Bernardino de Siena Valladolid S.C. de A.P. de R.L. de C.V.', 105, y, { align: 'center' })
-    y += 4
+    y += 5
     doc.text('Calle 40 #204B entre 41 y 43, Col. Centro, Valladolid, Yucatán', 105, y, { align: 'center' })
-    y += 4
+    y += 5
     doc.text(`Folio: #${lead.id.slice(-8).toUpperCase()} · Documento generado electrónicamente · ${new Date().toLocaleDateString('es-MX')}`, 105, y, { align: 'center' })
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'))
