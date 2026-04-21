@@ -1,10 +1,10 @@
 import nodemailer from 'nodemailer'
-import sgMail from '@sendgrid/mail'
+// import sgMail from '@sendgrid/mail'  // ❌ COMENTADO - Ya no se usa
 
-// Configurar SendGrid (más confiable para Vercel)
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '')
+// ❌ SendGrid deshabilitado por API Key inválida
+// sgMail.setApiKey(process.env.SENDGRID_API_KEY || '')
 
-// Configurar transporter SMTP (Zoho) como respaldo
+// ✅ ZOHO como ÚNICO proveedor (confiable y ya pagado)
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || '587'),
@@ -484,6 +484,26 @@ const getEmailTemplate = (content: string, title: string, variant: 'default' | '
 }
 
 // ============================================
+// ✅ FUNCIÓN ÚNICA DE ENVÍO (ZOHO)
+// ============================================
+async function sendViaZoho(to: string, subject: string, html: string) {
+  console.log('📧 Enviando correo vía Zoho a:', to)
+  try {
+    await transporter.sendMail({
+      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
+      to,
+      subject,
+      html
+    })
+    console.log('✅ Correo enviado exitosamente a:', to)
+    return true
+  } catch (error: any) {
+    console.error('❌ Error enviando correo vía Zoho:', error.message)
+    throw error
+  }
+}
+
+// ============================================
 // 1. CORREO DE CONFIRMACIÓN DE SOLICITUD
 // ============================================
 export async function sendConfirmationEmail({ 
@@ -501,7 +521,7 @@ export async function sendConfirmationEmail({
   tipoCredito?: string
   chatToken?: string
 }) {
-  console.log('📧 Enviando confirmación vía SendGrid a:', to)
+  console.log('📧 Preparando confirmación para:', to)
   
   const montoFormateado = monto 
     ? `$${parseFloat(monto.toString()).toLocaleString('es-MX')}` 
@@ -557,25 +577,9 @@ export async function sendConfirmationEmail({
   `
 
   const variant = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' ? 'crypto' : 'default'
-
-  try {
-    await sgMail.send({
-      to,
-      from: 'contacto@cajavalladolid.com',
-      subject: '✨ ¡Hola! Hemos recibido tu solicitud de crédito',
-      html: getEmailTemplate(content, 'Solicitud recibida', variant)
-    })
-    console.log('✅ Correo enviado vía SendGrid a:', to)
-  } catch (error: any) {
-    console.error('❌ SendGrid falló, intentando con Zoho...')
-    await transporter.sendMail({
-      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
-      to,
-      subject: '✨ ¡Hola! Hemos recibido tu solicitud de crédito',
-      html: getEmailTemplate(content, 'Solicitud recibida', variant)
-    })
-    console.log('✅ Correo enviado vía Zoho a:', to)
-  }
+  const html = getEmailTemplate(content, 'Solicitud recibida', variant)
+  
+  return sendViaZoho(to, '✨ ¡Hola! Hemos recibido tu solicitud de crédito', html)
 }
 
 // ============================================
@@ -590,7 +594,7 @@ export async function sendDocumentsReceivedEmail({
   nombre: string
   leadId: string 
 }) {
-  console.log('📧 Enviando confirmación de documentos a:', to)
+  console.log('📧 Preparando confirmación de documentos para:', to)
   
   const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(nombre)}&chat_email=${encodeURIComponent(to)}`
 
@@ -633,32 +637,16 @@ export async function sendDocumentsReceivedEmail({
       <span class="guarantee-text"><strong>Caja Valladolid está procesando tu solicitud.</strong></span>
     </div>
   `
-// ✅ USAR ZOHO PRIMERO (más confiable y ya pagado)
-  try {
-    await transporter.sendMail({
-      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
-      to,
-      subject: '📄 ¡Documentos recibidos! Tu solicitud avanza',
-      html: getEmailTemplate(content, 'Documentos recibidos', 'success')
-    })
-    console.log('✅ Correo de documentos enviado vía Zoho a:', to)
-  } catch (zohoError) {
-    console.error('❌ Zoho falló, intentando con SendGrid...')
-    await sgMail.send({
-      to,
-      from: 'contacto@cajavalladolid.com',
-      subject: '📄 ¡Documentos recibidos! Tu solicitud avanza',
-      html: getEmailTemplate(content, 'Documentos recibidos', 'success')
-    })
-    console.log('✅ Correo de documentos enviado vía SendGrid a:', to)
-  }
+
+  const html = getEmailTemplate(content, 'Documentos recibidos', 'success')
+  return sendViaZoho(to, '📄 ¡Documentos recibidos! Tu solicitud avanza', html)
 }
 
 // ============================================
 // 3. CORREO DE NOTIFICACIÓN DE CHAT
 // ============================================
 export async function sendChatNotificationEmail({ to, name, message, conversationId }: { to: string; name: string; message: string; conversationId: string }) {
-  console.log('📧 Enviando notificación de chat con conversationId:', conversationId)
+  console.log('📧 Preparando notificación de chat para:', to)
   
   const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(name)}&chat_email=${encodeURIComponent(to)}&conversation_id=${conversationId}`
   
@@ -685,28 +673,15 @@ export async function sendChatNotificationEmail({ to, name, message, conversatio
     </div>
   `
 
-  try {
-    await transporter.sendMail({
-      from: '"Caja Valladolid - Oficina Virtual" <contacto@cajavalladolid.com>',
-      to,
-      subject: '📩 Nuevo mensaje de tu asesor',
-      html: getEmailTemplate(content, 'Nuevo mensaje', 'default')
-    })
-    console.log('✅ Notificación enviada vía Zoho a:', to)
-  } catch (error) {
-    console.error('❌ Error enviando notificación:', error)
-  }
+  const html = getEmailTemplate(content, 'Nuevo mensaje', 'default')
+  return sendViaZoho(to, '📩 Nuevo mensaje de tu asesor', html)
 }
 
 // ============================================
 // 4. CORREO GENÉRICO
 // ============================================
 export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  try {
-    await sgMail.send({ to, from: 'contacto@cajavalladolid.com', subject, html })
-  } catch {
-    await transporter.sendMail({ from: '"Caja Valladolid" <contacto@cajavalladolid.com>', to, subject, html })
-  }
+  return sendViaZoho(to, subject, html)
 }
 
 // ============================================
@@ -727,7 +702,7 @@ export async function sendApprovalEmail({
   tipoCredito?: string
   mensajePersonalizado?: string
 }) {
-  console.log('📧 Enviando correo de APROBACIÓN a:', to)
+  console.log('📧 Preparando correo de APROBACIÓN para:', to)
   
   const montoFormateado = monto 
     ? `$${parseFloat(monto.toString()).toLocaleString('es-MX')}` 
@@ -786,26 +761,7 @@ export async function sendApprovalEmail({
   `
 
   const variant = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' ? 'crypto' : 'success'
-
-  try {
-    await sgMail.send({
-      to,
-      from: 'Caja Valladolid <contacto@cajavalladolid.com>',
-      subject: '🎉 ¡Felicidades! Tu crédito ha sido APROBADO',
-      html: getEmailTemplate(content, 'Crédito Aprobado', variant)
-    })
-    console.log('✅ Correo de aprobación enviado vía SendGrid a:', to)
-  } catch (error: any) {
-    console.error('❌ SendGrid falló, intentando con Zoho...')
-    await transporter.sendMail({
-      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
-      to,
-      subject: '🎉 ¡Felicidades! Tu crédito ha sido APROBADO',
-      html: getEmailTemplate(content, 'Crédito Aprobado', variant)
-    })
-    console.log('✅ Correo de aprobación enviado vía Zoho a:', to)
-  }
+  const html = getEmailTemplate(content, 'Crédito Aprobado', variant)
+  
+  return sendViaZoho(to, '🎉 ¡Felicidades! Tu crédito ha sido APROBADO', html)
 }
-
-
-// Última actualización: Abril 2026 - Sistema de emails premium
