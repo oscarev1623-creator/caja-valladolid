@@ -316,6 +316,26 @@ export default function LeadsPage() {
     }
   }
 
+  const handleSendContract = async (leadId: string) => {
+  if (!confirm('¿Enviar el contrato por correo al cliente?')) return
+  
+  try {
+    const res = await fetch('/api/admin/send-contract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leadId })
+    })
+    const data = await res.json()
+    if (data.success) {
+      alert('✅ Contrato enviado correctamente')
+    } else {
+      alert('❌ Error: ' + data.error)
+    }
+  } catch (error) {
+    alert('❌ Error de conexión')
+  }
+}
+
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('es-MX', {
@@ -821,23 +841,20 @@ const getStatusConfig = (status: string) => {
                           </select>
                         )}
                         
-                        {lead.status === 'APPROVED' && (
-                          <div className="flex gap-2 pt-1">
-                            <button
-                              onClick={() => handleSendApprovalEmail(lead.id)}
-                              disabled={sendingEmail === lead.id}
-                              className="flex-1 p-2 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
-                            >
-                              {sendingEmail === lead.id ? 'Enviando...' : 'Enviar Correo'}
-                            </button>
-                            <button
-                              onClick={() => window.open(`/api/contratos/tradicional/${lead.id}`, '_blank')}
-                              className="flex-1 p-2 bg-blue-100 text-blue-700 rounded text-sm"
-                            >
-                              Contrato
-                            </button>
-                          </div>
-                        )}
+{lead.status === 'APPROVED' && (
+  <div className="flex gap-1 mt-2">
+    <button onClick={() => handleSendApprovalEmail(lead.id)} className="flex-1 p-1 bg-green-100 text-green-700 rounded text-xs">
+      Correo
+    </button>
+    <button onClick={() => window.open(`/api/contratos/tradicional/${lead.id}`, '_blank')} className="flex-1 p-1 bg-blue-100 text-blue-700 rounded text-xs">
+      Contrato
+    </button>
+    {/* ✅ NUEVO BOTÓN */}
+    <button onClick={() => handleSendContract(lead.id)} className="flex-1 p-1 bg-purple-100 text-purple-700 rounded text-xs">
+      Enviar
+    </button>
+  </div>
+)}
                       </div>
                     </div>
                   )

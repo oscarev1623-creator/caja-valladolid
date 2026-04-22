@@ -706,3 +706,112 @@ export async function sendApprovalEmail({
   
   return sendEmailHybrid(to, '🎉 ¡Felicidades! Tu crédito ha sido APROBADO', html)
 }
+
+// ============================================
+// 6. 📄 CORREO CON CONTRATO ADJUNTO (FUERA de sendApprovalEmail)
+// ============================================
+export async function sendContractEmail({ 
+  to, 
+  nombre, 
+  leadId,
+  pdfBuffer,
+  filename
+}: { 
+  to: string
+  nombre: string
+  leadId: string
+  pdfBuffer: Buffer
+  filename: string
+}) {
+  console.log('📧 Preparando envío de contrato para:', to)
+  
+  const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(nombre)}&chat_email=${encodeURIComponent(to)}`
+
+  const content = `
+    <div class="greeting-box">
+      <div class="greeting-title">📄 ¡${nombre}, aquí está tu contrato!</div>
+      <div class="greeting-subtitle">Adjunto encontrarás el documento oficial de tu crédito</div>
+    </div>
+    
+    <div class="details-card">
+      <div class="details-row">
+        <span class="details-label">Número de solicitud</span>
+        <span class="details-value">#${leadId.slice(-8).toUpperCase()}</span>
+      </div>
+      <div class="details-row">
+        <span class="details-label">Documento</span>
+        <span class="details-value">${filename}</span>
+      </div>
+    </div>
+    
+    <div class="message-box">
+      <div class="message-label">📝 Instrucciones</div>
+      <div class="message-content">
+        Por favor revisa el contrato adjunto. Si tienes dudas, comunícate con tu asesor en la Oficina Virtual.
+      </div>
+    </div>
+    
+    <div class="cta-box">
+      <div class="cta-title">💬 ¿Dudas sobre el contrato?</div>
+      <div class="cta-subtitle">Habla directamente con tu asesor</div>
+      <a href="${chatUrl}" class="cta-button">Abrir Oficina Virtual</a>
+    </div>
+    
+    <div class="guarantee-badge">
+      <span class="guarantee-icon">🔒</span>
+      <span class="guarantee-text"><strong>Documento oficial de Caja Valladolid.</strong></span>
+    </div>
+  `
+
+  const html = getEmailTemplate(content, 'Contrato de Crédito', 'success')
+  
+  return sendEmailHybridWithAttachment(to, '📄 Contrato de Crédito - Caja Valladolid', html, pdfBuffer, filename)
+}
+
+// ✅ Función híbrida CON ATTACHMENT
+async function sendEmailHybridWithAttachment(
+  to: string, 
+  subject: string, 
+  html: string, 
+  attachment: Buffer, 
+  filename: string
+) {
+  console.log('📧 Enviando correo con adjunto vía ZeptoMail a:', to)
+  
+  try {
+    await zeptoMailTransporter.sendMail({
+      from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
+      to,
+      subject,
+      html,
+      attachments: [{
+        filename,
+        content: attachment,
+        contentType: 'application/pdf'
+      }]
+    })
+    console.log('✅ Contrato enviado exitosamente vía ZeptoMail a:', to)
+    return true
+  } catch (zeptoError: any) {
+    console.error('⚠️ ZeptoMail falló con adjunto, intentando Zoho...')
+    
+    try {
+      await zohoTransporter.sendMail({
+        from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
+        to,
+        subject,
+        html,
+        attachments: [{
+          filename,
+          content: attachment,
+          contentType: 'application/pdf'
+        }]
+      })
+      console.log('✅ Contrato enviado vía Zoho a:', to)
+      return true
+    } catch (zohoError: any) {
+      console.error('❌ Ambos proveedores fallaron con adjunto')
+      throw new Error(`Error enviando contrato`)
+    }
+  }
+}
