@@ -4,6 +4,16 @@ import { PrismaClient } from '@prisma/client'
 import { put } from '@vercel/blob'
 import { validateFile, formatFileSize } from '@/lib/file-utils'
 
+// ✅ CONFIGURACIÓN PARA AUMENTAR LÍMITE DE TAMAÑO
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+    responseLimit: false,
+  },
+}
+
 const prisma = new PrismaClient()
 
 interface UploadedDocument {
@@ -120,7 +130,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
               {
                 success: false,
-                error: 'El archivo es demasiado grande. Límite: 4.5 MB. Por favor comprime la imagen o usa un archivo más pequeño.',
+                error: 'El archivo es demasiado grande. Límite: 10 MB. Por favor comprime la imagen o usa un archivo más pequeño.',
                 code: 'FILE_TOO_LARGE'
               },
               { status: 413 }
@@ -147,19 +157,6 @@ export async function POST(request: NextRequest) {
       })
       
       console.log('✅ Lead actualizado a UNDER_REVIEW. Documentos:', uploadedDocuments.length)
-      
-      // ❌ CORREO COMENTADO - Ya se envía desde el frontend vía /api/send-email
-      // try {
-      //   const { sendDocumentsReceivedEmail } = await import('@/lib/email')
-      //   await sendDocumentsReceivedEmail({
-      //     to: lead.email!,
-      //     nombre: lead.fullName,
-      //     leadId: lead.id
-      //   })
-      //   console.log('✅ Correo de documentos enviado a:', lead.email)
-      // } catch (emailError) {
-      //   console.error('❌ Error enviando correo de documentos:', emailError)
-      // }
     }
 
     return NextResponse.json({
@@ -171,7 +168,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Error fatal:', error)
     
-    // Respuesta de error amigable
+    // ✅ SIEMPRE DEVOLVER JSON
     return NextResponse.json(
       { 
         success: false, 
