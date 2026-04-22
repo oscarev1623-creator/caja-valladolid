@@ -1,5 +1,0 @@
-{
-  "/page": "app/page.js",
-  "/api/contratos/tradicional/[leadId]/route": "app/api/contratos/tradicional/[leadId]/route.js",
-  "/admin/leads/page": "app/admin/leads/page.js"
-}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Upload, FileText, User, CheckCircle, AlertCircle } from 'lucide-react'
 import { validateFile, ALLOWED_EXTENSIONS, formatFileSize } from '@/lib/file-utils'
+import { put } from '@vercel/blob'
 
 // Interfaces para tipado
 interface Lead {
@@ -110,10 +111,10 @@ export default function DocumentosPage() {
   const validateRequiredDocuments = (): boolean => {
     const errors: string[] = []
     const required = [
-  { field: 'ineFront', name: 'INE/IFE Frontal' },
-  { field: 'ineBack', name: 'INE/IFE Trasera' },
-  { field: 'comprobanteDomicilio', name: 'Comprobante de Domicilio' }
-]
+      { field: 'ineFront', name: 'INE/IFE Frontal' },
+      { field: 'ineBack', name: 'INE/IFE Trasera' },
+      { field: 'comprobanteDomicilio', name: 'Comprobante de Domicilio' }
+    ]
     
     required.forEach(({ field, name }) => {
       if (!documents[field as keyof Documents]) {
@@ -125,28 +126,28 @@ export default function DocumentosPage() {
     return errors.length === 0
   }
   
-const handleFileChange = (field: keyof Documents, file: File | null) => {
-  setFileError(null)
-  
-  if (!file) {
-    setDocuments(prev => ({ ...prev, [field]: null }))
-    return
-  }
-  
-  // ✅ NUEVO: Validar tamaño máximo 10 MB
-  if (file.size > 10 * 1024 * 1024) {
-    const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
-    alert(`❌ El archivo pesa ${sizeMB} MB. Máximo 10 MB.`)
-    return
-  }
-  
-  const validation = validateFile(file)
-  
-  if (!validation.valid) {
-    setFileError(validation.message || 'Archivo no válido')
-    alert(`❌ ${validation.message}`)
-    return
-  }
+  const handleFileChange = (field: keyof Documents, file: File | null) => {
+    setFileError(null)
+    
+    if (!file) {
+      setDocuments(prev => ({ ...prev, [field]: null }))
+      return
+    }
+    
+    // Validar tamaño máximo 10 MB
+    if (file.size > 10 * 1024 * 1024) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
+      alert(`❌ El archivo pesa ${sizeMB} MB. Máximo 10 MB.`)
+      return
+    }
+    
+    const validation = validateFile(file)
+    
+    if (!validation.valid) {
+      setFileError(validation.message || 'Archivo no válido')
+      alert(`❌ ${validation.message}`)
+      return
+    }
     
     setDocuments(prev => ({
       ...prev,
@@ -190,92 +191,95 @@ const handleFileChange = (field: keyof Documents, file: File | null) => {
       setLoading(true)
       setFileError(null)
       
-      const submitFormData = new FormData()
+      let uploadedCount = 0
       
-      // Agregar información del formulario
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value) submitFormData.append(key, value)
+      // 1️⃣ SUBIR CADA ARCHIVO DIRECTAMENTE A VERCEL BLOB
+      for (const [field, file] of Object.entries(documents)) {
+        if (file) {
+          console.log(`📤 Subiendo ${field} directamente a Vercel Blob...`)
+          
+          try {
+            const blob = await put(
+              `${lead.id}/${field}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`,
+              file,
+              {
+                access: 'public',
+                token: process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN,
+                addRandomSuffix: true,
+              }
+            )
+            
+            console.log(`✅ ${field} subido:`, blob.url)
+            
+            // 2️⃣ GUARDAR REFERENCIA EN LA BASE DE DATOS
+            const saveResponse = await fetch('/api/documents/save', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                leadId: lead.id,
+                field,
+                url: blob.url,
+                filename: file.name,
+                size: file.size
+              })
+            })
+            
+            if (!saveResponse.ok) {
+              console.error(`Error guardando referencia de ${field}:`, await saveResponse.text())
+              throw new Error(`Error al guardar ${field}`)
+            }
+            
+            uploadedCount++
+          } catch (uploadError: any) {
+            console.error(`❌ Error subiendo ${field}:`, uploadError)
+            throw new Error(`Error al subir ${field}: ${uploadError.message}`)
+          }
+        }
+      }
+      
+      // 3️⃣ ACTUALIZAR LEAD CON DATOS DEL FORMULARIO
+      const updateResponse = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          curp: formData.curp,
+          ocupacion: formData.ocupacion,
+          ingresoMensual: parseFloat(formData.ingresoMensual.replace(/[^0-9.-]/g, '')) || 0,
+          tiempoEmpleo: formData.tiempoEmpleo,
+          direccion: formData.direccion,
+          comentarios: formData.comentarios,
+          documentsSubmitted: true,
+          status: 'UNDER_REVIEW'
+        })
       })
       
-      // Agregar documentos
-      Object.entries(documents).forEach(([key, file]) => {
-        if (file) submitFormData.append(key, file)
-      })
+      if (!updateResponse.ok) {
+        console.error('Error actualizando lead:', await updateResponse.text())
+      }
       
-      submitFormData.append('token', token)
-      submitFormData.append('leadId', lead.id)
-      submitFormData.append('userId', 'client')
+      // 4️⃣ ENVIAR CORREO DE CONFIRMACIÓN
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: lead.email,
+            nombre: lead.fullName,
+            tipo: 'documentos',
+            leadId: lead.id
+          })
+        })
+        console.log('✅ Correo de confirmación enviado')
+      } catch (emailError) {
+        console.error('❌ Error enviando correo:', emailError)
+      }
       
-const response = await fetch('/api/documents/upload', {
-  method: 'POST',
-  body: submitFormData
-})
-
-// ✅ Verificar si la respuesta es JSON
-const contentType = response.headers.get('content-type')
-if (!contentType || !contentType.includes('application/json')) {
-  const text = await response.text()
-  console.error('❌ Respuesta no JSON:', text)
-  
-  if (text.includes('413') || text.includes('too large')) {
-    throw new Error('Archivos demasiado grandes. Máximo 10 MB por archivo.')
-  }
-  throw new Error('Error del servidor. Intenta con archivos más pequeños.')
-}
-
-const result = await response.json()
-
-if (result.success) {
-  // ✅ ACTUALIZAR LEAD CON DATOS DEL FORMULARIO
-  const updateResponse = await fetch(`/api/leads/${lead.id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      curp: formData.curp,
-      ocupacion: formData.ocupacion,
-      ingresoMensual: parseFloat(formData.ingresoMensual.replace(/[^0-9.-]/g, '')) || 0,
-      tiempoEmpleo: formData.tiempoEmpleo,
-      direccion: formData.direccion,
-      comentarios: formData.comentarios,
-      documentsSubmitted: true,
-      status: 'UNDER_REVIEW'
-    })
-  })
-  
-  if (!updateResponse.ok) {
-    console.error('Error actualizando lead:', await updateResponse.text())
-  }
-  
-  // ✅ ENVIAR CORREO DE CONFIRMACIÓN DE DOCUMENTOS RECIBIDOS
-  try {
-    await fetch('/api/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: lead.email,
-        nombre: lead.fullName,
-        tipo: 'documentos',
-        leadId: lead.id
-      })
-    })
-    console.log('✅ Correo de confirmación de documentos enviado')
-  } catch (emailError) {
-    console.error('❌ Error enviando correo de documentos:', emailError)
-    // No bloqueamos el flujo si falla el correo
-  }
-  
-  alert(`✅ ${result.message}`)
-  router.push(`/gracias`)
-}
+      alert(`✅ ${uploadedCount} archivo(s) subido(s) correctamente`)
+      router.push(`/gracias`)
       
     } catch (error: any) {
       console.error('Error:', error)
-      
-      if (error.message.includes('413') || error.message.includes('demasiado grande')) {
-        alert('❌ El archivo es demasiado grande. Máximo 10 MB por archivo.')
-      } else {
-        alert(`❌ ${error.message || 'Error al enviar el formulario'}`)
-      }
+      alert(`❌ ${error.message || 'Error al enviar el formulario'}`)
     } finally {
       setLoading(false)
     }
@@ -636,27 +640,27 @@ if (result.success) {
                 </div>
               </div>
               
-{/* Constancia laboral - AHORA OPCIONAL */}
-<div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-green-400 transition-colors">
-  <label className="block mb-2">
-    <span className="font-medium text-gray-900">Constancia Laboral o Comprobante de Ingresos</span>
-    <span className="text-gray-400 ml-1 text-xs">(Opcional)</span>
-    <p className="text-sm text-gray-500 mt-1">Carta de empleo, estados de cuenta, recibos de nómina</p>
-  </label>
-  <div className="mt-2">
-    <input
-      type="file"
-      accept=".pdf,.jpg,.jpeg,.png"
-      onChange={(e) => handleFileChange('constanciaLaboral', e.target.files?.[0] || null)}
-      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-    />
-    {documents.constanciaLaboral && (
-      <p className="mt-2 text-sm text-green-600">
-        ✅ Archivo seleccionado: {documents.constanciaLaboral.name} ({formatFileSize(documents.constanciaLaboral.size)})
-      </p>
-    )}
-  </div>
-</div>
+              {/* Constancia laboral - OPCIONAL */}
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 hover:border-green-400 transition-colors">
+                <label className="block mb-2">
+                  <span className="font-medium text-gray-900">Constancia Laboral o Comprobante de Ingresos</span>
+                  <span className="text-gray-400 ml-1 text-xs">(Opcional)</span>
+                  <p className="text-sm text-gray-500 mt-1">Carta de empleo, estados de cuenta, recibos de nómina</p>
+                </label>
+                <div className="mt-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileChange('constanciaLaboral', e.target.files?.[0] || null)}
+                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                  />
+                  {documents.constanciaLaboral && (
+                    <p className="mt-2 text-sm text-green-600">
+                      ✅ Archivo seleccionado: {documents.constanciaLaboral.name} ({formatFileSize(documents.constanciaLaboral.size)})
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
           
