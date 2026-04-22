@@ -6,16 +6,14 @@ const prisma = new PrismaClient()
 
 export async function POST(request: NextRequest) {
   try {
-    // Verificar sesión
-    const session = request.cookies.get('admin_session')?.value
-    if (session !== 'authenticated') {
+    const { leadId } = await request.json()
+
+    if (!leadId) {
       return NextResponse.json(
-        { success: false, error: 'No autorizado' },
-        { status: 401 }
+        { success: false, error: 'Lead ID requerido' },
+        { status: 400 }
       )
     }
-
-    const { leadId } = await request.json()
 
     // Obtener datos del lead
     const lead = await prisma.lead.findUnique({
@@ -29,7 +27,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ✅ VALIDAR QUE EL LEAD TENGA EMAIL
     if (!lead.email) {
       return NextResponse.json(
         { success: false, error: 'El lead no tiene un email registrado' },
@@ -37,12 +34,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Calcular pago mensual (SIN ANTICIPO)
+    // ✅ USAR plazo DEL LEAD (o 36 por defecto)
     const monto = lead.estimatedAmount || 50000
-    const plazo = lead.plazo || 36
-    const tasa = 11 // 11% anual
+    const plazo = (lead as any).plazo || 36
+    const tasa = lead.creditType === 'CRYPTO' ? 5.4 : 11.0
     
-    // Cálculo simple SIN anticipo
     const tasaMensual = tasa / 100 / 12
     const pagoMensual = (monto * tasaMensual * Math.pow(1 + tasaMensual, plazo)) / 
                         (Math.pow(1 + tasaMensual, plazo) - 1)
@@ -54,7 +50,6 @@ export async function POST(request: NextRequest) {
       pagoMensual: Math.round(pagoMensual)
     })
 
-    // ✅ MENSAJE PERSONALIZADO CON LOS DETALLES DEL CRÉDITO
     const mensajePersonalizado = `
       ¡Tu crédito por $${monto.toLocaleString('es-MX')} ha sido aprobado!
       
@@ -67,7 +62,7 @@ export async function POST(request: NextRequest) {
       Comunícate a la Oficina Virtual para recibir los detalles finales y completar el proceso.
     `.trim()
 
-    // ✅ ENVIAR CORREO USANDO LA FUNCIÓN DE lib/email.ts
+    // Enviar correo
     try {
       await sendApprovalEmail({
         to: lead.email,
@@ -79,11 +74,11 @@ export async function POST(request: NextRequest) {
       })
       
       console.log('✅ Correo de aprobación enviado a:', lead.email)
-    } catch (emailError) {
+    } catch (emailError: any) {
       console.error('❌ Error enviando correo:', emailError)
       return NextResponse.json({
         success: false,
-        error: 'Error al enviar el correo. Intenta de nuevo.'
+        error: `Error al enviar el correo: ${emailError.message}`
       }, { status: 500 })
     }
 
