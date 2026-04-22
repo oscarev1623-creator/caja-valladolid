@@ -599,10 +599,14 @@ const generateDocumentLink = async () => {
                 ? 'bg-gray-200 text-gray-600 italic text-xs text-center w-full max-w-full'
                 : 'bg-white text-gray-800 rounded-tl-none shadow-sm'
             }`}>
-              {msg.senderType === 'system' && <div className="text-xs mb-1">📢 Sistema</div>}
-              {msg.message && (
+{msg.senderType === 'system' && <div className="text-xs mb-1">📢 Sistema</div>}
+{msg.message && (
   <p 
-    className="text-sm whitespace-pre-wrap break-all [&>span>strong]:font-bold [&>span>strong]:text-gray-900"
+    className={`text-sm break-all [&>span>strong]:font-bold [&>span>strong]:text-gray-900 ${
+      msg.senderType === 'system' 
+        ? 'whitespace-pre-line text-left'  // ✅ Para system: respeta saltos de línea y alinea a la izquierda
+        : 'whitespace-pre-wrap'            // Para otros: comportamiento normal
+    }`}
     dangerouslySetInnerHTML={{ __html: formatMessage(msg.message) }}
   />
 )}
