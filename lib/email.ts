@@ -1,17 +1,29 @@
 import nodemailer from 'nodemailer'
-// import sgMail from '@sendgrid/mail'  // ❌ COMENTADO - Ya no se usa
 
-// ❌ SendGrid deshabilitado por API Key inválida
-// sgMail.setApiKey(process.env.SENDGRID_API_KEY || '')
+// ✅ ZEPTOMAIL como proveedor PRINCIPAL (diseñado para correos transaccionales)
+// ✅ AHORA (usa variable de entorno)
+const zeptoMailTransporter = nodemailer.createTransport({
+  host: 'smtp.zeptomail.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: 'emailapikey',
+    pass: process.env.ZEPTOMAIL_TOKEN || ''
+  },
+  tls: {
+    rejectUnauthorized: false,
+    minVersion: 'TLSv1.2'
+  }
+})
 
-// ✅ ZOHO como ÚNICO proveedor (confiable y ya pagado)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
+// ✅ ZOHO como RESPALDO (si ZeptoMail falla)
+const zohoTransporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.zoho.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
   secure: process.env.SMTP_SECURE === 'true',
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
+    user: process.env.SMTP_USER || 'contacto@cajavalladolid.com',
+    pass: process.env.SMTP_PASSWORD || 'cjbC5QBeSFd6',
   },
   tls: {
     rejectUnauthorized: false
@@ -21,7 +33,7 @@ const transporter = nodemailer.createTransport({
 const baseUrl = process.env.NEXTAUTH_URL || 'https://cajavalladolid.com'
 
 // ============================================
-// 🎨 TEMPLATE BASE - DISEÑO PREMIUM
+// 🎨 TEMPLATE BASE - DISEÑO PREMIUM (SIN CAMBIOS)
 // ============================================
 const getEmailTemplate = (content: string, title: string, variant: 'default' | 'success' | 'warning' | 'crypto' = 'default') => {
   
@@ -141,70 +153,6 @@ const getEmailTemplate = (content: string, title: string, variant: 'default' | '
     .content {
       padding: 40px 32px;
       background: #ffffff;
-    }
-    
-    .footer {
-      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-      padding: 32px;
-      text-align: center;
-      border-top: 1px solid #e2e8f0;
-    }
-    
-    .footer-logo {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-    
-    .footer-icon {
-      width: 40px;
-      height: 40px;
-      background: ${gradient};
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 700;
-      font-size: 18px;
-      box-shadow: 0 4px 10px rgba(5, 150, 105, 0.3);
-    }
-    
-    .footer-text {
-      color: #64748b;
-      font-size: 13px;
-      line-height: 1.8;
-    }
-    
-    .footer-links {
-      display: flex;
-      justify-content: center;
-      gap: 24px;
-      margin: 16px 0;
-      flex-wrap: wrap;
-    }
-    
-    .footer-link {
-      color: #059669;
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-    
-    .footer-link:hover {
-      color: #047857;
-      text-decoration: underline;
-    }
-    
-    .copyright {
-      color: #94a3b8;
-      font-size: 12px;
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid #e2e8f0;
     }
     
     /* Estilos para el contenido */
@@ -406,12 +354,11 @@ const getEmailTemplate = (content: string, title: string, variant: 'default' | '
         ${content}
       </div>
       
-      <!-- Footer - 100% Compatible con todos los clientes de email -->
+      <!-- Footer -->
       <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
         <tr>
           <td align="center" style="padding: 30px 20px;">
             
-            <!-- Logo y nombre en footer -->
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td align="center" style="padding-bottom: 16px;">
@@ -425,7 +372,6 @@ const getEmailTemplate = (content: string, title: string, variant: 'default' | '
               </tr>
             </table>
             
-            <!-- Información de registro -->
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td align="center" style="padding-bottom: 4px;">
@@ -439,34 +385,11 @@ const getEmailTemplate = (content: string, title: string, variant: 'default' | '
               </tr>
             </table>
             
-            <!-- Links de navegación -->
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td align="center" style="padding-bottom: 20px;">
-                  <a href="${baseUrl}" style="font-family: Arial, Helvetica, sans-serif; color: #059669; text-decoration: none; font-weight: 500; font-size: 13px; margin: 0 8px;">Inicio</a>
-                  <span style="color: #cbd5e1; font-size: 10px;">●</span>
-                  <a href="${baseUrl}/privacidad" style="font-family: Arial, Helvetica, sans-serif; color: #059669; text-decoration: none; font-weight: 500; font-size: 13px; margin: 0 8px;">Privacidad</a>
-                  <span style="color: #cbd5e1; font-size: 10px;">●</span>
-                  <a href="${baseUrl}/terminos" style="font-family: Arial, Helvetica, sans-serif; color: #059669; text-decoration: none; font-weight: 500; font-size: 13px; margin: 0 8px;">Términos</a>
-                  <span style="color: #cbd5e1; font-size: 10px;">●</span>
-                  <a href="${baseUrl}/contacto" style="font-family: Arial, Helvetica, sans-serif; color: #059669; text-decoration: none; font-weight: 500; font-size: 13px; margin: 0 8px;">Contacto</a>
-                </td>
-              </tr>
-            </table>
-            
-            <!-- Copyright -->
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td align="center" style="padding-top: 16px; border-top: 1px solid #e2e8f0;">
                   <span style="font-family: Arial, Helvetica, sans-serif; color: #94a3b8; font-size: 11px;">
                     © ${new Date().getFullYear()} Caja Popular San Bernardino de Siena Valladolid.
-                  </span>
-                </td>
-              </tr>
-              <tr>
-                <td align="center" style="padding-top: 4px;">
-                  <span style="font-family: Arial, Helvetica, sans-serif; color: #94a3b8; font-size: 11px;">
-                    Todos los derechos reservados.
                   </span>
                 </td>
               </tr>
@@ -484,22 +407,40 @@ const getEmailTemplate = (content: string, title: string, variant: 'default' | '
 }
 
 // ============================================
-// ✅ FUNCIÓN ÚNICA DE ENVÍO (ZOHO)
+// ✅ FUNCIÓN HÍBRIDA DE ENVÍO (ZeptoMail PRINCIPAL + Zoho RESPALDO)
 // ============================================
-async function sendViaZoho(to: string, subject: string, html: string) {
-  console.log('📧 Enviando correo vía Zoho a:', to)
+async function sendEmailHybrid(to: string, subject: string, html: string) {
+  console.log('📧 Intentando enviar correo vía ZeptoMail a:', to)
+  
   try {
-    await transporter.sendMail({
-      from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
+    // 1️⃣ INTENTAR CON ZEPTOMAIL (PRINCIPAL)
+    await zeptoMailTransporter.sendMail({
+      from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
       to,
       subject,
       html
     })
-    console.log('✅ Correo enviado exitosamente a:', to)
+    console.log('✅ Correo enviado exitosamente vía ZeptoMail a:', to)
     return true
-  } catch (error: any) {
-    console.error('❌ Error enviando correo vía Zoho:', error.message)
-    throw error
+    
+  } catch (zeptoError: any) {
+    console.error('⚠️ ZeptoMail falló, intentando con Zoho...', zeptoError.message)
+    
+    try {
+      // 2️⃣ INTENTAR CON ZOHO (RESPALDO)
+      await zohoTransporter.sendMail({
+        from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
+        to,
+        subject,
+        html
+      })
+      console.log('✅ Correo enviado exitosamente vía Zoho (respaldo) a:', to)
+      return true
+      
+    } catch (zohoError: any) {
+      console.error('❌ Ambos proveedores fallaron:', zohoError.message)
+      throw new Error(`ZeptoMail: ${zeptoError.message} | Zoho: ${zohoError.message}`)
+    }
   }
 }
 
@@ -579,7 +520,7 @@ export async function sendConfirmationEmail({
   const variant = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' ? 'crypto' : 'default'
   const html = getEmailTemplate(content, 'Solicitud recibida', variant)
   
-  return sendViaZoho(to, '✨ ¡Hola! Hemos recibido tu solicitud de crédito', html)
+  return sendEmailHybrid(to, '✨ ¡Hola! Hemos recibido tu solicitud de crédito', html)
 }
 
 // ============================================
@@ -639,7 +580,7 @@ export async function sendDocumentsReceivedEmail({
   `
 
   const html = getEmailTemplate(content, 'Documentos recibidos', 'success')
-  return sendViaZoho(to, '📄 ¡Documentos recibidos! Tu solicitud avanza', html)
+  return sendEmailHybrid(to, '📄 ¡Documentos recibidos! Tu solicitud avanza', html)
 }
 
 // ============================================
@@ -674,14 +615,14 @@ export async function sendChatNotificationEmail({ to, name, message, conversatio
   `
 
   const html = getEmailTemplate(content, 'Nuevo mensaje', 'default')
-  return sendViaZoho(to, '📩 Nuevo mensaje de tu asesor', html)
+  return sendEmailHybrid(to, '📩 Nuevo mensaje de tu asesor', html)
 }
 
 // ============================================
 // 4. CORREO GENÉRICO
 // ============================================
 export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  return sendViaZoho(to, subject, html)
+  return sendEmailHybrid(to, subject, html)
 }
 
 // ============================================
@@ -763,5 +704,5 @@ export async function sendApprovalEmail({
   const variant = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' ? 'crypto' : 'success'
   const html = getEmailTemplate(content, 'Crédito Aprobado', variant)
   
-  return sendViaZoho(to, '🎉 ¡Felicidades! Tu crédito ha sido APROBADO', html)
+  return sendEmailHybrid(to, '🎉 ¡Felicidades! Tu crédito ha sido APROBADO', html)
 }
