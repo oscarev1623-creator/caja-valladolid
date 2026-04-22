@@ -125,21 +125,28 @@ export default function DocumentosPage() {
     return errors.length === 0
   }
   
-  const handleFileChange = (field: keyof Documents, file: File | null) => {
-    setFileError(null)
-    
-    if (!file) {
-      setDocuments(prev => ({ ...prev, [field]: null }))
-      return
-    }
-    
-    const validation = validateFile(file)
-    
-    if (!validation.valid) {
-      setFileError(validation.message || 'Archivo no válido')
-      alert(`❌ ${validation.message}`)
-      return
-    }
+const handleFileChange = (field: keyof Documents, file: File | null) => {
+  setFileError(null)
+  
+  if (!file) {
+    setDocuments(prev => ({ ...prev, [field]: null }))
+    return
+  }
+  
+  // ✅ NUEVO: Validar tamaño máximo 10 MB
+  if (file.size > 10 * 1024 * 1024) {
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
+    alert(`❌ El archivo pesa ${sizeMB} MB. Máximo 10 MB.`)
+    return
+  }
+  
+  const validation = validateFile(file)
+  
+  if (!validation.valid) {
+    setFileError(validation.message || 'Archivo no válido')
+    alert(`❌ ${validation.message}`)
+    return
+  }
     
     setDocuments(prev => ({
       ...prev,
@@ -204,6 +211,18 @@ const response = await fetch('/api/documents/upload', {
   body: submitFormData
 })
 
+// ✅ Verificar si la respuesta es JSON
+const contentType = response.headers.get('content-type')
+if (!contentType || !contentType.includes('application/json')) {
+  const text = await response.text()
+  console.error('❌ Respuesta no JSON:', text)
+  
+  if (text.includes('413') || text.includes('too large')) {
+    throw new Error('Archivos demasiado grandes. Máximo 10 MB por archivo.')
+  }
+  throw new Error('Error del servidor. Intenta con archivos más pequeños.')
+}
+
 const result = await response.json()
 
 if (result.success) {
@@ -253,7 +272,7 @@ if (result.success) {
       console.error('Error:', error)
       
       if (error.message.includes('413') || error.message.includes('demasiado grande')) {
-        alert('❌ El archivo es demasiado grande. Máximo 4.5 MB por archivo.')
+        alert('❌ El archivo es demasiado grande. Máximo 10 MB por archivo.')
       } else {
         alert(`❌ ${error.message || 'Error al enviar el formulario'}`)
       }
@@ -352,7 +371,7 @@ if (result.success) {
             Requisitos para archivos:
           </h3>
           <ul className="text-sm text-blue-700 space-y-1">
-            <li>• Tamaño máximo: <strong>4.5 MB por archivo</strong></li>
+            <li>• Tamaño máximo: <strong>10 MB por archivo</strong></li>
             <li>• Formatos permitidos: <strong>{ALLOWED_EXTENSIONS.join(', ')}</strong></li>
             <li>• Si tus fotos son muy grandes, puedes comprimirlas o tomar fotos con menor resolución</li>
           </ul>
