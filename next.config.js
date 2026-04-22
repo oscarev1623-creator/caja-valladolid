@@ -1,12 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ✅ AUMENTAR LÍMITE DE TAMAÑO PARA UPLOADS
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-    responseLimit: false,
-  },
   async headers() {
     return [
       {

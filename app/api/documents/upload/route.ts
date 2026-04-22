@@ -4,15 +4,8 @@ import { PrismaClient } from '@prisma/client'
 import { put } from '@vercel/blob'
 import { validateFile, formatFileSize } from '@/lib/file-utils'
 
-// ✅ CONFIGURACIÓN PARA AUMENTAR LÍMITE DE TAMAÑO
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-    responseLimit: false,
-  },
-}
+// ✅ Configuración para Next.js 14+ (maxDuration en segundos)
+export const maxDuration = 60;
 
 const prisma = new PrismaClient()
 
@@ -168,7 +161,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('❌ Error fatal:', error)
     
-    // ✅ SIEMPRE DEVOLVER JSON
+    // Respuesta de error amigable
     return NextResponse.json(
       { 
         success: false, 
