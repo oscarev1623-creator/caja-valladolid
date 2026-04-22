@@ -703,23 +703,30 @@ const getStatusConfig = (status: string) => {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
-                            {lead.status === 'APPROVED' && (
-                              <div className="flex gap-1 mt-2">
-                                <button
-                                  onClick={() => handleSendApprovalEmail(lead.id)}
-                                  disabled={sendingEmail === lead.id}
-                                  className="flex-1 p-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
-                                >
-                                  {sendingEmail === lead.id ? '...' : 'Correo'}
-                                </button>
-                                <button
-                                  onClick={() => window.open(`/api/contratos/tradicional/${lead.id}`, '_blank')}
-                                  className="flex-1 p-1 bg-blue-100 text-blue-700 rounded text-xs"
-                                >
-                                  Contrato
-                                </button>
-                              </div>
-                            )}
+{lead.status === 'APPROVED' && (
+  <div className="flex gap-1 mt-2">
+    <button
+      onClick={() => handleSendApprovalEmail(lead.id)}
+      disabled={sendingEmail === lead.id}
+      className="flex-1 p-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+    >
+      {sendingEmail === lead.id ? '...' : 'Correo'}
+    </button>
+    <button
+      onClick={() => window.open(`/api/contratos/tradicional/${lead.id}`, '_blank')}
+      className="flex-1 p-1 bg-blue-100 text-blue-700 rounded text-xs"
+    >
+      Contrato
+    </button>
+    {/* ✅ NUEVO BOTÓN */}
+    <button
+      onClick={() => handleSendContract(lead.id)}
+      className="flex-1 p-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200"
+    >
+      Enviar
+    </button>
+  </div>
+)}
                           </td>
                         </tr>
                       )
