@@ -1,8 +1,1 @@
-{
-  "/page": "app/page.js",
-  "/api/admin/check-session/route": "app/api/admin/check-session/route.js",
-  "/api/admin/agents/route": "app/api/admin/agents/route.js",
-  "/api/leads/route": "app/api/leads/route.js",
-  "/admin/login/page": "app/admin/login/page.js",
-  "/admin/leads/page": "app/admin/leads/page.js"
-}
+{}

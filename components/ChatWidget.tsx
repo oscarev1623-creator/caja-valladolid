@@ -166,14 +166,26 @@ export default function ChatWidget() {
 
   useEffect(() => {
     const timer = setTimeout(async () => {
+      // 1. Verificar localStorage por conversationId
+      const savedConversationId = localStorage.getItem('chat_conversation_id')
+      if (savedConversationId) {
+        console.log('📂 [ChatWidget] CARGANDO conversación desde localStorage:', savedConversationId)
+        setConversationId(savedConversationId)
+        await loadConversation(savedConversationId)
+        setIsOpen(true)
+        return
+      }
+
+      // 2. Si no hay en localStorage, verificar URL params
       const urlParams = new URLSearchParams(window.location.search)
       const chatName = urlParams.get('chat_name')
       const chatEmail = urlParams.get('chat_email')
       const chatToken = urlParams.get('chat_token')
       const conversationIdParam = urlParams.get('conversation_id')
       
-      console.log('🔍 [ChatWidget] Parámetros:', { chatName, chatEmail, chatToken, conversationId: conversationIdParam })
+      console.log('🔍 [ChatWidget] Parámetros URL:', { chatName, chatEmail, chatToken, conversationId: conversationIdParam })
       
+      // Pre-llenar formData
       if (chatName) {
         setFormData(prev => ({ ...prev, name: chatName }))
       }
@@ -185,15 +197,15 @@ export default function ChatWidget() {
       }
 
       if (conversationIdParam) {
-        console.log('📂 [ChatWidget] CARGANDO conversación existente por ID:', conversationIdParam)
+        console.log('📂 [ChatWidget] CARGANDO conversación por ID de URL:', conversationIdParam)
         localStorage.setItem('chat_conversation_id', conversationIdParam)
         setConversationId(conversationIdParam)
         await loadConversation(conversationIdParam)
         setIsOpen(true)
       } else if (chatEmail) {
-        console.log('🔎 [ChatWidget] Buscando conversación existente por email:', chatEmail)
+        console.log('🔎 [ChatWidget] Buscando conversación por email:', chatEmail)
         const existingConversationId = await fetchConversationByEmail(chatEmail)
-
+        
         if (existingConversationId) {
           console.log('📂 [ChatWidget] Conversación encontrada por email:', existingConversationId)
           localStorage.setItem('chat_conversation_id', existingConversationId)
@@ -201,11 +213,16 @@ export default function ChatWidget() {
           await loadConversation(existingConversationId)
           setIsOpen(true)
         } else {
-          console.log('📝 [ChatWidget] No hay conversación existente; mostrar formulario')
+          console.log('📝 [ChatWidget] No hay conversación existente; mostrar formulario pre-llenado')
           setIsOpen(true)
+          // Formulario ya pre-llenado arriba
         }
+      } else {
+        console.log('📝 [ChatWidget] Mostrar formulario vacío')
+        // No hacer nada, formulario vacío
       }
       
+      // Limpiar URL params
       if (chatName || chatEmail || chatToken || conversationIdParam) {
         window.history.replaceState({}, document.title, window.location.pathname)
       }
@@ -231,14 +248,6 @@ export default function ChatWidget() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  useEffect(() => {
-    const savedId = localStorage.getItem('chat_conversation_id')
-    if (savedId && !conversationId) {
-      loadConversation(savedId)
-      setIsOpen(true)
-    }
-  }, [])
 
   useEffect(() => {
     const handleOpenChat = () => {
