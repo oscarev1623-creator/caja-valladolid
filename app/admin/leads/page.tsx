@@ -78,7 +78,6 @@ export default function LeadsPage() {
   const [totalLeads, setTotalLeads] = useState(0)
   const [activeCategory, setActiveCategory] = useState('all')
   const [sendingEmail, setSendingEmail] = useState<string | null>(null)
-  const [sendingBulk, setSendingBulk] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const [showColorPicker, setShowColorPicker] = useState<string | null>(null)
   const [leadColors, setLeadColors] = useState<Record<string, string>>({})
@@ -317,31 +316,6 @@ export default function LeadsPage() {
     }
   }
 
-  const handleBulkEmail = async () => {
-    if (!confirm('¿Enviar correo de reactivación a TODOS los leads?')) return
-    if (!confirm('¿ESTÁS SEGURO? Se enviarán correos a todos los leads con email.')) return
-
-    setSendingBulk(true)
-    try {
-      const res = await fetch('/api/admin/send-bulk-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      const data = await res.json()
-
-      if (data.success) {
-        alert(`✅ ${data.message}`)
-      } else {
-        alert('❌ Error: ' + data.error)
-      }
-    } catch (error) {
-      console.error('Error:', error)
-      alert('❌ Error de conexión')
-    } finally {
-      setSendingBulk(false)
-    }
-  }
-
   const handleSendContract = async (leadId: string) => {
   if (!confirm('¿Enviar el contrato por correo al cliente?')) return
   
@@ -441,23 +415,6 @@ const getStatusConfig = (status: string) => {
               >
                 <RefreshCw className="w-4 h-4" />
                 <span className="hidden sm:inline">Actualizar</span>
-              </button>
-              <button
-                onClick={handleBulkEmail}
-                disabled={sendingBulk}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-semibold shadow-lg text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {sendingBulk ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Reactivar Leads
-                  </>
-                )}
               </button>
               <button
                 onClick={() => router.push('/admin/leads/new')}
