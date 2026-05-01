@@ -1,1 +1,0 @@
-{"success":false,"error":"PrismaClientKnownRequestError: \nInvalid `prisma.user.create()` invocation:\n\n\nUnique constraint failed on the fields: (`email`)"}

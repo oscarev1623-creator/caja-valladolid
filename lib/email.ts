@@ -447,6 +447,36 @@ async function sendEmailHybrid(to: string, subject: string, html: string) {
 // ============================================
 // 1. CORREO DE CONFIRMACIÓN DE SOLICITUD
 // ============================================
+export async function sendReactivationEmail({ to, nombre }: { to: string; nombre: string }) {
+  console.log('📧 Preparando correo de reactivación para:', to)
+
+  const content = `
+    <div class="greeting-box">
+      <div class="greeting-title">👋 ¡Hola ${nombre}!</div>
+      <div class="greeting-subtitle">Tu solicitud de crédito sigue activa con nosotros</div>
+    </div>
+    
+    <div class="message-box">
+      <div class="message-label">📢 Mensaje importante</div>
+      <div class="message-content">
+        Queremos recordarte que tu solicitud de crédito con <strong>Caja Valladolid</strong> sigue vigente. 
+        Si aún necesitas el crédito, comunícate con nosotros para continuar con el proceso.
+      </div>
+    </div>
+    
+    <div class="cta-box">
+      <div class="cta-title">💬 Retoma tu solicitud</div>
+      <div class="cta-subtitle">Habla directamente con un asesor en nuestra Oficina Virtual</div>
+      <a href="${baseUrl}/?chat_name=${encodeURIComponent(nombre)}&chat_email=${encodeURIComponent(to)}" class="cta-button">
+        Ir a la Oficina Virtual
+      </a>
+    </div>
+  `
+
+  const html = getEmailTemplate(content, 'Tu crédito te está esperando', 'warning')
+  return sendEmailHybrid(to, '👋 Tu crédito sigue disponible - Caja Valladolid', html)
+}
+
 export async function sendConfirmationEmail({ 
   to, 
   nombre, 

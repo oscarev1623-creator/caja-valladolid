@@ -1,0 +1,41 @@
+[{
+  "id": "cmnt7f1iz0000noia57gx9uyk",
+  "email": "admin@cajavalladolid.com",
+  "password": "$2b$10$TTqTOWO9sH..6ETrJq1KPeoIOyCn2OgbiTnCYRLOtnFuZinIHogTa",
+  "name": "Administrador",
+  "role": "admin",
+  "isActive": true,
+  "color": "green",
+  "createdAt": "2026-04-10 17:53:02.076",
+  "updatedAt": "2026-04-25 04:03:00.661"
+}, {
+  "id": "cmnxo4iby00002luhe1m487qe",
+  "email": "ryanjoycep@gmail.com",
+  "password": "$2b$10$9D3x55Oh46fGK3M4FodSDOJQZnd8hNmmFV6l4hTfbmZ3.dM1si9Zy",
+  "name": "Ryan Joyce",
+  "role": "ADMIN",
+  "isActive": true,
+  "color": "green",
+  "createdAt": "2026-04-13 20:51:48.815",
+  "updatedAt": "2026-04-25 04:03:53.661"
+}, {
+  "id": "cmnsy3xqk0000vkeklu9n9e2f",
+  "email": "rebecagonzalezmx20@gmail.com",
+  "password": "$2b$10$a/WaWHXjf3oxdz9VCXqD0Oj.7oYlpVOQarn0DBfi4WLqa954ySWq2",
+  "name": "Rebeca González ",
+  "role": "agent",
+  "isActive": true,
+  "color": "blue",
+  "createdAt": "2026-04-10 13:32:27.404",
+  "updatedAt": "2026-04-25 04:04:02.033"
+}, {
+  "id": "cmns7edkr0000ahw76tgji4yo",
+  "email": "oscarev1623@gmail.com",
+  "password": "$2b$10$ztG7zPQzP9GEzMCeQFXivea98U68S9pMHJnChhTl3ovk/Ir/weitm",
+  "name": "Oscarcito",
+  "role": "ADMIN",
+  "isActive": true,
+  "color": "green",
+  "createdAt": "2026-04-10 01:04:44.86",
+  "updatedAt": "2026-04-25 04:04:11.942"
+}]
