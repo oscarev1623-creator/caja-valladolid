@@ -424,6 +424,14 @@ const getStatusConfig = (status: string) => {
                 <span className="hidden sm:inline">Nuevo Lead</span>
                 <span className="sm:hidden">Nuevo</span>
               </button>
+              <button
+                onClick={() => router.push('/admin/reminders')}
+                className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-semibold text-sm transition-all"
+              >
+                <span className="text-lg">📊</span>
+                <span className="hidden sm:inline">Recordatorios</span>
+                <span className="sm:hidden">Recordatorios</span>
+              </button>
             </div>
           </div>
         </div>

@@ -1,1 +1,1 @@
-{"version":1,"functions":{"/api/admin/agents":{},"/evaluacion-formal":{},"/api/documents/upload":{"maxDuration":60},"/api/chat/conversations":{}}}
+{"version":1,"functions":{"/api/documents/upload":{"maxDuration":60},"/api/chat/conversations":{},"/api/cron/send-reminders":{"maxDuration":300},"/api/admin/agents":{},"/evaluacion-formal":{}}}

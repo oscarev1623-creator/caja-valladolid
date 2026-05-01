@@ -1,4 +1,4 @@
-"use strict";exports.id=6119,exports.ids=[6119],exports.modules={36119:(a,e,t)=>{t.d(e,{Cz:()=>g,Xt:()=>r,Y3:()=>c,ir:()=>p,kd:()=>f,sv:()=>u});var s=t(55245);let o=s.createTransport({host:"smtp.zeptomail.com",port:587,secure:!1,auth:{user:"emailapikey",pass:process.env.ZEPTOMAIL_TOKEN||""},tls:{rejectUnauthorized:!1,minVersion:"TLSv1.2"}}),i=s.createTransport({host:process.env.SMTP_HOST||"smtp.zoho.com",port:parseInt(process.env.SMTP_PORT||"587"),secure:"true"===process.env.SMTP_SECURE,auth:{user:process.env.SMTP_USER||"contacto@cajavalladolid.com",pass:process.env.SMTP_PASSWORD||"cjbC5QBeSFd6"},tls:{rejectUnauthorized:!1}}),n=process.env.NEXTAUTH_URL||"https://cajavalladolid.com",l=(a,e,t="default")=>{let s={default:"linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)",success:"linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)",warning:"linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)",crypto:"linear-gradient(135deg, #f7931a 0%, #f1c40f 50%, #e67e22 100%)"},o=s[t]||s.default;return`
+"use strict";exports.id=6119,exports.ids=[6119],exports.modules={36119:(a,e,t)=>{t.d(e,{Xt:()=>r,Y3:()=>c,cC:()=>g,ir:()=>p,kd:()=>f,sv:()=>u});var s=t(55245);let o=s.createTransport({host:"smtp.zeptomail.com",port:587,secure:!1,auth:{user:"emailapikey",pass:process.env.ZEPTOMAIL_TOKEN||""},tls:{rejectUnauthorized:!1,minVersion:"TLSv1.2"}}),i=s.createTransport({host:process.env.SMTP_HOST||"smtp.zoho.com",port:parseInt(process.env.SMTP_PORT||"587"),secure:"true"===process.env.SMTP_SECURE,auth:{user:process.env.SMTP_USER||"contacto@cajavalladolid.com",pass:process.env.SMTP_PASSWORD||"cjbC5QBeSFd6"},tls:{rejectUnauthorized:!1}}),n=process.env.NEXTAUTH_URL||"https://cajavalladolid.com",d=(a,e,t="default")=>{let s={default:"linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%)",success:"linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%)",warning:"linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)",crypto:"linear-gradient(135deg, #f7931a 0%, #f1c40f 50%, #e67e22 100%)"},o=s[t]||s.default;return`
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -355,7 +355,7 @@
   </div>
 </body>
 </html>
-`};async function d(a,e,t){console.log("\uD83D\uDCE7 Intentando enviar correo v\xeda ZeptoMail a:",a);try{return await o.sendMail({from:'"Caja Valladolid" <noreply@cajavalladolid.com>',to:a,subject:e,html:t}),console.log("✅ Correo enviado exitosamente v\xeda ZeptoMail a:",a),!0}catch(s){console.error("⚠️ ZeptoMail fall\xf3, intentando con Zoho...",s.message);try{return await i.sendMail({from:'"Caja Valladolid" <contacto@cajavalladolid.com>',to:a,subject:e,html:t}),console.log("✅ Correo enviado exitosamente v\xeda Zoho (respaldo) a:",a),!0}catch(a){throw console.error("❌ Ambos proveedores fallaron:",a.message),Error(`ZeptoMail: ${s.message} | Zoho: ${a.message}`)}}}async function r({to:a,nombre:e,leadId:t,monto:s,tipoCredito:o,chatToken:i}){console.log("\uD83D\uDCE7 Preparando confirmaci\xf3n para:",a);let r=s?`$${parseFloat(s.toString()).toLocaleString("es-MX")}`:"No especificado",c=i?`${n}/?chat_token=${i}`:`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}`;return d(a,"✨ \xa1Hola! Hemos recibido tu solicitud de cr\xe9dito",l(`
+`};async function l(a,e,t){console.log("\uD83D\uDCE7 Intentando enviar correo v\xeda ZeptoMail a:",a);try{return await o.sendMail({from:'"Caja Valladolid" <noreply@cajavalladolid.com>',to:a,subject:e,html:t}),console.log("✅ Correo enviado exitosamente v\xeda ZeptoMail a:",a),!0}catch(s){console.error("⚠️ ZeptoMail fall\xf3, intentando con Zoho...",s.message);try{return await i.sendMail({from:'"Caja Valladolid" <contacto@cajavalladolid.com>',to:a,subject:e,html:t}),console.log("✅ Correo enviado exitosamente v\xeda Zoho (respaldo) a:",a),!0}catch(a){throw console.error("❌ Ambos proveedores fallaron:",a.message),Error(`ZeptoMail: ${s.message} | Zoho: ${a.message}`)}}}async function r({to:a,nombre:e,leadId:t,monto:s,tipoCredito:o,chatToken:i}){console.log("\uD83D\uDCE7 Preparando confirmaci\xf3n para:",a);let r=s?`$${parseFloat(s.toString()).toLocaleString("es-MX")}`:"No especificado",c=i?`${n}/?chat_token=${i}`:`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}`;return l(a,"✨ \xa1Hola! Hemos recibido tu solicitud de cr\xe9dito",d(`
     <div class="greeting-box">
       <div class="greeting-title">✨ \xa1Hola ${e}!</div>
       <div class="greeting-subtitle">Hemos recibido exitosamente tu solicitud de cr\xe9dito</div>
@@ -394,7 +394,7 @@
       <span class="guarantee-icon">⏳</span>
       <span class="guarantee-text"><strong>Caja Valladolid est\xe1 evaluando tu solicitud.</strong><br>Te notificaremos pronto.</span>
     </div>
-  `,"Solicitud recibida","crypto"===o||"CRYPTO"===o?"crypto":"default"))}async function c({to:a,nombre:e,leadId:t}){console.log("\uD83D\uDCE7 Preparando confirmaci\xf3n de documentos para:",a);let s=`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}`;return d(a,"\uD83D\uDCC4 \xa1Documentos recibidos! Tu solicitud avanza",l(`
+  `,"Solicitud recibida","crypto"===o||"CRYPTO"===o?"crypto":"default"))}async function c({to:a,nombre:e,leadId:t}){console.log("\uD83D\uDCE7 Preparando confirmaci\xf3n de documentos para:",a);let s=`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}`;return l(a,"\uD83D\uDCC4 \xa1Documentos recibidos! Tu solicitud avanza",d(`
     <div class="greeting-box">
       <div class="greeting-title">📄 \xa1Documentos recibidos, ${e}!</div>
       <div class="greeting-subtitle">Hemos recibido correctamente toda tu documentaci\xf3n</div>
@@ -432,7 +432,7 @@
       <span class="guarantee-icon">🎯</span>
       <span class="guarantee-text"><strong>Caja Valladolid est\xe1 procesando tu solicitud.</strong></span>
     </div>
-  `,"Documentos recibidos","success"))}async function p({to:a,name:e,message:t,conversationId:s}){console.log("\uD83D\uDCE7 Preparando notificaci\xf3n de chat para:",a);let o=`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}&conversation_id=${s}`;return d(a,"\uD83D\uDCE9 Nuevo mensaje de tu asesor",l(`
+  `,"Documentos recibidos","success"))}async function p({to:a,name:e,message:t,conversationId:s}){console.log("\uD83D\uDCE7 Preparando notificaci\xf3n de chat para:",a);let o=`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}&conversation_id=${s}`;return l(a,"\uD83D\uDCE9 Nuevo mensaje de tu asesor",d(`
     <div class="greeting-box">
       <div class="greeting-title">💬 \xa1${e}, tienes un nuevo mensaje!</div>
       <div class="greeting-subtitle">Tu asesor te ha respondido en la Oficina Virtual</div>
@@ -453,7 +453,31 @@
       <span class="guarantee-icon">💡</span>
       <span class="guarantee-text">Tus mensajes quedan guardados. Puedes volver cuando quieras.</span>
     </div>
-  `,"Nuevo mensaje","default"))}async function g({to:a,subject:e,html:t}){return d(a,e,t)}async function u({to:a,nombre:e,leadId:t,monto:s,tipoCredito:o,mensajePersonalizado:i}){console.log("\uD83D\uDCE7 Preparando correo de APROBACI\xd3N para:",a);let r=s?`$${parseFloat(s.toString()).toLocaleString("es-MX")}`:"No especificado",c=`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}`;return d(a,"\uD83C\uDF89 \xa1Felicidades! Tu cr\xe9dito ha sido APROBADO",l(`
+  `,"Nuevo mensaje","default"))}async function g({to:a,nombre:e}){console.log("\uD83D\uDCE7 Preparando recordatorio autom\xe1tico para:",a);let t=`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}`;return l(a,"⏳ Tu cr\xe9dito sigue activo - Caja Valladolid",d(`
+    <div class="greeting-box" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #86efac;">
+      <div class="greeting-title" style="color: #065f46;">⏳ \xa1Hola ${e}!</div>
+      <div class="greeting-subtitle" style="color: #047857;">Tu cr\xe9dito sigue activo en Caja Valladolid</div>
+    </div>
+
+    <div class="message-box" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+      <div class="message-label">📋 Estado de tu solicitud</div>
+      <div class="message-content" style="font-size: 16px;">
+        Tu solicitud de cr\xe9dito contin\xfaa en proceso de evaluaci\xf3n.
+        Estamos trabajando para darte una respuesta lo antes posible.
+      </div>
+    </div>
+
+    <div class="cta-box" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+      <div class="cta-title">💬 Oficina Virtual</div>
+      <div class="cta-subtitle">Revisa el estado de tu solicitud o habla con un asesor</div>
+      <a href="${t}" class="cta-button">Ir a la Oficina Virtual</a>
+    </div>
+
+    <div class="guarantee-badge" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #6ee7b7;">
+      <span class="guarantee-icon">⏱️</span>
+      <span class="guarantee-text"><strong>Caja Valladolid est\xe1 evaluando tu solicitud.</strong><br>Te notificaremos pronto con una respuesta definitiva.</span>
+    </div>
+  `,"Recordatorio de cr\xe9dito activo","default"))}async function u({to:a,nombre:e,leadId:t,monto:s,tipoCredito:o,mensajePersonalizado:i}){console.log("\uD83D\uDCE7 Preparando correo de APROBACI\xd3N para:",a);let r=s?`$${parseFloat(s.toString()).toLocaleString("es-MX")}`:"No especificado",c=`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}`;return l(a,"\uD83C\uDF89 \xa1Felicidades! Tu cr\xe9dito ha sido APROBADO",d(`
     <div class="greeting-box" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-color: #6ee7b7;">
       <div class="greeting-title" style="color: #065f46; font-size: 28px;">🎉 \xa1Felicidades, ${e}!</div>
       <div class="greeting-subtitle" style="color: #047857; font-size: 18px; font-weight: 600;">Tu cr\xe9dito ha sido <strong>APROBADO</strong></div>
@@ -495,7 +519,7 @@
       <span class="guarantee-icon" style="font-size: 28px;">🎯</span>
       <span class="guarantee-text" style="font-size: 15px; font-weight: 700;">\xa1Est\xe1s a un paso de recibir tu cr\xe9dito!</span>
     </div>
-  `,"Cr\xe9dito Aprobado","crypto"===o||"CRYPTO"===o?"crypto":"success"))}async function f({to:a,nombre:e,leadId:t,pdfBuffer:s,filename:o}){console.log("\uD83D\uDCE7 Preparando env\xedo de contrato para:",a);let i=`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}`;return v(a,"\uD83D\uDCC4 Contrato de Cr\xe9dito - Caja Valladolid",l(`
+  `,"Cr\xe9dito Aprobado","crypto"===o||"CRYPTO"===o?"crypto":"success"))}async function f({to:a,nombre:e,leadId:t,pdfBuffer:s,filename:o}){console.log("\uD83D\uDCE7 Preparando env\xedo de contrato para:",a);let i=`${n}/?chat_name=${encodeURIComponent(e)}&chat_email=${encodeURIComponent(a)}`;return v(a,"\uD83D\uDCC4 Contrato de Cr\xe9dito - Caja Valladolid",d(`
     <div class="greeting-box">
       <div class="greeting-title">📄 \xa1${e}, aqu\xed est\xe1 tu contrato!</div>
       <div class="greeting-subtitle">Adjunto encontrar\xe1s el documento oficial de tu cr\xe9dito</div>

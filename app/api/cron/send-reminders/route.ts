@@ -1,321 +1,149 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { sendEmail } from '@/lib/email'
+import { PrismaClient } from '@prisma/client'
+import { sendReminderEmail } from '@/lib/email'
 
-// Verificar que la petición viene del cron job de Vercel
-const isValidCronRequest = (request: NextRequest) => {
-  const authHeader = request.headers.get('authorization')
-  return authHeader === `Bearer ${process.env.CRON_SECRET}`
-}
+const prisma = new PrismaClient()
 
-// ============================================
-// TEMPLATE DE CORREO DE RECORDATORIO
-// ============================================
-function getReminderEmailTemplate(nombre: string, type: 'docs' | 'contact') {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://cajavalladolid.com'
-  const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(nombre)}`
-  
-  const title = type === 'docs' 
-    ? '⏳ Completa tu documentación para continuar'
-    : '💬 Tu solicitud está en proceso'
-  
-  const message = type === 'docs'
-    ? 'Tu solicitud de crédito está en espera. Para continuar con la evaluación, necesitamos que completes la documentación pendiente.'
-    : 'Tu solicitud de crédito está siendo procesada. Pronto un asesor se pondrá en contacto contigo.'
-  
-  const buttonText = type === 'docs'
-    ? '📄 Completar documentación'
-    : '💬 Hablar con un asesor'
+export const maxDuration = 300 // 5 minutos máximo
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${title}</title>
-      <style>
-        body { 
-          font-family: Arial, Helvetica, sans-serif; 
-          background: #f4f7f6; 
-          margin: 0; 
-          padding: 20px; 
-        }
-        .container { 
-          max-width: 600px; 
-          margin: 0 auto; 
-          background: white; 
-          border-radius: 16px; 
-          overflow: hidden; 
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-        }
-        .header { 
-          background: #059669; 
-          padding: 40px 20px; 
-          text-align: center; 
-        }
-        .header img {
-          height: 80px;
-          width: auto;
-          margin-bottom: 15px;
-        }
-        .header h1 { 
-          color: white; 
-          margin: 10px 0 0; 
-          font-size: 28px; 
-          font-weight: bold; 
-        }
-        .header p {
-          color: #d1fae5;
-          margin: 8px 0 0;
-          font-size: 16px;
-        }
-        .content { 
-          padding: 30px; 
-        }
-        .content h2 {
-          color: #059669;
-          margin: 0 0 16px;
-          font-size: 22px;
-        }
-        .content p {
-          font-size: 16px;
-          color: #374151;
-          line-height: 1.6;
-          margin: 16px 0;
-        }
-        .content .highlight {
-          background: #fef3c7;
-          border-left: 4px solid #f59e0b;
-          padding: 16px;
-          margin: 20px 0;
-          border-radius: 0 8px 8px 0;
-        }
-        .button { 
-          display: inline-block; 
-          background: #059669; 
-          color: white !important; 
-          padding: 14px 36px; 
-          text-decoration: none; 
-          border-radius: 50px; 
-          font-weight: bold; 
-          font-size: 16px;
-          margin: 20px 0; 
-          text-align: center;
-        }
-        .footer { 
-          background: #f9fafb; 
-          padding: 20px; 
-          text-align: center; 
-          font-size: 12px; 
-          color: #6b7280; 
-          border-top: 1px solid #e5e7eb;
-        }
-        .footer p {
-          margin: 4px 0;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <img src="${baseUrl}/logotipo.png" alt="Caja Valladolid" />
-          <h1>Oficina Virtual</h1>
-          <p>Tu aliado financiero de confianza</p>
-        </div>
-        <div class="content">
-          <h2>¡Hola ${nombre}! 👋</h2>
-          <p>${message}</p>
-          <div class="highlight">
-            <p style="margin: 0; color: #92400e;">
-              <strong>⏰ No dejes pasar esta oportunidad.</strong><br>
-              Tu crédito está pre-aprobado y solo faltan unos detalles para continuar.
-            </p>
-          </div>
-          <div style="text-align: center;">
-            <a href="${chatUrl}" class="button">${buttonText}</a>
-          </div>
-          <p style="font-size: 13px; color: #9ca3af; text-align: center;">
-            Tus datos están seguros con nosotros. Este es un correo automático, por favor no responder.
-          </p>
-        </div>
-        <div class="footer">
-          <p><strong>Caja Popular San Bernardino de Siena Valladolid</strong></p>
-          <p>Registro Oficial: 29198 • CONDUSEF ID: 4930</p>
-          <p>© ${new Date().getFullYear()} Caja Valladolid. Todos los derechos reservados.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `
-}
-
-// ============================================
-// ENDPOINT PRINCIPAL
-// ============================================
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autorización
-    if (!isValidCronRequest(request)) {
-      console.log('❌ Intento de acceso no autorizado a cron de recordatorios')
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    // Verificar CRON_SECRET
+    const authHeader = request.headers.get('authorization')
+    const cronSecret = process.env.CRON_SECRET
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      console.log('❌ CRON_SECRET inválido o faltante')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('='.repeat(50))
-    console.log('🚀 INICIANDO CRON DE RECORDATORIOS')
-    console.log('='.repeat(50))
-    
-    const today = new Date()
-    const twoDaysAgo = new Date()
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+    const isTestMode = process.env.TEST_MODE === 'true'
+    const testEmail = process.env.TEST_EMAIL || 'oscarv1623@gmail.com'
+
+    console.log('🚀 Iniciando envío de recordatorios automáticos')
+    console.log('🧪 Modo prueba:', isTestMode ? 'ACTIVADO' : 'DESACTIVADO')
+
+    // Buscar leads elegibles para recordatorio
     const threeDaysAgo = new Date()
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
-    
-    const results = {
-      pendingDocuments: 0,
-      pendingContact: 0,
-      errors: 0,
-      skipped: 0
-    }
 
-    // ============================================
-    // 1. RECORDATORIO PARA LEADS CON DOCUMENTOS PENDIENTES
-    // (Creados hace más de 3 días, sin documentos, último recordatorio hace más de 2 días o nunca)
-    // ============================================
-    console.log('📋 Buscando leads con documentos pendientes...')
-    
-    const pendingDocsLeads = await prisma.lead.findMany({
+    const eligibleLeads = await prisma.lead.findMany({
       where: {
-        status: 'PENDING_DOCUMENTS',
-        documentsSubmitted: false,
-        createdAt: {
-          lt: threeDaysAgo // Creados hace más de 3 días
+        status: {
+          in: ['PENDING', 'PENDING_DOCUMENTS', 'CONTACTED', 'APPROVED']
         },
-        email: { not: null },
-        OR: [
-          { lastReminderSentAt: null }, // Nunca se ha enviado recordatorio
-          { lastReminderSentAt: { lt: twoDaysAgo } } // Último recordatorio hace más de 2 días
-        ]
-      },
-      take: 50 // Límite por ejecución para no sobrecargar
-    })
-
-    console.log(`📊 Encontrados ${pendingDocsLeads.length} leads con documentos pendientes`)
-
-    for (const lead of pendingDocsLeads) {
-      try {
-        if (!lead.email) {
-          console.log(`⚠️ Lead ${lead.id} sin email, saltando...`)
-          results.skipped++
-          continue
-        }
-        
-        await sendEmail({
-          to: lead.email,
-          subject: '⏳ Tu crédito está en espera - Completa tu documentación',
-          html: getReminderEmailTemplate(lead.fullName, 'docs')
-        })
-        
-        await prisma.lead.update({
-          where: { id: lead.id },
-          data: { lastReminderSentAt: new Date() }
-        })
-        
-        results.pendingDocuments++
-        console.log(`✅ Recordatorio (docs) enviado a: ${lead.email}`)
-        
-        // Pequeña pausa para no saturar el servidor de correo
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-      } catch (error) {
-        console.error(`❌ Error enviando a ${lead.email}:`, error)
-        results.errors++
-      }
-    }
-
-    // ============================================
-    // 2. RECORDATORIO PARA LEADS SIN CONTACTAR
-    // (Creados hace más de 2 días, sin contacto, último recordatorio hace más de 2 días o nunca)
-    // ============================================
-    console.log('📋 Buscando leads sin contactar...')
-    
-    const twoDaysAgoForContact = new Date()
-    twoDaysAgoForContact.setDate(twoDaysAgoForContact.getDate() - 2)
-    
-    const pendingContactLeads = await prisma.lead.findMany({
-      where: {
-        status: 'PENDING_CONTACT',
-        contactedAt: null,
-        createdAt: {
-          lt: twoDaysAgoForContact // Creados hace más de 2 días
+        email: {
+          not: null
         },
-        email: { not: null },
         OR: [
           { lastReminderSentAt: null },
-          { lastReminderSentAt: { lt: twoDaysAgo } }
+          { lastReminderSentAt: { lt: threeDaysAgo } }
         ]
       },
-      take: 50
+      take: 25, // Máximo 25 por ejecución
+      orderBy: {
+        lastReminderSentAt: 'asc' // Priorizar los que nunca han recibido o los más antiguos
+      }
     })
 
-    console.log(`📊 Encontrados ${pendingContactLeads.length} leads sin contactar`)
+    console.log(`📧 Encontrados ${eligibleLeads.length} leads elegibles para recordatorio`)
 
-    for (const lead of pendingContactLeads) {
-      try {
-        if (!lead.email) {
-          console.log(`⚠️ Lead ${lead.id} sin email, saltando...`)
-          results.skipped++
-          continue
+    if (eligibleLeads.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No hay leads elegibles para recordatorio',
+        processed: 0
+      })
+    }
+
+    // Procesar en lotes de 5 con pausa de 1 minuto entre lotes
+    const batchSize = 5
+    const batches: typeof eligibleLeads[] = []
+    for (let i = 0; i < eligibleLeads.length; i += batchSize) {
+      batches.push(eligibleLeads.slice(i, i + batchSize))
+    }
+
+    let totalProcessed = 0
+    let totalSent = 0
+    const results: Array<{
+      leadId: string
+      email: string | null
+      status: string
+      timestamp: string
+      error?: string
+    }> = []
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex]
+      console.log(`📦 Procesando lote ${batchIndex + 1}/${batches.length} (${batch.length} leads)`)
+
+      for (const lead of batch) {
+        try {
+          const emailToSend = isTestMode ? testEmail : lead.email!
+          const recipientName = lead.fullName || 'Cliente'
+
+          console.log(`📧 Enviando recordatorio a: ${emailToSend} (Lead: ${lead.id})`)
+
+          await sendReminderEmail({
+            to: emailToSend,
+            nombre: recipientName
+          })
+
+          // Actualizar lastReminderSentAt
+          await prisma.lead.update({
+            where: { id: lead.id },
+            data: { lastReminderSentAt: new Date() }
+          })
+
+          results.push({
+            leadId: lead.id,
+            email: isTestMode ? `${lead.email} → ${testEmail}` : lead.email,
+            status: 'sent',
+            timestamp: new Date().toISOString()
+          })
+
+          totalSent++
+          console.log(`✅ Recordatorio enviado exitosamente a: ${emailToSend}`)
+
+        } catch (error) {
+          console.error(`❌ Error enviando recordatorio a lead ${lead.id}:`, error)
+          results.push({
+            leadId: lead.id,
+            email: lead.email,
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+          })
         }
-        
-        await sendEmail({
-          to: lead.email,
-          subject: '💬 Tu solicitud está siendo procesada - Caja Valladolid',
-          html: getReminderEmailTemplate(lead.fullName, 'contact')
-        })
-        
-        await prisma.lead.update({
-          where: { id: lead.id },
-          data: { lastReminderSentAt: new Date() }
-        })
-        
-        results.pendingContact++
-        console.log(`✅ Recordatorio (contact) enviado a: ${lead.email}`)
-        
-        // Pequeña pausa para no saturar el servidor de correo
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-      } catch (error) {
-        console.error(`❌ Error enviando a ${lead.email}:`, error)
-        results.errors++
+
+        totalProcessed++
+      }
+
+      // Pausa de 1 minuto entre lotes (excepto el último)
+      if (batchIndex < batches.length - 1) {
+        console.log('⏳ Esperando 1 minuto antes del siguiente lote...')
+        await new Promise(resolve => setTimeout(resolve, 60000)) // 1 minuto
       }
     }
 
-    console.log('='.repeat(50))
-    console.log('🏁 CRON DE RECORDATORIOS COMPLETADO')
-    console.log(`📊 Resultados:`, results)
-    console.log('='.repeat(50))
+    console.log(`🎉 Proceso completado: ${totalSent}/${totalProcessed} recordatorios enviados exitosamente`)
 
     return NextResponse.json({
       success: true,
-      message: 'Recordatorios enviados correctamente',
-      results,
-      timestamp: new Date().toISOString()
+      message: `Recordatorios procesados: ${totalSent}/${totalProcessed} enviados`,
+      processed: totalProcessed,
+      sent: totalSent,
+      testMode: isTestMode,
+      results
     })
 
   } catch (error) {
-    console.error('❌ Error fatal en cron de recordatorios:', error)
-    return NextResponse.json({ 
-      success: false,
-      error: 'Error interno del servidor',
-      details: process.env.NODE_ENV === 'development' ? String(error) : undefined
+    console.error('💥 Error en cron de recordatorios:', error)
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
+  } finally {
+    await prisma.$disconnect()
   }
-}
-
-// ============================================
-// También permitir POST para pruebas manuales
-// ============================================
-export async function POST(request: NextRequest) {
-  return GET(request)
 }

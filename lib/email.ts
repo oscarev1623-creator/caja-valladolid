@@ -626,8 +626,42 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
 }
 
 // ============================================
-// 5. 🎉 CORREO DE APROBACIÓN DE CRÉDITO (PREMIUM)
+// 6. ⏳ CORREO DE RECORDATORIO AUTOMÁTICO
 // ============================================
+export async function sendReminderEmail({ to, nombre }: { to: string; nombre: string }) {
+  console.log('📧 Preparando recordatorio automático para:', to)
+
+  const chatUrl = `${baseUrl}/?chat_name=${encodeURIComponent(nombre)}&chat_email=${encodeURIComponent(to)}`
+
+  const content = `
+    <div class="greeting-box" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #86efac;">
+      <div class="greeting-title" style="color: #065f46;">⏳ ¡Hola ${nombre}!</div>
+      <div class="greeting-subtitle" style="color: #047857;">Tu crédito sigue activo en Caja Valladolid</div>
+    </div>
+
+    <div class="message-box" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+      <div class="message-label">📋 Estado de tu solicitud</div>
+      <div class="message-content" style="font-size: 16px;">
+        Tu solicitud de crédito continúa en proceso de evaluación.
+        Estamos trabajando para darte una respuesta lo antes posible.
+      </div>
+    </div>
+
+    <div class="cta-box" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+      <div class="cta-title">💬 Oficina Virtual</div>
+      <div class="cta-subtitle">Revisa el estado de tu solicitud o habla con un asesor</div>
+      <a href="${chatUrl}" class="cta-button">Ir a la Oficina Virtual</a>
+    </div>
+
+    <div class="guarantee-badge" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #6ee7b7;">
+      <span class="guarantee-icon">⏱️</span>
+      <span class="guarantee-text"><strong>Caja Valladolid está evaluando tu solicitud.</strong><br>Te notificaremos pronto con una respuesta definitiva.</span>
+    </div>
+  `
+
+  const html = getEmailTemplate(content, 'Recordatorio de crédito activo', 'default')
+  return sendEmailHybrid(to, '⏳ Tu crédito sigue activo - Caja Valladolid', html)
+}
 export async function sendApprovalEmail({ 
   to, 
   nombre, 
