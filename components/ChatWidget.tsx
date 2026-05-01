@@ -294,48 +294,15 @@ export default function ChatWidget() {
       localStorage.setItem('chat_user_email', formData.email)
       localStorage.setItem('chat_user_phone', formData.phone)
 
-      const leadResponse = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: formData.name,
-          email: formData.email,
-          phone: formData.phone || '',
-          estimatedAmount: 0,
-          creditType: 'TRADITIONAL',
-          status: 'PENDING_CONTACT',
-          message: `Cliente inició conversación por chat. Teléfono: ${formData.phone || 'No proporcionado'}`
-        })
-      })
-
-      const leadData = await leadResponse.json()
-      
-      let documentLink = ''
-      if (leadData.success && leadData.data?.id) {
-        try {
-          const baseUrl = window.location.origin
-          const ticketRes = await fetch('/api/leads/generate-link', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ leadId: leadData.data.id, baseUrl })
-          })
-          const ticketData = await ticketRes.json()
-          if (ticketData.success) documentLink = ticketData.data.url
-        } catch (err) {}
-      }
-      
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Lead')
-      }
-
+      // Crear lead y conversación en un solo paso
       const res = await fetch('/api/chat/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          phone: formData.phone
+          phone: formData.phone,
+          message: `Cliente inició conversación por chat. Teléfono: ${formData.phone || 'No proporcionado'}`
         })
       })
       const data = await res.json()
@@ -360,20 +327,39 @@ export default function ChatWidget() {
             senderType: 'system',
             createdAt: new Date().toISOString()
           }])
+          
+          // Generar enlace de documentos para el nuevo lead
+          if (data.leadId) {
+            try {
+              const baseUrl = window.location.origin
+              const ticketRes = await fetch('/api/leads/generate-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ leadId: data.leadId, baseUrl })
+              })
+              const ticketData = await ticketRes.json()
+              if (ticketData.success) {
+                await fetch('/api/chat/send', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    conversationId: data.conversationId,
+                    message: `📎 Enlace para subir documentos: ${ticketData.data.url}`,
+                    senderType: 'system'
+                  })
+                })
+              }
+            } catch (err) {
+              console.error('Error generando enlace de documentos:', err)
+            }
+          }
         } else {
           await loadConversation(data.conversationId)
         }
         
-        if (documentLink) {
-          await fetch('/api/chat/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              conversationId: data.conversationId,
-              message: `📎 Enlace para subir documentos: ${documentLink}`,
-              senderType: 'system'
-            })
-          })
+        if (typeof window !== 'undefined' && (window as any).fbq) {
+          (window as any).fbq('track', 'Lead')
         }
       }
     } catch (error) {

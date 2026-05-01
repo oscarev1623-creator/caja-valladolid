@@ -38,7 +38,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       success: true,
-      conversationId: conversation?.id || null
+      conversationId: conversation?.id || null,
+      leadId: conversation?.leadId || null
     })
   } catch (error) {
     console.error('Error finding conversation:', error)

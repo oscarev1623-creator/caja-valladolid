@@ -74,6 +74,7 @@ model Lead {
   calculatorToken           String?   @unique
   calculatorTokenExpiresAt  DateTime?
   lastReminderSentAt   DateTime?
+  chatConversations    ChatConversation[]
 
   @@index([email])
   @@index([phone])
@@ -175,6 +176,8 @@ model ChatConversation {
   assignedAt      DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  leadId          String?
+  lead            Lead?           @relation(fields: [leadId], references: [id])
   messages        ChatMessage[]
   assignedTo      User?           @relation(fields: [assignedToId], references: [id])
 }
