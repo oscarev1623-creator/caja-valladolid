@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer'
 
-// ✅ ZEPTOMAIL como proveedor PRINCIPAL (diseñado para correos transaccionales)
+// ✅ ZEPTOMAIL como ÚNICO proveedor de correo (diseñado para correos transaccionales)
 // ✅ AHORA (usa variable de entorno)
 const zeptoMailTransporter = nodemailer.createTransport({
   host: 'smtp.zeptomail.com',
@@ -13,20 +13,6 @@ const zeptoMailTransporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
     minVersion: 'TLSv1.2'
-  }
-})
-
-// ✅ ZOHO como RESPALDO (si ZeptoMail falla)
-const zohoTransporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.zoho.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER || 'contacto@cajavalladolid.com',
-    pass: process.env.SMTP_PASSWORD || 'cjbC5QBeSFd6',
-  },
-  tls: {
-    rejectUnauthorized: false
   }
 })
 
@@ -407,44 +393,6 @@ const getEmailTemplate = (content: string, title: string, variant: 'default' | '
 }
 
 // ============================================
-// ✅ FUNCIÓN HÍBRIDA DE ENVÍO (ZeptoMail PRINCIPAL + Zoho RESPALDO)
-// ============================================
-async function sendEmailHybrid(to: string, subject: string, html: string) {
-  console.log('📧 Intentando enviar correo vía ZeptoMail a:', to)
-  
-  try {
-    // 1️⃣ INTENTAR CON ZEPTOMAIL (PRINCIPAL)
-    await zeptoMailTransporter.sendMail({
-      from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
-      to,
-      subject,
-      html
-    })
-    console.log('✅ Correo enviado exitosamente vía ZeptoMail a:', to)
-    return true
-    
-  } catch (zeptoError: any) {
-    console.error('⚠️ ZeptoMail falló, intentando con Zoho...', zeptoError.message)
-    
-    try {
-      // 2️⃣ INTENTAR CON ZOHO (RESPALDO)
-      await zohoTransporter.sendMail({
-        from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
-        to,
-        subject,
-        html
-      })
-      console.log('✅ Correo enviado exitosamente vía Zoho (respaldo) a:', to)
-      return true
-      
-    } catch (zohoError: any) {
-      console.error('❌ Ambos proveedores fallaron:', zohoError.message)
-      throw new Error(`ZeptoMail: ${zeptoError.message} | Zoho: ${zohoError.message}`)
-    }
-  }
-}
-
-// ============================================
 // 1. CORREO DE CONFIRMACIÓN DE SOLICITUD
 // ============================================
 export async function sendConfirmationEmail({ 
@@ -520,7 +468,21 @@ export async function sendConfirmationEmail({
   const variant = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' ? 'crypto' : 'default'
   const html = getEmailTemplate(content, 'Solicitud recibida', variant)
   
-  return sendEmailHybrid(to, '✨ ¡Hola! Hemos recibido tu solicitud de crédito', html)
+  console.log('📧 Enviando correo de confirmación vía ZeptoMail a:', to)
+  
+  try {
+    await zeptoMailTransporter.sendMail({
+      from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
+      to,
+      subject: '✨ ¡Hola! Hemos recibido tu solicitud de crédito',
+      html
+    })
+    console.log('✅ Correo de confirmación enviado exitosamente vía ZeptoMail a:', to)
+    return true
+  } catch (error: any) {
+    console.error('❌ Error enviando correo de confirmación vía ZeptoMail:', error.message)
+    throw new Error(`ZeptoMail: ${error.message}`)
+  }
 }
 
 // ============================================
@@ -580,7 +542,22 @@ export async function sendDocumentsReceivedEmail({
   `
 
   const html = getEmailTemplate(content, 'Documentos recibidos', 'success')
-  return sendEmailHybrid(to, '📄 ¡Documentos recibidos! Tu solicitud avanza', html)
+  
+  console.log('📧 Enviando correo de documentos recibidos vía ZeptoMail a:', to)
+  
+  try {
+    await zeptoMailTransporter.sendMail({
+      from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
+      to,
+      subject: '📄 ¡Documentos recibidos! Tu solicitud avanza',
+      html
+    })
+    console.log('✅ Correo de documentos recibidos enviado exitosamente vía ZeptoMail a:', to)
+    return true
+  } catch (error: any) {
+    console.error('❌ Error enviando correo de documentos recibidos vía ZeptoMail:', error.message)
+    throw new Error(`ZeptoMail: ${error.message}`)
+  }
 }
 
 // ============================================
@@ -615,14 +592,43 @@ export async function sendChatNotificationEmail({ to, name, message, conversatio
   `
 
   const html = getEmailTemplate(content, 'Nuevo mensaje', 'default')
-  return sendEmailHybrid(to, '📩 Nuevo mensaje de tu asesor', html)
+  
+  console.log('📧 Enviando notificación de chat vía ZeptoMail a:', to)
+  
+  try {
+    await zeptoMailTransporter.sendMail({
+      from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
+      to,
+      subject: '📩 Nuevo mensaje de tu asesor',
+      html
+    })
+    console.log('✅ Notificación de chat enviada exitosamente vía ZeptoMail a:', to)
+    return true
+  } catch (error: any) {
+    console.error('❌ Error enviando notificación de chat vía ZeptoMail:', error.message)
+    throw new Error(`ZeptoMail: ${error.message}`)
+  }
 }
 
 // ============================================
 // 4. CORREO GENÉRICO
 // ============================================
 export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  return sendEmailHybrid(to, subject, html)
+  console.log('📧 Enviando correo genérico vía ZeptoMail a:', to)
+  
+  try {
+    await zeptoMailTransporter.sendMail({
+      from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
+      to,
+      subject,
+      html
+    })
+    console.log('✅ Correo enviado exitosamente vía ZeptoMail a:', to)
+    return true
+  } catch (error: any) {
+    console.error('❌ Error enviando correo vía ZeptoMail:', error.message)
+    throw new Error(`ZeptoMail: ${error.message}`)
+  }
 }
 
 // ============================================
@@ -660,7 +666,22 @@ export async function sendReminderEmail({ to, nombre }: { to: string; nombre: st
   `
 
   const html = getEmailTemplate(content, 'Recordatorio de crédito activo', 'default')
-  return sendEmailHybrid(to, '⏳ Tu crédito sigue activo - Caja Valladolid', html)
+  
+  console.log('📧 Enviando recordatorio vía ZeptoMail a:', to)
+  
+  try {
+    await zeptoMailTransporter.sendMail({
+      from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
+      to,
+      subject: '⏳ Tu crédito sigue activo - Caja Valladolid',
+      html
+    })
+    console.log('✅ Recordatorio enviado exitosamente vía ZeptoMail a:', to)
+    return true
+  } catch (error: any) {
+    console.error('❌ Error enviando recordatorio vía ZeptoMail:', error.message)
+    throw new Error(`ZeptoMail: ${error.message}`)
+  }
 }
 export async function sendApprovalEmail({ 
   to, 
@@ -738,7 +759,21 @@ export async function sendApprovalEmail({
   const variant = tipoCredito === 'crypto' || tipoCredito === 'CRYPTO' ? 'crypto' : 'success'
   const html = getEmailTemplate(content, 'Crédito Aprobado', variant)
   
-  return sendEmailHybrid(to, '🎉 ¡Felicidades! Tu crédito ha sido APROBADO', html)
+  console.log('📧 Enviando aprobación vía ZeptoMail a:', to)
+  
+  try {
+    await zeptoMailTransporter.sendMail({
+      from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
+      to,
+      subject: '🎉 ¡Felicidades! Tu crédito ha sido APROBADO',
+      html
+    })
+    console.log('✅ Aprobación enviada exitosamente vía ZeptoMail a:', to)
+    return true
+  } catch (error: any) {
+    console.error('❌ Error enviando aprobación vía ZeptoMail:', error.message)
+    throw new Error(`ZeptoMail: ${error.message}`)
+  }
 }
 
 // ============================================
@@ -799,53 +834,25 @@ export async function sendContractEmail({
 
   const html = getEmailTemplate(content, 'Contrato de Crédito', 'success')
   
-  return sendEmailHybridWithAttachment(to, '📄 Contrato de Crédito - Caja Valladolid', html, pdfBuffer, filename)
-}
-
-// ✅ Función híbrida CON ATTACHMENT
-async function sendEmailHybridWithAttachment(
-  to: string, 
-  subject: string, 
-  html: string, 
-  attachment: Buffer, 
-  filename: string
-) {
-  console.log('📧 Enviando correo con adjunto vía ZeptoMail a:', to)
+  console.log('📧 Enviando contrato con adjunto vía ZeptoMail a:', to)
   
   try {
     await zeptoMailTransporter.sendMail({
       from: '"Caja Valladolid" <noreply@cajavalladolid.com>',
       to,
-      subject,
+      subject: '📄 Contrato de Crédito - Caja Valladolid',
       html,
       attachments: [{
         filename,
-        content: attachment,
+        content: pdfBuffer,
         contentType: 'application/pdf'
       }]
     })
     console.log('✅ Contrato enviado exitosamente vía ZeptoMail a:', to)
     return true
-  } catch (zeptoError: any) {
-    console.error('⚠️ ZeptoMail falló con adjunto, intentando Zoho...')
-    
-    try {
-      await zohoTransporter.sendMail({
-        from: '"Caja Valladolid" <contacto@cajavalladolid.com>',
-        to,
-        subject,
-        html,
-        attachments: [{
-          filename,
-          content: attachment,
-          contentType: 'application/pdf'
-        }]
-      })
-      console.log('✅ Contrato enviado vía Zoho a:', to)
-      return true
-    } catch (zohoError: any) {
-      console.error('❌ Ambos proveedores fallaron con adjunto')
-      throw new Error(`Error enviando contrato`)
-    }
+  } catch (error: any) {
+    console.error('❌ Error enviando contrato vía ZeptoMail:', error.message)
+    throw new Error(`Error enviando contrato: ${error.message}`)
   }
 }
+
